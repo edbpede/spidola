@@ -846,7 +846,7 @@ The `android:banner` is mandatory for the Leanback launcher entry. Per Android's
 [versions]
 kotlin = "2.4.0"
 agp = "8.13.0"
-ksp = "2.4.0-2.0.2"
+ksp = "2.3.10"
 composeBom = "2026.06.00"
 tvMaterial = "1.1.0"
 tvFoundation = "1.0.0"

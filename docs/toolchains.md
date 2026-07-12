@@ -41,7 +41,7 @@ as an escape hatch; the stable Tier-2 route is the supported one.
 
 | Item | Pin |
 |---|---|
-| Xcode | **26.0.x** (exact build recorded by the Apple CI lane and `assert-toolchains.sh`) |
+| Xcode | **26.6.x** (exact build recorded by the Apple CI lane and `assert-toolchains.sh`; ships Swift 6.3.3) |
 | Swift | **6.3.3** (Swift 6 language mode, strict concurrency, default-MainActor isolation) |
 | SPM tools-version | 6.3 (every local `Package.swift`) |
 | tvOS deployment target | **18.0** |
@@ -57,7 +57,7 @@ Phase-0 pins and are refreshed there.
 |---|---|
 | JDK (Gradle toolchain) | **21** (Temurin/OpenJDK LTS) |
 | Kotlin | **2.4.0** (K2-only compiler; `org.jetbrains.kotlin.plugin.compose`) |
-| KSP | **2.4.0-2.0.2** (KSP2, never KAPT) |
+| KSP | **2.3.10** (KSP2 unified versioning, Kotlin 2.4.0 support; never KAPT) |
 | Android Gradle Plugin | **8.13.0** |
 | Gradle | **8.14** (`gradle-wrapper.properties`) |
 | compileSdk / targetSdk | **36** |
@@ -73,7 +73,7 @@ Phase-0 pins and are refreshed there.
 ## Local prerequisites
 
 - **Rust:** none beyond `rustup` — the toolchain file installs `1.96.1` on first `cargo` run.
-- **Apple:** Xcode `26.0.x`; `swift format` ships with the toolchain; `swiftlint` via
+- **Apple:** Xcode `26.6.x`; `swift format` ships with the toolchain; `swiftlint` via
   Homebrew; `xcodegen` via Homebrew.
 - **Android:** JDK `21`; the Android SDK (`compileSdk 36`, build-tools, NDK per the table)
   via the SDK manager, `ANDROID_HOME` exported. Gradle itself comes from the committed
