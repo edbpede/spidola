@@ -39,7 +39,7 @@ const STATICLIB: &str = "libcore_api.a";
 /// header is missing, or if any build/assembly step fails.
 pub(crate) fn xcframework() -> anyhow::Result<()> {
     let root = workspace_root();
-    require_tool("xcodebuild", "Xcode command-line tools")?;
+    require_tool("xcodebuild", "-version", "Xcode command-line tools")?;
     for target in [TVOS_DEVICE, TVOS_SIM_ARM] {
         require_rust_target(target)?;
         build_static(&root, target)?;
@@ -94,7 +94,11 @@ pub(crate) fn xcframework() -> anyhow::Result<()> {
 /// Returns an actionable error if cargo-ndk or the NDK is missing, or a build step fails.
 pub(crate) fn android() -> anyhow::Result<()> {
     let root = workspace_root();
-    require_tool("cargo-ndk", "cargo-ndk (`cargo install cargo-ndk`)")?;
+    require_tool(
+        "cargo-ndk",
+        "--version",
+        "cargo-ndk (`cargo install cargo-ndk`)",
+    )?;
     if std::env::var_os("ANDROID_NDK_HOME").is_none()
         && std::env::var_os("ANDROID_NDK_ROOT").is_none()
     {
@@ -153,10 +157,12 @@ fn copy_into(from: &Path, to: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Fails with an actionable message if `tool` is not on `PATH`.
-fn require_tool(tool: &str, hint: &str) -> anyhow::Result<()> {
+/// Fails with an actionable message if `tool` is not on `PATH`. `version_flag` is the tool's
+/// own way of asking for its version (`xcodebuild` uses the single-dash `-version`, not the
+/// GNU-style `--version` most other CLIs accept).
+fn require_tool(tool: &str, version_flag: &str, hint: &str) -> anyhow::Result<()> {
     let found = Command::new(tool)
-        .arg("--version")
+        .arg(version_flag)
         .output()
         .is_ok_and(|out| out.status.success());
     if found {
