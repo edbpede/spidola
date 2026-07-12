@@ -1,4 +1,4 @@
-# Orbita — Implementation Plan
+# Spidola — Implementation Plan
 
 | | |
 |---|---|
@@ -23,9 +23,9 @@ Two standing rules apply to **every** task in this plan and are not repeated per
   - [ ] Add SPDX headers to all seed files; wire the REUSE lint
   - [ ] Commit `docs/` with PRD, TECH_SPEC, this plan, and an empty `adr/` with the seed ADRs from TECH_SPEC §14
 - [ ] **Governance (launch-blocking, PRD §10)**
-  - [ ] Decide and document the contributor model (recommendation: DCO + explicit App Store distribution grant)
-  - [ ] Add CONTRIBUTING with the modularity doctrine summary and the two standing rules above
-  - [ ] Run the "Orbita" trademark / store-name availability check
+  - [x] Decide and document the contributor model (recommendation: DCO + explicit App Store distribution grant)
+  - [x] Add CONTRIBUTING with the modularity doctrine summary and the two standing rules above
+  - [x] Run the "Spidola" trademark / store-name availability check (original name "Orbita" failed and was replaced — ADR-0002; App Store Connect reservation remains the definitive test, tracked in Phase 7)
 - [ ] **Toolchain pins**
   - [ ] `rust-toolchain.toml` pinned to 1.96.1; workspace manifest with resolver 3, edition 2024, `workspace.lints` per rules file
   - [ ] `docs/toolchains.md` recording the Xcode/Swift (6.3.x) and Kotlin (2.4.0) / AGP / KSP2 / Gradle pins; build scripts assert them

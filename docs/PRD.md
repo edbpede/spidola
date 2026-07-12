@@ -1,8 +1,8 @@
-# Orbita — Product Requirements Document
+# Spidola — Product Requirements Document
 
 | | |
 |---|---|
-| **Name** | Orbita |
+| **Name** | Spidola |
 | **Document status** | Draft v1.1 — July 2026 |
 | **License** | AGPL-3.0-or-later |
 | **Companion documents** | `TECH_SPEC.md` — architecture, stack, engineering standards · `IMPLEMENTATION_PLAN.md` — phased task breakdown |
@@ -12,7 +12,7 @@
 
 ## 1. Vision
 
-Orbita is a free, open-source IPTV player built exclusively for the living room. Where most IPTV apps on TV platforms are ports of phone apps — cluttered, ad-riddled, slow, and hostile to remote-control navigation — Orbita is designed from the first pixel for the 10-foot experience: a D-pad, a couch, and a person who wants to be watching television within seconds of pressing the home button.
+Spidola is a free, open-source IPTV player built exclusively for the living room. Where most IPTV apps on TV platforms are ports of phone apps — cluttered, ad-riddled, slow, and hostile to remote-control navigation — Spidola is designed from the first pixel for the 10-foot experience: a D-pad, a couch, and a person who wants to be watching television within seconds of pressing the home button.
 
 The project's founding principles: user-supplied sources, no bundled content, obsessive speed, instant search, low memory, and zero monetization pressure inside the app — delivered natively on the two dominant TV platforms, with the remote control treated as the primary, not adapted, input device.
 
@@ -20,7 +20,7 @@ The one-sentence pitch: **the fastest, cleanest way to watch your own IPTV sourc
 
 ## 2. Background and prior art
 
-Desktop IPTV players have proven a recipe worth keeping: a fast native engine handling playlist ingestion, an SQLite channel database with instant search, and mpv-class playback for codec breadth — typically with mpv launched as an external process. That last part cannot be transplanted to TV platforms: neither tvOS nor Android TV permits launching external player binaries, and neither runs a webview-centric desktop shell well. Orbita therefore keeps the *engine* philosophy (Rust core, SQLite, mpv-class codec breadth) but builds the *shell* natively per platform, with playback embedded as a library rather than a child process. The full architectural translation is specified in the tech spec.
+Desktop IPTV players have proven a recipe worth keeping: a fast native engine handling playlist ingestion, an SQLite channel database with instant search, and mpv-class playback for codec breadth — typically with mpv launched as an external process. That last part cannot be transplanted to TV platforms: neither tvOS nor Android TV permits launching external player binaries, and neither runs a webview-centric desktop shell well. Spidola therefore keeps the *engine* philosophy (Rust core, SQLite, mpv-class codec breadth) but builds the *shell* natively per platform, with playback embedded as a library rather than a child process. The full architectural translation is specified in the tech spec.
 
 ## 3. Goals
 
@@ -28,7 +28,7 @@ The product succeeds if it delivers, in priority order: first, a playback experi
 
 ## 4. Non-goals
 
-Orbita is not a content service: it ships with no channels, no playlists, no directories of sources, and no links to any. It does not scrape, index, or recommend third-party content. It is not a general media-center (no local library management, no metadata scraping à la Plex/Jellyfin — those projects already exist and do it well). It is not a phone or tablet app in v1; phones are addressed only as far as shared code makes a later port cheap. It does not include accounts, cloud sync of user data through project-operated servers, telemetry, or advertising — ever. Desktop platforms are out of scope; that space is already well served by existing open-source players.
+Spidola is not a content service: it ships with no channels, no playlists, no directories of sources, and no links to any. It does not scrape, index, or recommend third-party content. It is not a general media-center (no local library management, no metadata scraping à la Plex/Jellyfin — those projects already exist and do it well). It is not a phone or tablet app in v1; phones are addressed only as far as shared code makes a later port cheap. It does not include accounts, cloud sync of user data through project-operated servers, telemetry, or advertising — ever. Desktop platforms are out of scope; that space is already well served by existing open-source players.
 
 ## 5. Target users and platforms
 
@@ -163,4 +163,4 @@ The top risks, each with its mitigation: **App Store rejection or AGPL conflict*
 
 ## 13. Open questions
 
-Trademark and store-name availability check for "Orbita" (the name is decided; the check is due diligence). Contributor agreement model (blocking for external contributions, §10). Cross-device sync: out of scope, export/import only, or a self-hostable sync target in the 2.0 era? Restreaming: build it into Orbita or leave it to dedicated tools? Whether Apple TV HD (A8) is worth the performance floor it imposes, or whether tvOS 18+/A12+ is the honest line (current draft assumes A12+).
+Two questions from earlier drafts are resolved: the original working name ("Orbita") failed the trademark / store-name availability check and was replaced by "Spidola" (ADR-0002; reserving the name in App Store Connect remains the definitive test), and the contributor agreement model is DCO plus an explicit App Store distribution exception (ADR-0001, §10). Cross-device sync: out of scope, export/import only, or a self-hostable sync target in the 2.0 era? Restreaming: build it into Spidola or leave it to dedicated tools? Whether Apple TV HD (A8) is worth the performance floor it imposes, or whether tvOS 18+/A12+ is the honest line (current draft assumes A12+).

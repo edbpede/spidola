@@ -1,4 +1,4 @@
-# Orbita — Technical Specification & Stack Documentation
+# Spidola — Technical Specification & Stack Documentation
 
 | | |
 |---|---|
@@ -55,7 +55,7 @@ Tooling's role, precisely bounded: complexity and length lints (clippy's cogniti
 The suggested structure, to the depth that carries meaning (leaf files listed where the decomposition itself is the point; `…` marks routine omissions):
 
 ```text
-orbita/
+spidola/
 ├── Cargo.toml                     # virtual workspace manifest (resolver 3, workspace deps & lints)
 ├── rust-toolchain.toml            # pins Rust 1.96.1
 ├── deny.toml                      # cargo-deny: advisories + license allow-list
@@ -154,7 +154,7 @@ orbita/
 │   └── xtask/src/                 # bindings / xcframework / ndk / release tasks
 ├── apps/
 │   ├── tvos/
-│   │   ├── Orbita.xcworkspace
+│   │   ├── Spidola.xcworkspace
 │   │   ├── App/                   # entry point, root navigation, composition root
 │   │   ├── TopShelf/              # extension target (P1)
 │   │   └── Packages/              # local SPM packages, one per slice

@@ -1,4 +1,4 @@
-# Orbita — repository ignore rules
+# Spidola — repository ignore rules
 # Stack: Rust core (crates/) · Swift/tvOS (apps/tvos/) · Kotlin/Android TV (apps/androidtv/)
 #
 # Deliberately committed (do NOT ignore): Cargo.lock and SwiftPM Package.resolved
