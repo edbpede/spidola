@@ -17,11 +17,33 @@ repository = "https://github.com/edbpede/spidola"
 homepage = "https://github.com/edbpede/spidola"
 
 # Shared dependency versions are declared once here and referenced from member
-# crates with `{ workspace = true }`. Phase 1+ populates this as crates gain real
-# dependencies (rusqlite, reqwest, thiserror, tokio, uniffi, …); intentionally
-# empty in the Phase 0 skeleton.
+# crates with `{ workspace = true }`. rustls-only HTTP (no OpenSSL, TECH_SPEC §4.5);
+# rusqlite bundled pins one SQLite (with FTS5) across platforms (§4.4).
 [workspace.dependencies]
-
+# Domain + errors + serialization.
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+zeroize = { version = "1", features = ["derive"] }
+url = "2"
+# Persistence: bundled SQLite (FTS5, contentless-delete) + forward-only migrations.
+rusqlite = { version = "0.37", features = ["bundled", "functions", "trace"] }
+rusqlite_migration = "2"
+# HTTP: reqwest on rustls with platform trust roots (TECH_SPEC §12), no OpenSSL anywhere.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots", "gzip", "stream"] }
+bytes = "1"
+# Async runtime (owned by core-api) + observability.
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros", "time"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+rand = "0.9"
+# Application-only (xtask + tests); never a library dependency (TECH_SPEC §4.7).
+anyhow = "1"
+# Test / bench tooling.
+proptest = "1"
+criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+tempfile = "3"
 # Workspace lints — NOT inherited automatically; every member opts in with
 # `[lints] workspace = true`. See rust-dev-pro.md and TECH_SPEC §3.3.
 [workspace.lints.rust]

@@ -6,8 +6,20 @@
 //! not shell scripts (TECH_SPEC §3.3).
 #![forbid(unsafe_code)]
 
-fn main() {
-    // Phase 0 skeleton: no subcommands are wired yet.
-    eprintln!("xtask: no tasks are implemented yet (Phase 0 skeleton)");
-    std::process::exit(2);
+mod phase1;
+
+use anyhow::anyhow;
+
+fn main() -> anyhow::Result<()> {
+    match std::env::args().nth(1).as_deref() {
+        Some("phase1-verify") => {
+            // Owns a multi-thread runtime for the end-to-end pipeline (fetch + blocking DB).
+            let runtime = tokio::runtime::Runtime::new()?;
+            let report = runtime.block_on(phase1::verify(50_000))?;
+            print!("{report}");
+            Ok(())
+        }
+        Some(other) => Err(anyhow!("unknown task `{other}`; try `phase1-verify`")),
+        None => Err(anyhow!("usage: cargo xtask <task>  (tasks: phase1-verify)")),
+    }
 }

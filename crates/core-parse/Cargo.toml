@@ -12,5 +12,17 @@ repository.workspace = true
 description = "Streaming, bounded-memory M3U and XMLTV parsers."
 publish = false
 
+[dependencies]
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "m3u"
+harness = false
+
 [lints]
 workspace = true

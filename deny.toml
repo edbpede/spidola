@@ -41,6 +41,9 @@ exceptions = []
 [bans]
 multiple-versions = "warn"
 wildcards = "warn"
+# Workspace-internal `path` dependencies are intentionally unversioned; only external
+# wildcard version requirements are a smell.
+allow-wildcard-paths = true
 # No OpenSSL / native-tls anywhere: rustls only, so Apple/Android cross-compilation
 # stays sane (TECH_SPEC §4.5, §12).
 deny = [

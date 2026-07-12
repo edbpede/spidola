@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Provenance: hand-authored attribute edge cases; no external source, no scrubbing.
+# Exercises: commas inside quoted values, unknown attributes preserved, EXTGRP, EXTVLCOPT
+#            (http-user-agent + http-referrer). Credentials never appear in fixtures.
+#EXTM3U
+#EXTINF:-1 tvg-id="sport.1" tvg-name="Sports, News & More" group-title="Sports",Sport One, HD
+#EXTGRP:Premium Sports
+#EXTVLCOPT:http-user-agent=SpidolaTest/1.0
+#EXTVLCOPT:http-referrer=http://portal.example/
+http://headend.example/live/sport1.ts
+#EXTINF:-1 tvg-id="doc.1" catchup="append" catchup-days="7" x-custom-flag="yes",Docu Channel
+http://headend.example/live/doc1.ts

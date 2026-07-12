@@ -12,5 +12,13 @@ repository.workspace = true
 description = "All HTTP: reqwest + rustls, streaming bodies, per-source headers."
 publish = false
 
+[dependencies]
+reqwest = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+
 [lints]
 workspace = true

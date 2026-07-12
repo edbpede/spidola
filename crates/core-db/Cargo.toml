@@ -12,5 +12,17 @@ repository.workspace = true
 description = "SQLite persistence (rusqlite bundled, FTS5) and forward-only migrations."
 publish = false
 
+[dependencies]
+core-model = { path = "../core-model" }
+rusqlite = { workspace = true }
+rusqlite_migration = { workspace = true }
+thiserror = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+tempfile = { workspace = true }
+
 [lints]
 workspace = true
