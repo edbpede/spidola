@@ -9,10 +9,10 @@
 //! and Android runners, not the Linux core lane. Each preflights its toolchain and fails with an
 //! actionable message rather than a cryptic build error when a piece is missing.
 //!
-//! The Apple tvOS targets (`aarch64-apple-tvos` and the simulator variants) are Rust **Tier 2**:
-//! prebuilt std ships with the pinned stable toolchain, so no `-Z build-std` is needed. The
-//! documented fallback (nightly + `build-std`) lives in `docs/toolchains.md` for the case where
-//! the pin ever sits behind the promotion.
+//! The Apple tvOS targets built here (`aarch64-apple-tvos` and its Apple-silicon simulator
+//! variant) are Rust **Tier 2**: prebuilt std ships with the pinned stable toolchain, so no
+//! `-Z build-std` is needed. The Intel simulator target (`x86_64-apple-tvos`) stays Tier 3
+//! upstream (no prebuilt std) and is out of scope — CI and modern Macs are Apple-silicon-only.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -22,10 +22,9 @@ use anyhow::{Context, bail};
 
 use crate::paths::{cargo, target_dir, workspace_root};
 
-/// The tvOS device target and the two simulator targets (Apple-silicon + Intel).
+/// The tvOS device target and the Apple-silicon simulator target.
 const TVOS_DEVICE: &str = "aarch64-apple-tvos";
 const TVOS_SIM_ARM: &str = "aarch64-apple-tvos-sim";
-const TVOS_SIM_X86: &str = "x86_64-apple-tvos";
 
 /// The Android ABIs shipped: two device ABIs plus `x86_64` for the emulator (TECH_SPEC §7).
 const ANDROID_ABIS: &[&str] = &["arm64-v8a", "armeabi-v7a", "x86_64"];
@@ -33,7 +32,7 @@ const ANDROID_ABIS: &[&str] = &["arm64-v8a", "armeabi-v7a", "x86_64"];
 /// The static library name Cargo emits for the `staticlib` crate-type.
 const STATICLIB: &str = "libcore_api.a";
 
-/// Builds the tvOS XCFramework (device + fat simulator slice) with the generated UniFFI header.
+/// Builds the tvOS XCFramework (device + simulator slice) with the generated UniFFI header.
 ///
 /// # Errors
 /// Returns an actionable error if a required Rust target, `xcodebuild`, or the generated FFI
@@ -41,7 +40,7 @@ const STATICLIB: &str = "libcore_api.a";
 pub(crate) fn xcframework() -> anyhow::Result<()> {
     let root = workspace_root();
     require_tool("xcodebuild", "Xcode command-line tools")?;
-    for target in [TVOS_DEVICE, TVOS_SIM_ARM, TVOS_SIM_X86] {
+    for target in [TVOS_DEVICE, TVOS_SIM_ARM] {
         require_rust_target(target)?;
         build_static(&root, target)?;
     }
@@ -50,15 +49,7 @@ pub(crate) fn xcframework() -> anyhow::Result<()> {
     let _ = fs::remove_dir_all(&out);
     fs::create_dir_all(&out).with_context(|| format!("create {}", out.display()))?;
 
-    // Fuse the two simulator arches into one fat static library via lipo.
-    let sim_fat = out.join("libcore_api-sim.a");
-    lipo(
-        &[
-            static_path(&root, TVOS_SIM_ARM),
-            static_path(&root, TVOS_SIM_X86),
-        ],
-        &sim_fat,
-    )?;
+    let sim_lib = static_path(&root, TVOS_SIM_ARM);
 
     // The XCFramework needs a headers dir carrying the FFI header + a `module.modulemap`.
     let headers = out.join("Headers");
@@ -82,7 +73,7 @@ pub(crate) fn xcframework() -> anyhow::Result<()> {
         .arg("-headers")
         .arg(&headers)
         .arg("-library")
-        .arg(&sim_fat)
+        .arg(&sim_lib)
         .arg("-headers")
         .arg(&headers)
         .arg("-output")
@@ -155,24 +146,6 @@ fn static_path(root: &Path, target: &str) -> PathBuf {
         .join(target)
         .join("release")
         .join(STATICLIB)
-}
-
-/// Fuses several single-arch static libraries into one fat library via `lipo`.
-fn lipo(inputs: &[PathBuf], output: &Path) -> anyhow::Result<()> {
-    let mut command = Command::new("lipo");
-    command.arg("-create");
-    for input in inputs {
-        command.arg(input);
-    }
-    let status = command
-        .arg("-output")
-        .arg(output)
-        .status()
-        .context("spawn lipo")?;
-    if !status.success() {
-        bail!("lipo -create failed");
-    }
-    Ok(())
 }
 
 fn copy_into(from: &Path, to: &Path) -> anyhow::Result<()> {

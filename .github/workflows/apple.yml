@@ -41,7 +41,7 @@ jobs:
       - name: SwiftLint
         run: |
           brew install swiftlint
-          cd apps/tvos && swiftlint lint --strict
+          swiftlint lint --strict
 
       - name: Build SPM packages
         run: |
@@ -87,7 +87,7 @@ jobs:
       # Packaging (TECH_SPEC §9): the tvOS targets are Rust Tier 2, so prebuilt std ships with
       # the pinned stable toolchain — no `-Z build-std` (fallback in docs/toolchains.md).
       - name: Add tvOS Rust targets (Tier 2)
-        run: rustup target add aarch64-apple-tvos aarch64-apple-tvos-sim x86_64-apple-tvos
+        run: rustup target add aarch64-apple-tvos aarch64-apple-tvos-sim
 
       - name: Build tvOS XCFramework
         run: cargo run -p xtask -- package-xcframework

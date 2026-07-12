@@ -79,6 +79,9 @@ jobs:
           yes | sdkmanager "ndk;$NDK_VERSION" >/dev/null
           echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
 
+      - name: Add Android Rust targets
+        run: rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+
       - name: Build Android jniLibs
         run: cargo run -p xtask -- package-android
 

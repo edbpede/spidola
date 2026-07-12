@@ -27,10 +27,12 @@ let the three CI lanes prove the tree still builds green.
 
 ### Apple targets and the Tier-2 note
 
-The core builds for `aarch64-apple-tvos` plus the tvOS simulator variant and is packaged
-with the generated Swift bindings into an XCFramework by `xtask` (Phase 2). These targets
-were promoted from Tier 3 to **Tier 2** upstream, so the pinned stable toolchain ships
-prebuilt standard libraries for them — no `build-std` needed.
+The core builds for `aarch64-apple-tvos` plus its Apple-silicon simulator variant
+(`aarch64-apple-tvos-sim`) and is packaged with the generated Swift bindings into an
+XCFramework by `xtask` (Phase 2). These two targets are **Tier 2** upstream, so the pinned
+stable toolchain ships prebuilt standard libraries for them — no `build-std` needed. The
+Intel simulator target (`x86_64-apple-tvos`) remains Tier 3 (no prebuilt std) and is
+intentionally not built — CI and current Macs are Apple-silicon-only.
 
 **Fallback (documented, not the default):** should a future pin ever sit behind that
 promotion, build the tvOS targets on a nightly toolchain with
@@ -50,8 +52,9 @@ shell scripts):
 | `cargo xtask package-android` | Build the per-ABI `libcore_api.so` via cargo-ndk into a `jniLibs` tree (Android CI lane) |
 
 The XCFramework build needs the tvOS Rust targets (`rustup target add aarch64-apple-tvos
-aarch64-apple-tvos-sim x86_64-apple-tvos`); the Android build needs `cargo-ndk` and the pinned
-NDK (`ANDROID_NDK_HOME`).
+aarch64-apple-tvos-sim`); the Android build needs the Android Rust targets (`rustup target add
+aarch64-linux-android armv7-linux-androideabi x86_64-linux-android`), `cargo-ndk`, and the
+pinned NDK (`ANDROID_NDK_HOME`).
 
 ## Apple (tvOS shell)
 
