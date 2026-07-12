@@ -1,0 +1,84 @@
+# Orbita — repository ignore rules
+# Stack: Rust core (crates/) · Swift/tvOS (apps/tvos/) · Kotlin/Android TV (apps/androidtv/)
+#
+# Deliberately committed (do NOT ignore): Cargo.lock and SwiftPM Package.resolved
+# (this is an application workspace — pinned dependency graphs are required for the
+# reproducibility checks in TECH_SPEC §9), plus the Gradle wrapper and .augment/rules/.
+
+# ── Rust / Cargo ────────────────────────────────────────────────────────────
+# Workspace build output (virtual manifest at the repo root → single target/).
+/target/
+# rustfmt backups
+**/*.rs.bk
+# MSVC debug symbols (harmless on our targets, kept for parity with upstream)
+*.pdb
+# cargo-mutants output
+**/mutants.out*/
+# rustc internal-compiler-error dumps land in the working directory
+rustc-ice-*.txt
+
+# ── Swift / Xcode / SwiftPM (apps/tvos) ─────────────────────────────────────
+xcuserdata/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+timeline.xctimeline
+playground.xcworkspace
+# SwiftPM local build products & Xcode-managed package workspace state
+.build/
+.swiftpm/
+# (Package.resolved is committed on purpose — see header)
+
+# ── Kotlin / Android / Gradle (apps/androidtv) ──────────────────────────────
+.gradle/
+build/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.aab
+*.apk
+output-metadata.json
+# Keystores / signing material must never be committed
+*.jks
+*.keystore
+# Profiling / heap dumps
+*.hprof
+
+# ── IDEs / editors ──────────────────────────────────────────────────────────
+# JetBrains (Android Studio, IntelliJ, RustRover) & module files
+.idea/
+*.iml
+# VS Code — keep shared config out of the tree by default
+.vscode/
+# Vim / Emacs scratch
+*.swp
+*~
+
+# ── Logs ────────────────────────────────────────────────────────────────────
+*.log
+
+# ── macOS ───────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# ── Project-local tooling state ─────────────────────────────────────────────
+# oh-my-claudecode / local agent orchestration state (not shared)
+.omc/

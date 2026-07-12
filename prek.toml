@@ -1,0 +1,68 @@
+# prek.toml — pre-commit hooks configuration
+# Docs: https://prek.j178.dev/configuration/
+#
+# Setup: `prek install` (default_install_hook_types below wires up both the
+#   pre-commit and commit-msg Git shims in one shot).
+# Run everything: `prek run --all-files` (do this after changing this file).
+# See docs/IMPLEMENTATION_PLAN.md — Phase 0.
+
+# One `prek install` installs both shims we rely on.
+default_install_hook_types = ["pre-commit", "commit-msg"]
+
+# Builtin hooks — fast, offline, Rust-native
+[[repos]]
+repo = "builtin"
+hooks = [
+  { id = "trailing-whitespace" },
+  { id = "end-of-file-fixer" },
+  { id = "mixed-line-ending", args = ["--fix=lf"] },
+  { id = "check-merge-conflict" },
+  { id = "check-case-conflict" },
+  { id = "check-added-large-files", args = ["--maxkb=512"] },
+  { id = "detect-private-key" },
+  { id = "check-json" },
+  { id = "check-toml" },
+  { id = "check-yaml" },
+  { id = "no-commit-to-branch", args = ["--branch", "main"] },
+]
+
+# Conventional Commits — enforce Conventional Commit message format.
+[[repos]]
+repo = "https://github.com/compilerla/conventional-pre-commit"
+rev = "v4.4.0"
+hooks = [
+  { id = "conventional-pre-commit", stages = ["commit-msg"] },
+]
+
+# Secret / credential leak guard — sources, fixtures, and dotfiles must never carry
+# tokens (TECH_SPEC §12: secrets live behind the host-secrets callback, never in-tree).
+[[repos]]
+repo = "https://github.com/gitleaks/gitleaks"
+rev = "v8.30.1"
+hooks = [
+  { id = "gitleaks" },
+]
+
+# Local hooks — project-specific quality gates, path-scoped for the monorepo.
+# These are the fast local mirror of the three CI lanes (TECH_SPEC §9): the same
+# format/lint failures surface here and in CI. Heavier gates stay in CI only — full
+# Swift/Kotlin compilation (type-checking), the emulator/simulator smoke tests, and the
+# REUSE/SPDX lint — so commits stay quick. Complexity/length lints remain ADVISORY
+# (warn) per the modularity doctrine (TECH_SPEC §3.1) and are never wired as blocking
+# hooks. Each language keeps its native tooling (Biome has no Rust/Swift/Kotlin support).
+[[repos]]
+repo = "local"
+hooks = [
+  # Rust core — crates/ (rustfmt + clippy at deny-warnings; §9 core lane).
+  { id = "cargo-fmt", name = "cargo fmt", entry = "cargo fmt --all", language = "system", types = ["rust"], files = "^crates/", pass_filenames = false },
+  { id = "cargo-clippy", name = "cargo clippy", entry = "cargo clippy --workspace --all-targets --all-features -- -D warnings", language = "system", types = ["rust"], files = "^crates/", pass_filenames = false },
+  # cargo-deny — advisory feed + license allow-list (§12); runs on manifest/lock/deny changes.
+  { id = "cargo-deny", name = "cargo deny", entry = "cargo deny check", language = "system", files = "(^|/)(Cargo\\.(toml|lock)|deny\\.toml)$", pass_filenames = false },
+  # tvOS shell — apps/tvos/ (toolchain-bundled swift-format + SwiftLint; §9 apple lane).
+  { id = "swift-format", name = "swift-format", entry = "swift format --in-place", language = "system", types = ["swift"], files = "^apps/tvos/" },
+  { id = "swiftlint", name = "swiftlint", entry = "swiftlint lint --strict", language = "system", types = ["swift"], files = "^apps/tvos/" },
+  # Android TV shell — apps/androidtv/ (ktlint + detekt with the Compose ruleset; §9 android lane).
+  # Gradle-driven so detekt loads the Compose ruleset; fires only when Kotlin under apps/androidtv/ is staged.
+  { id = "ktlint", name = "ktlint", entry = "apps/androidtv/gradlew --project-dir apps/androidtv ktlintCheck", language = "system", types = ["kotlin"], files = "^apps/androidtv/", pass_filenames = false },
+  { id = "detekt", name = "detekt", entry = "apps/androidtv/gradlew --project-dir apps/androidtv detekt", language = "system", types = ["kotlin"], files = "^apps/androidtv/", pass_filenames = false },
+]
