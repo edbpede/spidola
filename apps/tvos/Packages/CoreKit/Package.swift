@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import PackageDescription
 
-// CoreKit — The UniFFI binding wrapper plus Swift adapters: main-actor trampolining for callbacks, the Keychain-backed secrets callback, and the OSLog sink (TECH_SPEC §6, §4.8).
+// CoreKit — The UniFFI binding wrapper plus Swift adapters: main-actor trampolining for
+// callbacks, the Keychain-backed secrets callback, and the OSLog sink (TECH_SPEC §6, §4.8).
 let package = Package(
   name: "CoreKit",
   platforms: [.tvOS(.v18)],
