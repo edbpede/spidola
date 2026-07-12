@@ -837,6 +837,9 @@ public protocol CoreProtocol: AnyObject, Sendable {
     
     /**
      * The source service (add / list / refresh / rename / disable / delete).
+     *
+     * Returns the one shared instance, so its in-flight-refresh registry is consistent across
+     * calls and a `delete` can cancel a concurrent `refresh` on the same source.
      */
     func sources()  -> SourceService
     
@@ -1008,6 +1011,9 @@ open func settings() -> SettingsService  {
     
     /**
      * The source service (add / list / refresh / rename / disable / delete).
+     *
+     * Returns the one shared instance, so its in-flight-refresh registry is consistent across
+     * calls and a `delete` can cancel a concurrent `refresh` on the same source.
      */
 open func sources() -> SourceService  {
     return try!  FfiConverterTypeSourceService_lift(try! rustCall() {
@@ -1691,9 +1697,11 @@ public protocol SourceServiceProtocol: AnyObject, Sendable {
     /**
      * Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history.
      *
-     * Cancels every in-flight refresh for this source first, so each detached task aborts at its
-     * next batch boundary (releasing the writer and reporting `Cancelled`) instead of fetching a
-     * catalog for a source that is about to vanish and then failing under the writer.
+     * Signals every in-flight refresh for this source to cancel first, so a still-downloading
+     * import aborts at its next batch boundary and discards its staged catalog rather than
+     * swapping one in for a source that is about to vanish. This is best-effort: a refresh already
+     * past its last boundary is caught instead by the commit-time existence check, which abandons
+     * the swap and reports the refresh as cancelled — never a spurious storage failure.
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
@@ -1710,8 +1718,10 @@ public protocol SourceServiceProtocol: AnyObject, Sendable {
     
     /**
      * Refreshes a source's catalog from its URL. Returns immediately with a [`TaskHandle`];
-     * progress, completion, and failure arrive on `listener`. Cancellation via the handle is
-     * honest — checked at batch boundaries — and leaves the prior catalog intact on abort.
+     * progress, completion, and failure arrive on `listener`. The download stages off-lock into a
+     * throwaway database and swaps into the live catalog only at the end, so cancellation via the
+     * handle — checked at batch boundaries — leaves the prior catalog intact on abort, and other
+     * writes are never blocked for the download's duration.
      */
     func refresh(id: Int64, listener: ImportListener)  -> TaskHandle
     
@@ -1822,9 +1832,11 @@ open func addM3uUrl(name: String, url: String, userAgent: String?, acceptInvalid
     /**
      * Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history.
      *
-     * Cancels every in-flight refresh for this source first, so each detached task aborts at its
-     * next batch boundary (releasing the writer and reporting `Cancelled`) instead of fetching a
-     * catalog for a source that is about to vanish and then failing under the writer.
+     * Signals every in-flight refresh for this source to cancel first, so a still-downloading
+     * import aborts at its next batch boundary and discards its staged catalog rather than
+     * swapping one in for a source that is about to vanish. This is best-effort: a refresh already
+     * past its last boundary is caught instead by the commit-time existence check, which abandons
+     * the swap and reports the refresh as cancelled — never a spurious storage failure.
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
@@ -1869,8 +1881,10 @@ open func list()async throws  -> [Source]  {
     
     /**
      * Refreshes a source's catalog from its URL. Returns immediately with a [`TaskHandle`];
-     * progress, completion, and failure arrive on `listener`. Cancellation via the handle is
-     * honest — checked at batch boundaries — and leaves the prior catalog intact on abort.
+     * progress, completion, and failure arrive on `listener`. The download stages off-lock into a
+     * throwaway database and swaps into the live catalog only at the end, so cancellation via the
+     * handle — checked at batch boundaries — leaves the prior catalog intact on abort, and other
+     * writes are never blocked for the download's duration.
      */
 open func refresh(id: Int64, listener: ImportListener) -> TaskHandle  {
     return try!  FfiConverterTypeTaskHandle_lift(try! rustCall() {
@@ -4799,7 +4813,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_core_settings() != 17208) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_core_api_checksum_method_core_sources() != 42047) {
+    if (uniffi_core_api_checksum_method_core_sources() != 43952) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_taskhandle_cancel() != 14297) {
@@ -4844,13 +4858,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_sourceservice_add_m3u_url() != 16147) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_core_api_checksum_method_sourceservice_delete() != 58115) {
+    if (uniffi_core_api_checksum_method_sourceservice_delete() != 42027) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_sourceservice_list() != 24283) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_core_api_checksum_method_sourceservice_refresh() != 21910) {
+    if (uniffi_core_api_checksum_method_sourceservice_refresh() != 44554) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_sourceservice_rename() != 38453) {

@@ -19,7 +19,7 @@ use std::time::{Duration, Instant};
 use anyhow::{Context, anyhow};
 use tokio::sync::mpsc;
 
-use core_db::{Db, repo};
+use core_db::{Db, RefreshCommit, repo};
 use core_model::channel::channel_identity;
 use core_model::ids::SourceId;
 use core_model::locator::StreamLocator;
@@ -169,16 +169,16 @@ async fn import_stream(db: Arc<Db>, source: SourceId, url: &str) -> anyhow::Resu
     worker.await.context("staging worker panicked")?
 }
 
-/// Blocking side: owns the parser + refresh transaction and stages received byte chunks.
+/// Blocking side: owns the parser + writer-free staging database and stages received byte chunks.
 fn run_staging(
     db: &Db,
     source: SourceId,
     mut rx: mpsc::Receiver<Vec<u8>>,
 ) -> anyhow::Result<ImportSummary> {
-    let mut refresh = db.begin_refresh(source)?;
+    let mut staging = db.begin_staging(source)?;
     let mut parser = M3uParser::new();
     let mut sink = StagingSink {
-        refresh: &mut refresh,
+        staging: &mut staging,
         invalid: 0,
     };
     while let Some(chunk) = rx.blocking_recv() {
@@ -186,8 +186,13 @@ fn run_staging(
     }
     let diagnostics = parser.finish(&mut sink)?;
     let invalid = sink.invalid;
-    // `sink`'s last use ends its `&mut refresh` borrow here, so `commit` can take it.
-    let outcome = refresh.commit()?;
+    // `sink`'s last use ends its `&mut staging` borrow here, so `commit` can take it.
+    let outcome = match staging.commit(db)? {
+        RefreshCommit::Committed(outcome) => outcome,
+        RefreshCommit::SourceRemoved => {
+            return Err(anyhow!("source was removed during the phase 1 refresh"));
+        }
+    };
     Ok(ImportSummary {
         inserted: outcome.inserted,
         duplicates_dropped: outcome.duplicates_dropped,
@@ -198,12 +203,12 @@ fn run_staging(
 }
 
 /// A [`ChannelSink`] that maps parsed channels to domain rows and stages them.
-struct StagingSink<'a, 'db> {
-    refresh: &'a mut core_db::Refresh<'db>,
+struct StagingSink<'a> {
+    staging: &'a mut core_db::Staging,
     invalid: u64,
 }
 
-impl ChannelSink for StagingSink<'_, '_> {
+impl ChannelSink for StagingSink<'_> {
     type Error = core_db::DbError;
 
     fn accept(&mut self, batch: Vec<ParsedChannel>) -> Result<(), Self::Error> {
@@ -214,7 +219,7 @@ impl ChannelSink for StagingSink<'_, '_> {
                 None => self.invalid += 1, // invalid locator: skip-and-count, never fail
             }
         }
-        self.refresh.stage(&mapped)
+        self.staging.stage(&mapped)
     }
 }
 
@@ -248,7 +253,7 @@ fn abort_refresh_and_check(
     favorite: core_model::ids::ChannelIdentity,
 ) -> anyhow::Result<(u64, bool)> {
     {
-        let mut refresh = db.begin_refresh(source)?;
+        let mut staging = db.begin_staging(source)?;
         let replacement = core_api::import::map_parsed(ParsedChannel {
             name: "Replacement".to_owned(),
             url: "http://host.example/live/replacement.ts".to_owned(),
@@ -258,8 +263,9 @@ fn abort_refresh_and_check(
             headers: Vec::new(),
         })
         .ok_or_else(|| anyhow!("replacement locator should be valid"))?;
-        refresh.stage(&[replacement])?;
-        // Drop `refresh` without commit — simulates a fault mid-import → rollback.
+        staging.stage(&[replacement])?;
+        // Drop `staging` without commit — the temp file is discarded and `main` was never touched,
+        // so the prior catalog and favorites stand (simulates a fault before the swap).
     }
     let conn = db.reader()?;
     let count = repo::channels::count_for_source(&conn, source)?;

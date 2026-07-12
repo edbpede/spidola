@@ -1095,7 +1095,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_core_settings() != 17208) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_core_api_checksum_method_core_sources() != 42047) {
+    if (lib.uniffi_core_api_checksum_method_core_sources() != 43952) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_taskhandle_cancel() != 14297) {
@@ -1140,13 +1140,13 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_sourceservice_add_m3u_url() != 16147) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_core_api_checksum_method_sourceservice_delete() != 58115) {
+    if (lib.uniffi_core_api_checksum_method_sourceservice_delete() != 42027) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_sourceservice_list() != 24283) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_core_api_checksum_method_sourceservice_refresh() != 21910) {
+    if (lib.uniffi_core_api_checksum_method_sourceservice_refresh() != 44554) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_sourceservice_rename() != 38453) {
@@ -2057,6 +2057,9 @@ public interface CoreInterface {
     
     /**
      * The source service (add / list / refresh / rename / disable / delete).
+     *
+     * Returns the one shared instance, so its in-flight-refresh registry is consistent across
+     * calls and a `delete` can cancel a concurrent `refresh` on the same source.
      */
     fun `sources`(): SourceService
     
@@ -2308,6 +2311,9 @@ open class Core: Disposable, AutoCloseable, CoreInterface
     
     /**
      * The source service (add / list / refresh / rename / disable / delete).
+     *
+     * Returns the one shared instance, so its in-flight-refresh registry is consistent across
+     * calls and a `delete` can cancel a concurrent `refresh` on the same source.
      */override fun `sources`(): SourceService {
             return FfiConverterTypeSourceService.lift(
     callWithHandle {
@@ -3545,9 +3551,11 @@ public interface SourceServiceInterface {
     /**
      * Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history.
      *
-     * Cancels every in-flight refresh for this source first, so each detached task aborts at its
-     * next batch boundary (releasing the writer and reporting `Cancelled`) instead of fetching a
-     * catalog for a source that is about to vanish and then failing under the writer.
+     * Signals every in-flight refresh for this source to cancel first, so a still-downloading
+     * import aborts at its next batch boundary and discards its staged catalog rather than
+     * swapping one in for a source that is about to vanish. This is best-effort: a refresh already
+     * past its last boundary is caught instead by the commit-time existence check, which abandons
+     * the swap and reports the refresh as cancelled — never a spurious storage failure.
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
@@ -3564,8 +3572,10 @@ public interface SourceServiceInterface {
     
     /**
      * Refreshes a source's catalog from its URL. Returns immediately with a [`TaskHandle`];
-     * progress, completion, and failure arrive on `listener`. Cancellation via the handle is
-     * honest — checked at batch boundaries — and leaves the prior catalog intact on abort.
+     * progress, completion, and failure arrive on `listener`. The download stages off-lock into a
+     * throwaway database and swaps into the live catalog only at the end, so cancellation via the
+     * handle — checked at batch boundaries — leaves the prior catalog intact on abort, and other
+     * writes are never blocked for the download's duration.
      */
     fun `refresh`(`id`: kotlin.Long, `listener`: ImportListener): TaskHandle
     
@@ -3736,9 +3746,11 @@ open class SourceService: Disposable, AutoCloseable, SourceServiceInterface
     /**
      * Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history.
      *
-     * Cancels every in-flight refresh for this source first, so each detached task aborts at its
-     * next batch boundary (releasing the writer and reporting `Cancelled`) instead of fetching a
-     * catalog for a source that is about to vanish and then failing under the writer.
+     * Signals every in-flight refresh for this source to cancel first, so a still-downloading
+     * import aborts at its next batch boundary and discards its staged catalog rather than
+     * swapping one in for a source that is about to vanish. This is best-effort: a refresh already
+     * past its last boundary is caught instead by the commit-time existence check, which abandons
+     * the swap and reports the refresh as cancelled — never a spurious storage failure.
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
@@ -3795,8 +3807,10 @@ open class SourceService: Disposable, AutoCloseable, SourceServiceInterface
     
     /**
      * Refreshes a source's catalog from its URL. Returns immediately with a [`TaskHandle`];
-     * progress, completion, and failure arrive on `listener`. Cancellation via the handle is
-     * honest — checked at batch boundaries — and leaves the prior catalog intact on abort.
+     * progress, completion, and failure arrive on `listener`. The download stages off-lock into a
+     * throwaway database and swaps into the live catalog only at the end, so cancellation via the
+     * handle — checked at batch boundaries — leaves the prior catalog intact on abort, and other
+     * writes are never blocked for the download's duration.
      */override fun `refresh`(`id`: kotlin.Long, `listener`: ImportListener): TaskHandle {
             return FfiConverterTypeTaskHandle.lift(
     callWithHandle {

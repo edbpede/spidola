@@ -150,9 +150,11 @@ impl SourceService {
 
     /// Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history.
     ///
-    /// Cancels every in-flight refresh for this source first, so each detached task aborts at its
-    /// next batch boundary (releasing the writer and reporting `Cancelled`) instead of fetching a
-    /// catalog for a source that is about to vanish and then failing under the writer.
+    /// Signals every in-flight refresh for this source to cancel first, so a still-downloading
+    /// import aborts at its next batch boundary and discards its staged catalog rather than
+    /// swapping one in for a source that is about to vanish. This is best-effort: a refresh already
+    /// past its last boundary is caught instead by the commit-time existence check, which abandons
+    /// the swap and reports the refresh as cancelled — never a spurious storage failure.
     ///
     /// # Errors
     /// Returns [`ApiError::StorageCorrupt`] on a write failure.
@@ -183,8 +185,10 @@ impl SourceService {
     }
 
     /// Refreshes a source's catalog from its URL. Returns immediately with a [`TaskHandle`];
-    /// progress, completion, and failure arrive on `listener`. Cancellation via the handle is
-    /// honest — checked at batch boundaries — and leaves the prior catalog intact on abort.
+    /// progress, completion, and failure arrive on `listener`. The download stages off-lock into a
+    /// throwaway database and swaps into the live catalog only at the end, so cancellation via the
+    /// handle — checked at batch boundaries — leaves the prior catalog intact on abort, and other
+    /// writes are never blocked for the download's duration.
     #[must_use]
     pub fn refresh(&self, id: i64, listener: Box<dyn ImportListener>) -> Arc<TaskHandle> {
         let token = CancelToken::default();

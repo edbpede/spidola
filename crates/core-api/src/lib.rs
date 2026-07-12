@@ -80,6 +80,10 @@ pub struct Core {
     rt: Arc<CoreRuntime>,
     db: Arc<Db>,
     log: LogHandle,
+    // One shared `SourceService` for the process, so its in-flight-refresh registry is the same
+    // instance every `sources()` call hands out. A best-effort `delete` can then find and cancel a
+    // sibling `refresh`'s token instead of consulting an empty registry on a throwaway instance.
+    source_service: Arc<SourceService>,
     // Installed now so the host-secrets boundary and its threading contract are exercised in
     // Phase 2; the first consumer (Xtream auth / authed-artwork resolver) lands in Phase 6.
     #[allow(dead_code)]
@@ -109,7 +113,8 @@ impl Core {
         .map_err(|_| ApiError::Internal)?;
 
         let rt = Arc::new(CoreRuntime::new()?);
-        let db = Db::open(Path::new(&config.db_path)).map_err(ApiError::from)?;
+        let db = Arc::new(Db::open(Path::new(&config.db_path)).map_err(ApiError::from)?);
+        let source_service = SourceService::new(Arc::clone(&rt), Arc::clone(&db));
         // Claim the process-global host-sink slot last: it fails if a live `Core` already owns it,
         // and installing only after the fallible steps above means a transient runtime/db failure
         // never leaves the slot occupied (which would then block every future construction).
@@ -117,8 +122,9 @@ impl Core {
         tracing::info!(target: targets::DB, path = %config.db_path, "core initialized");
         Ok(Arc::new(Self {
             rt,
-            db: Arc::new(db),
+            db,
             log,
+            source_service,
             secrets: Arc::from(secrets),
         }))
     }
@@ -134,9 +140,12 @@ impl Core {
     }
 
     /// The source service (add / list / refresh / rename / disable / delete).
+    ///
+    /// Returns the one shared instance, so its in-flight-refresh registry is consistent across
+    /// calls and a `delete` can cancel a concurrent `refresh` on the same source.
     #[must_use]
     pub fn sources(&self) -> Arc<SourceService> {
-        SourceService::new(Arc::clone(&self.rt), Arc::clone(&self.db))
+        Arc::clone(&self.source_service)
     }
 
     /// The catalog service (paged browse queries).

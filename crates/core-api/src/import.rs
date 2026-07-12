@@ -14,7 +14,7 @@
 
 use std::sync::Arc;
 
-use core_db::{Db, NewChannel};
+use core_db::{Db, NewChannel, RefreshCommit, Staging};
 use core_fetch::{FetchConfig, HttpClient, RequestSpec};
 use core_model::channel::{ChannelOverrides, MediaKind, channel_identity};
 use core_model::ids::SourceId;
@@ -140,13 +140,14 @@ fn run_staging(
     let span = info_span!(target: targets::IMPORT, "import", source = source_id.value());
     let _entered = span.enter();
 
-    // Takes the single writer connection and holds it for this whole function — across the
-    // streaming `rx.blocking_recv()` loop below — so all other writer ops block for the
-    // download's duration. Deliberate; see `Db::begin_refresh` for the tradeoff and memory bound.
-    let mut refresh = db.begin_refresh(source_id)?;
+    // Stages into a throwaway temp-file database on its own connection — no writer lock is held
+    // across the streaming `rx.blocking_recv()` loop below, so other writer ops proceed for the
+    // download's duration. The single writer is taken only briefly by `commit`, for the swap; see
+    // `Db::begin_staging` for the model and memory bound.
+    let mut staging = db.begin_staging(source_id)?;
     let mut parser = M3uParser::new();
     let mut sink = ProgressSink {
-        refresh: &mut refresh,
+        staging: &mut staging,
         listener,
         token,
         channels_seen: 0,
@@ -166,39 +167,49 @@ fn run_staging(
     }
 
     if sink.cancelled || token.is_cancelled() {
-        debug!(target: targets::IMPORT, "import cancelled; dropping the staging transaction");
-        return Ok(StagingResult::Cancelled); // `refresh` drops here → rollback → prior catalog intact
+        debug!(target: targets::IMPORT, "import cancelled; discarding the staging database");
+        return Ok(StagingResult::Cancelled); // `staging` drops here → temp file gone, main untouched
     }
 
     let diagnostics = parser.finish(&mut sink).map_err(map_parse_error)?;
     let invalid = sink.invalid;
     let channels_seen = sink.channels_seen;
-    // `sink`'s last use ends its `&mut refresh` borrow here, so `commit` can take it.
+    // `sink`'s last use ends its `&mut staging` borrow here, so `commit` can take it.
     listener.on_progress(ImportProgress {
         stage: ImportStage::Finalizing,
         channels_seen,
     });
-    let outcome = refresh.commit()?;
-    info!(
-        target: targets::IMPORT,
-        inserted = outcome.inserted,
-        duplicates_dropped = outcome.duplicates_dropped,
-        skipped = diagnostics.skipped(),
-        "import committed"
-    );
-    Ok(StagingResult::Completed(ImportOutcome {
-        inserted: outcome.inserted,
-        duplicates_dropped: outcome.duplicates_dropped,
-        emitted: diagnostics.emitted(),
-        skipped: diagnostics.skipped(),
-        invalid,
-    }))
+    match staging.commit(db)? {
+        RefreshCommit::Committed(outcome) => {
+            info!(
+                target: targets::IMPORT,
+                inserted = outcome.inserted,
+                duplicates_dropped = outcome.duplicates_dropped,
+                skipped = diagnostics.skipped(),
+                "import committed"
+            );
+            Ok(StagingResult::Completed(ImportOutcome {
+                inserted: outcome.inserted,
+                duplicates_dropped: outcome.duplicates_dropped,
+                emitted: diagnostics.emitted(),
+                skipped: diagnostics.skipped(),
+                invalid,
+            }))
+        }
+        // The source was deleted while we staged off-lock: the swap was abandoned with the prior
+        // (now-cascaded) catalog untouched. Surface it as a cancellation, distinct in the log from
+        // a user-driven cancel above.
+        RefreshCommit::SourceRemoved => {
+            info!(target: targets::IMPORT, "source removed during refresh; prior catalog left intact");
+            Ok(StagingResult::Cancelled)
+        }
+    }
 }
 
 /// A [`ChannelSink`] that maps parsed channels to domain rows, stages them, and pushes a
 /// progress update per batch. Checks cancellation before staging each batch.
-struct ProgressSink<'a, 'db, 'l> {
-    refresh: &'a mut core_db::Refresh<'db>,
+struct ProgressSink<'a, 'l> {
+    staging: &'a mut Staging,
     listener: &'l Arc<dyn ImportListener>,
     token: &'l CancelToken,
     channels_seen: u64,
@@ -206,7 +217,7 @@ struct ProgressSink<'a, 'db, 'l> {
     cancelled: bool,
 }
 
-impl ChannelSink for ProgressSink<'_, '_, '_> {
+impl ChannelSink for ProgressSink<'_, '_> {
     type Error = core_db::DbError;
 
     fn accept(&mut self, batch: Vec<ParsedChannel>) -> Result<(), Self::Error> {
@@ -221,7 +232,7 @@ impl ChannelSink for ProgressSink<'_, '_, '_> {
                 None => self.invalid += 1, // invalid locator: skip-and-count, never fail (§4.2)
             }
         }
-        self.refresh.stage(&mapped)?;
+        self.staging.stage(&mapped)?;
         self.channels_seen += mapped.len() as u64;
         self.listener.on_progress(ImportProgress {
             stage: ImportStage::Downloading,

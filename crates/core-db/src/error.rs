@@ -31,6 +31,12 @@ pub enum DbError {
     /// A stored value violated a domain invariant on read (e.g. an unrecognized enum).
     #[error("stored data is inconsistent: {0}")]
     Integrity(String),
+
+    /// Preparing the temp-file staging database for a writer-free refresh failed
+    /// ([`crate::refresh`]). Flattens to the same storage-problem class at the FFI as any
+    /// other persistence failure.
+    #[error("failed to prepare the staging database")]
+    Staging(#[source] std::io::Error),
 }
 
 /// Result alias for the persistence layer.

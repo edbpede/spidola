@@ -181,6 +181,24 @@ pub fn set_auto_refresh(conn: &Connection, id: SourceId, secs: Option<u32>) -> D
     Ok(())
 }
 
+/// Whether a source with `id` still exists.
+///
+/// The writer-free refresh ([`crate::refresh`]) calls this under the writer, inside the swap
+/// transaction, as its serialization point: if a concurrent delete removed the source while
+/// the catalog was staged off-lock, the swap is abandoned cleanly instead of resurrecting a
+/// vanished source or tripping the `channels.source_id` foreign key.
+///
+/// # Errors
+/// Returns [`DbError`] on a query failure.
+pub fn exists(conn: &Connection, id: SourceId) -> DbResult<bool> {
+    let n: i64 = conn.query_row(
+        "SELECT count(*) FROM sources WHERE id = ?1",
+        params![id.value()],
+        |r| r.get(0),
+    )?;
+    Ok(n > 0)
+}
+
 /// Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history.
 ///
 /// # Errors
