@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Name** | Spidola |
-| **Document status** | Draft v1.1 — July 2026 |
+| **Document status** | Draft v1.2 — July 2026 |
 | **License** | AGPL-3.0-or-later |
 | **Companion documents** | `TECH_SPEC.md` — architecture, stack, engineering standards · `IMPLEMENTATION_PLAN.md` — phased task breakdown |
 | **Platforms** | Apple TV (tvOS) and Android TV / Google TV |
@@ -28,7 +28,7 @@ The product succeeds if it delivers, in priority order: first, a playback experi
 
 ## 4. Non-goals
 
-Spidola is not a content service: it ships with no channels, no playlists, no directories of sources, and no links to any. It does not scrape, index, or recommend third-party content. It is not a general media-center (no local library management, no metadata scraping à la Plex/Jellyfin — those projects already exist and do it well). It is not a phone or tablet app in v1; phones are addressed only as far as shared code makes a later port cheap. It does not include accounts, cloud sync of user data through project-operated servers, telemetry, or advertising — ever. Desktop platforms are out of scope; that space is already well served by existing open-source players.
+Spidola is not a content service: it ships with no channels, no playlists, no directories of sources, and no links to any. It does not scrape, index, or recommend third-party content. It is not a general media-center (no local library management, no metadata scraping à la Plex/Jellyfin — those projects already exist and do it well). It is not a phone or tablet app in v1; phones are addressed only as far as shared code makes a later port cheap. It does not include accounts, telemetry, or advertising — ever — and it does not sync user data between devices: moving a setup is served by portable export/import (§6.7), not a sync service. It does not restream or re-serve content to other devices; dedicated restreaming tools already do that well. Desktop platforms are out of scope; that space is already well served by existing open-source players.
 
 ## 5. Target users and platforms
 
@@ -36,7 +36,7 @@ Spidola is not a content service: it ships with no channels, no playlists, no di
 
 | Platform | Minimum OS | Reference hardware | Distribution |
 |---|---|---|---|
-| tvOS | tvOS 18.0 deployment target, built with the current tvOS 26 SDK | Apple TV 4K (2nd gen, A12) and newer; Apple TV HD best-effort | App Store; source builds |
+| tvOS | tvOS 18.0 deployment target, built with the current tvOS 26 SDK | Apple TV 4K (2nd gen, A12) and newer; Apple TV HD best-effort (installs, but no performance promises) | App Store; source builds |
 | Android TV / Google TV | Android 8.0 (API 26) minimum, targeting current API | Chromecast with Google TV, onn. 4K, Nvidia Shield TV, Sony/TCL/Hisense Google TV sets | Google Play (TV form factor); direct APK from releases; F-Droid candidate |
 
 Android TV hardware is heterogeneous and often weak (1–2 GB RAM boxes are common); the performance budgets in the tech spec treat the low-end Chromecast-class device, not the Shield, as the baseline.
@@ -79,11 +79,11 @@ EPG data comes from Xtream's EPG endpoints and from user-supplied XMLTV URLs map
 
 ### 6.7 Custom channels and sharing — P1
 
-Users can create custom channels (name, URL, optional logo, optional headers/user-agent) and group them. Custom channel groups can be exported to a portable file and imported on another device — this is also the interim answer to cross-device sync (true sync is an open question, §13).
+Users can create custom channels (name, URL, optional logo, optional headers/user-agent) and group them. Custom channel groups can be exported to a portable file and imported on another device — this is also the project's answer to cross-device sync (decided, §13: no sync service; reconsidered only if a large audience demonstrably wants one).
 
-### 6.8 Recording and restreaming — P2, Android TV only
+### 6.8 Recording — P2, Android TV only
 
-Recording while watching (remuxing the input stream to local storage) is feasible on Android TV with sufficient storage and is scoped as a P2 Android-only feature. It is explicitly **not** planned for tvOS: the platform's storage model (purgeable caches, no user-visible file system, tight persistent-storage expectations) makes honest recording promises impossible. Restreaming to other devices is deferred to P2 and carries an AGPL section-13 note (§10). If it lands, it reuses the same LAN-only, on-while-visible server posture as the pairing shortcut.
+Recording while watching (remuxing the input stream to local storage) is feasible on Android TV with sufficient storage and is scoped as a P2 Android-only feature. It is explicitly **not** planned for tvOS: the platform's storage model (purgeable caches, no user-visible file system, tight persistent-storage expectations) makes honest recording promises impossible. Restreaming to other devices is permanently out of scope (§4).
 
 ### 6.9 Settings — P0
 
@@ -141,7 +141,7 @@ The project tracks no telemetry, so success is measured by public signals and lo
 
 ## 10. Licensing, legal, and store compliance
 
-The project is licensed **AGPL-3.0-or-later** (decided; SPDX identifier `AGPL-3.0-or-later` on every file, REUSE conventions throughout the repository). Three practical consequences are accepted with eyes open. First, **App Store friction**: Apple's standard App Store terms have historically been read (by the FSF, and in the VLC/GPLv2 episode) as conflicting with strong copyleft. As the sole initial copyright holder, the project owner can lawfully distribute their own AGPL code on the App Store — one cannot infringe one's own copyright — but the moment third-party AGPL contributions are merged, contributors' licenses bind the distribution too. The project therefore requires a lightweight contributor agreement **decision before accepting external code**: either a DCO-plus-explicit App Store distribution permission, or a CLA granting the maintainer distribution rights, or acceptance that App Store releases are built only from maintainer-copyright code. This is flagged as a launch-blocking governance decision, not a footnote. Second, **the network clause**: AGPL section 13 concerns users interacting with the software over a network; the pairing server (§6.1) and any future restreaming (§6.8) must surface a "source code" link in their served pages to keep compliance trivially true. Third, **dependency compatibility**: all bundled components must be AGPL-compatible; in particular the mpv/FFmpeg builds embedded on both platforms are configured LGPL (no GPL-only FFmpeg components), which is both AGPL-compatible and the safer posture for App Store review. Engineering enforcement (license audits in CI) is specified in the tech spec.
+The project is licensed **AGPL-3.0-or-later** (decided; SPDX identifier `AGPL-3.0-or-later` on every file, REUSE conventions throughout the repository). Three practical consequences are accepted with eyes open. First, **App Store friction**: Apple's standard App Store terms have historically been read (by the FSF, and in the VLC/GPLv2 episode) as conflicting with strong copyleft. As the sole initial copyright holder, the project owner can lawfully distribute their own AGPL code on the App Store — one cannot infringe one's own copyright — but the moment third-party AGPL contributions are merged, contributors' licenses bind the distribution too. The project's answer (**decided**) is a DCO-plus-additional-permission model: every contribution is signed off under the Developer Certificate of Origin and licensed AGPL-3.0-or-later together with the App Store Distribution Exception (`APPSTORE_EXCEPTION.md`), an additional permission under AGPL section 7 that keeps App Store distribution lawful once the code has multiple copyright holders. There is no CLA and no copyright assignment; the contributor-facing terms live in `CONTRIBUTING.md`. Second, **the network clause**: AGPL section 13 concerns users interacting with the software over a network; the pairing server (§6.1) must surface a "source code" link in its served pages to keep compliance trivially true. Third, **dependency compatibility**: all bundled components must be AGPL-compatible; in particular the mpv/FFmpeg builds embedded on both platforms are configured LGPL (no GPL-only FFmpeg components), which is both AGPL-compatible and the safer posture for App Store review. Engineering enforcement (license audits in CI) is specified in the tech spec.
 
 Store-policy posture: the app ships with no content and no source directory, states this plainly in store listings, and provides reviewers a demo source (maintainer-operated, containing only self-produced or public-domain test streams) because both stores' reviewers require a working demonstration. Apple's review history with generic IPTV players is uneven; the mitigation is scrupulous content-neutrality, a working demo, and — worst case — distribution on tvOS via source builds while appealing. Google Play requires the TV form-factor review checklist (banner asset, D-pad completeness, no phone-only UI), which §8 satisfies by construction.
 
@@ -155,7 +155,7 @@ Privacy: no analytics, no third-party SDKs with network behavior, no account. Th
 | **M1 — Watchable** | M3U URL import, browsing, default-engine playback, favorites | A household member can watch a channel unaided |
 | **M2 — MVP / 1.0** | All P0: Xtream, file import, pairing shortcut, search, dual engines with fallback, settings, accessibility baseline, store submissions | Store approvals or documented appeals in flight |
 | **M3 — 1.x** | P1: EPG now/next, custom channels, Top Shelf / home-channels, favorites ordering, system search (Android) | — |
-| **M4 — 2.0 track** | P2: EPG grid, recording (Android), restreaming decision, sync decision | — |
+| **M4 — 2.0 track** | P2: EPG grid, recording (Android), platform-expansion review | — |
 
 ## 12. Risks
 
@@ -163,4 +163,4 @@ The top risks, each with its mitigation: **App Store rejection or AGPL conflict*
 
 ## 13. Open questions
 
-Two questions from earlier drafts are resolved: the original working name ("Orbita") failed the trademark / store-name availability check and was replaced by "Spidola" (reserving the name in App Store Connect remains the definitive test), and the contributor agreement model is DCO plus an explicit App Store distribution exception (§10). Cross-device sync: out of scope, export/import only, or a self-hostable sync target in the 2.0 era? Restreaming: build it into Spidola or leave it to dedicated tools? Whether Apple TV HD (A8) is worth the performance floor it imposes, or whether tvOS 18+/A12+ is the honest line (current draft assumes A12+).
+None. All questions from earlier drafts are resolved, recorded here for the trail: the original working name ("Orbita") failed the trademark / store-name availability check and was replaced by "Spidola" — reserving the name in App Store Connect remains the definitive test, tracked as an explicit Phase 7 task in the implementation plan. The contributor agreement model is DCO plus the App Store Distribution Exception (§10). Cross-device sync is settled as portable export/import (§6.7); no sync service is planned, and one would be reconsidered only if a large audience demonstrably wants it. Restreaming is permanently out of scope (§4); dedicated tools serve it better. The Apple TV performance floor is A12 and newer (Apple TV 4K 2nd generation onward): Apple TV HD (A8) can install and run the app — a tvOS 18 deployment target cannot exclude it — but is best-effort with no performance promises (§5.1).

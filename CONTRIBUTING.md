@@ -17,7 +17,7 @@ git commit -s
 
 This appends a `Signed-off-by: Your Name <you@example.com>` line to the commit message. A local `prek` hook checks for it, and the DCO check on pull requests is the authoritative gate — unsigned commits cannot merge.
 
-The full decision and rationale are recorded in `docs/adr/0001-contributor-model.md`.
+The full decision and rationale are recorded in `docs/PRD.md` §10 and `APPSTORE_EXCEPTION.md`.
 
 ## The two standing rules
 

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Document status** | Draft v1.0 — July 2026 |
+| **Document status** | Draft v1.1 — July 2026 |
 | **Companion documents** | `PRD.md` (scope, priorities) · `TECH_SPEC.md` (architecture, standards) |
 | **Coding standards** | `.augment/rules/rust-dev-pro.md` · `.augment/rules/swift-dev-pro.md` · `.augment/rules/kotlin-dev-pro.md` — normative for every task below |
 | **Conventions** | Phases are sequential; tasks within a phase may run in parallel unless a dependency is noted. Every phase ends with explicit **exit criteria**. Checkboxes track completion. |
@@ -22,7 +22,7 @@ Two standing rules apply to **every** task in this plan and are not repeated per
   - [ ] Add `LICENSES/` (AGPL-3.0-or-later plus dependency license texts) and REUSE configuration
   - [ ] Add SPDX headers to all seed files; wire the REUSE lint
   - [ ] Commit `docs/` with PRD, TECH_SPEC, and this plan
-- [ ] **Governance (launch-blocking, PRD §10)**
+- [x] **Governance (launch-blocking, PRD §10)**
   - [x] Decide and document the contributor model (recommendation: DCO + explicit App Store distribution grant)
   - [x] Add CONTRIBUTING with the modularity doctrine summary and the two standing rules above
   - [x] Run the "Spidola" trademark / store-name availability check (original name "Orbita" failed and was replaced; App Store Connect reservation remains the definitive test, tracked in Phase 7)
@@ -216,6 +216,7 @@ Two standing rules apply to **every** task in this plan and are not repeated per
   - [ ] Third-party notices generated into About; final cargo-deny/REUSE audit; LGPL build flags for mpv/FFmpeg committed and verified
   - [ ] Conventional-commit changelog generation
 - [ ] **Store submission (PRD §10 posture)**
+  - [ ] Reserve the app name in App Store Connect (create the app record) — the definitive "Spidola" availability test (PRD §13); maintainer action
   - [ ] Content-neutral listings; one-page privacy policy; reviewer demo source on the maintainer headend (self-produced/public-domain streams only)
   - [ ] Play TV form-factor checklist (banner, D-pad completeness); App Store submission with appeal plan documented
 - [ ] **1.0 tag** — versioned schema + boundary handshake verified against a deliberately stale shell (fails fast and legibly)
@@ -227,7 +228,7 @@ Two standing rules apply to **every** task in this plan and are not repeated per
 ## Phase 8 — P1 fast-follow (Milestone M3)
 
 - [ ] **EPG (now/next)** — XMLTV streaming parser with rolling-window pruning (`core-parse/xmltv`); Xtream EPG endpoints; background incremental ingest with bounded storage; now/next on channel rows and in the channel strip
-- [ ] **Custom channels** — create/edit (name, URL, logo, headers/UA); groups; portable export/import (the interim sync answer)
+- [ ] **Custom channels** — create/edit (name, URL, logo, headers/UA); groups; portable export/import (the cross-device answer, PRD §6.7)
 - [ ] **Platform surfaces** — tvOS Top Shelf extension (app-group snapshot); Android home-screen channels / watch-next; Android system content-search provider
 - [ ] **Personalization** — user-arrangeable favorites ordering
 - [ ] **Community** — translation platform live; first community locales shipped; contributor docs validated by the first external PR (governance model from Phase 0 exercised)
@@ -240,8 +241,6 @@ Two standing rules apply to **every** task in this plan and are not repeated per
 
 - [ ] **EPG timeline grid** — virtualized two-axis grid within TV performance budgets
 - [ ] **Recording (Android only, PRD §6.8)** — remux-to-storage while watching; storage management UX; explicit non-support messaging on tvOS
-- [ ] **Restreaming decision** — build (reusing the pairing server posture + AGPL §13 link) or defer to dedicated tools
-- [ ] **Sync decision** — stay with export/import or design a self-hostable sync target
 - [ ] **Platform expansion review** — assess phone/tablet ports now that core + contract are proven
 
 **Exit criteria:** each item resolved by shipped feature or documented decision; no silent backlog.

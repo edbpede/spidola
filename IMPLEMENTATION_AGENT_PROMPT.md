@@ -115,7 +115,7 @@ For each subtask (checklist item):
 - **FFI discipline** (TECH_SPEC §5): callbacks may arrive on any thread — shells trampoline; a panic crossing the FFI is a release blocker; the versioned startup handshake (core/schema/boundary) must fail fast and legibly on mismatch. Long operations return a task handle quickly; progress/completion/failure arrive via listener; cancellation is honest (checked at batch boundaries).
 - **Refresh can never corrupt**: channel refresh is staging-and-swap inside one transaction (failure at any point leaves the prior catalog intact); favorites/hidden survive refresh via the stable per-source identity hash, never row ids.
 - **Migrations are forward-only and numbered**; a downgraded app refuses a newer schema with a clear message. No `create_all`-style shortcuts.
-- **The pairing server** (and any future restream server) binds LAN-only, exists only while its screen is visible, serves one static form + one POST shape, requires the session-random token, and renders the AGPL §13 source-code link on every page.
+- **The pairing server** binds LAN-only, exists only while its screen is visible, serves one static form + one POST shape, requires the session-random token, and renders the AGPL §13 source-code link on every page.
 - **Performance budgets (PRD §9) are requirements**: cold start < 1.5 s; click-to-first-frame < 2 s (HLS, default engine); search < 50 ms at 50k channels; 50k-channel import < 30 s on the **low-end Chromecast-class baseline** (not the Shield); zero >100 ms scroll hitches. The channel-zap path is sacred — profiled every release.
 - **Errors are always actionable** (PRD §6.3): every user-visible error maps to a plain-language failure class with prescribed actions (retry, try other player, go back); an error with no action is a design bug. Full diagnostic chains go to the log stream, not the FFI error. No system jargon reaches the screen — users manage *sources* and *channels*, never *playlists parsed* or *FFI errors* (PRD §8.6).
 - **D-pad first, always**: predictable focus order, unmistakable focus treatment (Test-Card Amber per platform idiom), focus never trapped or lost on data refresh, TV-safe margins everywhere, remote mapping per the PRD §8.4 table.
@@ -132,7 +132,7 @@ After completing each subtask, update `docs/IMPLEMENTATION_PLAN.md` on disk:
 - Change `- [ ]` to `- [x]` for each completed item (including nested items) under the task you implemented.
 - Leave the two standing rules and the `**Exit criteria:**` lines alone — exit criteria are satisfied by evidence, not checked off.
 - Do **not** modify any other parts of the document.
-- Do **not** mark items complete unless the code is actually written, tested, and the relevant quality gates pass. If you are blocked — a missing dependency, a PRD open question (§13) requiring a decision (e.g. the contributor-agreement model, the Apple TV HD floor), or a platform behavior contradicting the TECH_SPEC — leave the item unchecked, halt, and escalate.
+- Do **not** mark items complete unless the code is actually written, tested, and the relevant quality gates pass. If you are blocked — a missing dependency, a product decision the docs do not resolve (PRD §13 records every previously open question as resolved; do not reopen them, but halt on any genuinely new ambiguity), or a platform behavior contradicting the TECH_SPEC — leave the item unchecked, halt, and escalate.
 
 ### Step 6: Summary Report
 
@@ -161,7 +161,7 @@ After all work is done, provide a concise summary:
 
 ## Next Steps
 - What tasks/phases are now unblocked
-- Any PRD open questions (§13) resolved or still open
+- Any newly surfaced product ambiguities (PRD §13 is fully resolved; flag anything new for the maintainer)
 ```
 
 ---
