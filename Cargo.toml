@@ -29,8 +29,11 @@ url = "2"
 # Persistence: bundled SQLite (FTS5, contentless-delete) + forward-only migrations.
 rusqlite = { version = "0.37", features = ["bundled", "functions", "trace"] }
 rusqlite_migration = "2"
-# HTTP: reqwest on rustls with platform trust roots (TECH_SPEC §12), no OpenSSL anywhere.
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots", "gzip", "stream"] }
+# HTTP: reqwest on rustls (TECH_SPEC §12), no OpenSSL anywhere. Native platform roots where
+# the OS exposes a store, plus the bundled webpki set as a fallback for targets without one
+# (e.g. aarch64-apple-tvos) that would otherwise load zero roots and fail every handshake;
+# reqwest merges both into one RootCertStore, so desktop keeps its native roots.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots", "rustls-tls-webpki-roots", "gzip", "stream"] }
 bytes = "1"
 # Async runtime (owned by core-api) + observability.
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros", "time"] }

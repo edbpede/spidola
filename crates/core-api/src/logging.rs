@@ -13,7 +13,7 @@
 
 use std::collections::VecDeque;
 use std::fmt::Write as _;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 use tracing::field::{Field, Visit};
 use tracing::{Event, Subscriber};
@@ -159,9 +159,12 @@ impl Default for LogConfig {
 }
 
 /// A reloadable `EnvFilter` directive setter, hiding the reload handle's concrete type.
-type DirectiveSetter = Box<dyn Fn(&str) -> Result<(), String> + Send + Sync>;
+/// `Arc` (not `Box`) so [`LogHandle`] is `Clone`: every `init` caller shares the one setter
+/// bound to the live subscriber.
+type DirectiveSetter = Arc<dyn Fn(&str) -> Result<(), String> + Send + Sync>;
 
 /// A handle to the initialized pipeline: export the ring buffer and reload the level.
+#[derive(Clone)]
 pub struct LogHandle {
     ring: RingBuffer,
     set_directives: DirectiveSetter,
@@ -189,28 +192,38 @@ impl LogHandle {
     }
 }
 
+/// The one pipeline: built and installed on the first [`init`] call, shared by every later one.
+static LOG_HANDLE: OnceLock<LogHandle> = OnceLock::new();
+
 /// Initializes the global tracing pipeline (best-effort: a no-op if one is already set).
 ///
 /// Returns a [`LogHandle`] for export and runtime level control. Intended to be called once
-/// at library initialization in `core-api`.
+/// at library initialization in `core-api`. Idempotent: the first call builds and installs the
+/// pipeline; every later call returns a clone of that same live handle (and its `config` is
+/// ignored), so a second caller never receives a detached buffer/reload handle.
 #[must_use]
 pub fn init(config: &LogConfig) -> LogHandle {
-    let ring = RingBuffer::new(config.ring_capacity);
-    let env = EnvFilter::new(&config.default_directives);
-    let (filter_layer, reload_handle) = reload::Layer::new(env);
-    let subscriber = Registry::default()
-        .with(filter_layer)
-        .with(RingLayer::new(ring.clone()));
-    // Best-effort: another subscriber (or a prior init) may already own the global slot.
-    let _ = subscriber.try_init();
-    let set_directives = Box::new(move |directives: &str| {
-        let filter = EnvFilter::try_new(directives).map_err(|e| e.to_string())?;
-        reload_handle.reload(filter).map_err(|e| e.to_string())
-    });
-    LogHandle {
-        ring,
-        set_directives,
-    }
+    LOG_HANDLE
+        .get_or_init(|| {
+            let ring = RingBuffer::new(config.ring_capacity);
+            let env = EnvFilter::new(&config.default_directives);
+            let (filter_layer, reload_handle) = reload::Layer::new(env);
+            let subscriber = Registry::default()
+                .with(filter_layer)
+                .with(RingLayer::new(ring.clone()));
+            // Best-effort: another subscriber may already own the global slot. `OnceLock` guards
+            // against a *second* `init` racing in with its own detached pipeline.
+            let _ = subscriber.try_init();
+            let set_directives: DirectiveSetter = Arc::new(move |directives: &str| {
+                let filter = EnvFilter::try_new(directives).map_err(|e| e.to_string())?;
+                reload_handle.reload(filter).map_err(|e| e.to_string())
+            });
+            LogHandle {
+                ring,
+                set_directives,
+            }
+        })
+        .clone()
 }
 
 #[cfg(test)]
@@ -256,6 +269,17 @@ mod tests {
             "raw secret leaked into the log ring: {}",
             lines[0]
         );
+    }
+
+    #[test]
+    fn init_returns_the_same_live_handle_across_calls() {
+        // A second `init` must not hand back a detached handle: both calls share the one live
+        // ring, so a line pushed via the first is visible through the second's `export_logs`.
+        let cfg = LogConfig::default();
+        let first = init(&cfg);
+        let second = init(&cfg);
+        first.ring().push("probe line".to_owned());
+        assert!(second.export_logs().iter().any(|l| l == "probe line"));
     }
 
     #[test]

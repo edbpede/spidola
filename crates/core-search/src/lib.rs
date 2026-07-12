@@ -24,8 +24,10 @@ use core_model::locator::StreamLocator;
 
 pub use error::{SearchError, SearchResult};
 
-/// Upper bound on rows scanned by the fuzzy fallback, keeping its worst case bounded even
-/// though it only fires when the prefix path returns nothing.
+/// Upper bound on candidate rows the fuzzy fallback scores, keeping its worst case bounded
+/// even though it only fires when the prefix path returns nothing. Candidates are drawn
+/// round-robin across sources (see [`fuzzy_candidates`]) so no single large source can
+/// consume the whole budget and hide a later source's channels from typo search.
 const MAX_FUZZY_SCAN: usize = 20_000;
 
 /// Minimum trigram similarity for a fuzzy candidate to be returned.
@@ -172,19 +174,40 @@ fn run_prefix(
     Ok(out)
 }
 
-fn run_fuzzy(conn: &Connection, request: &SearchRequest<'_>) -> SearchResult<Vec<Channel>> {
-    let mut sql = format!("SELECT {SELECT_COLUMNS} FROM channels c WHERE 1 = 1");
-    let mut values = push_filters(&mut sql, request);
-    sql.push_str(" LIMIT ?");
-    values.push(Value::Integer(
-        i64::try_from(MAX_FUZZY_SCAN).unwrap_or(i64::MAX),
-    ));
+/// Fetches up to `budget` fuzzy candidates, drawn *round-robin across sources* so no single
+/// source can monopolize the budget. A per-source `ROW_NUMBER()` window numbers each source's
+/// rows; ordering by that rank (source id breaks ties) interleaves the sources, so the first
+/// `budget` rows give every source an equal share — a channel in a later-imported source stays
+/// reachable even when an earlier source is larger than the whole budget. The hard `LIMIT`
+/// still bounds the worst case (PRD §9). With a single source (or `source` filtered to one),
+/// this reduces to the first `budget` rows of that source, as before.
+fn fuzzy_candidates(
+    conn: &Connection,
+    request: &SearchRequest<'_>,
+    budget: usize,
+) -> SearchResult<Vec<Channel>> {
+    let mut inner = format!(
+        "SELECT {SELECT_COLUMNS}, \
+         ROW_NUMBER() OVER (PARTITION BY c.source_id ORDER BY c.id) AS rn \
+         FROM channels c WHERE 1 = 1"
+    );
+    let mut values = push_filters(&mut inner, request);
+    let sql =
+        format!("SELECT {SELECT_COLUMNS} FROM ({inner}) c ORDER BY c.rn, c.source_id LIMIT ?");
+    values.push(Value::Integer(i64::try_from(budget).unwrap_or(i64::MAX)));
 
     let mut stmt = conn.prepare(&sql)?;
     let mut rows = stmt.query(params_from_iter(values))?;
-    let mut scored: Vec<(f32, Channel)> = Vec::new();
+    let mut out = Vec::new();
     while let Some(row) = rows.next()? {
-        let channel = map_row(row)?;
+        out.push(map_row(row)?);
+    }
+    Ok(out)
+}
+
+fn run_fuzzy(conn: &Connection, request: &SearchRequest<'_>) -> SearchResult<Vec<Channel>> {
+    let mut scored: Vec<(f32, Channel)> = Vec::new();
+    for channel in fuzzy_candidates(conn, request, MAX_FUZZY_SCAN)? {
         // Score against the whole name and its best-matching word, so a typo on one word
         // of a long multi-word name is not diluted by the rest of the name.
         let score = channel
@@ -325,5 +348,48 @@ mod tests {
         assert!(search(&conn, &request).unwrap().channels.is_empty());
         request.kind = Some(MediaKind::Live);
         assert_eq!(search(&conn, &request).unwrap().channels.len(), 1);
+    }
+
+    fn add_source(db: &Db, name: &str, chans: &[(&str, &str)]) -> SourceId {
+        let source = {
+            let conn = db.writer();
+            core_db::repo::sources::insert(
+                &conn,
+                &Source::M3uFile {
+                    id: SourceId::new(0),
+                    common: SourceCommon {
+                        name: name.to_owned(),
+                        enabled: true,
+                        auto_refresh_secs: None,
+                    },
+                },
+            )
+            .unwrap()
+        };
+        let batch: Vec<NewChannel> = chans.iter().map(|(n, g)| channel(n, g)).collect();
+        let mut refresh = db.begin_refresh(source).unwrap();
+        refresh.stage(&batch).unwrap();
+        refresh.commit().unwrap();
+        source
+    }
+
+    #[test]
+    fn fuzzy_scan_is_fair_across_sources() {
+        // Two sources, second imported after the first. With a budget no larger than the
+        // first source's channel count, a naive rowid-order `LIMIT budget` scan spends the
+        // whole budget on the first source and never reaches the second — hiding its
+        // channels from typo search though they are present and visible. The round-robin
+        // scan interleaves sources, so the later source stays reachable within budget.
+        let db = Db::open_in_memory().unwrap();
+        let _a = add_source(&db, "A", &[("Alpha One", "A"), ("Alpha Two", "A")]);
+        let b = add_source(&db, "B", &[("Beta One", "B")]);
+
+        let conn = db.reader().unwrap();
+        // Budget 2 == source A's row count: an unordered scan would return only A's rows.
+        let candidates = fuzzy_candidates(&conn, &req("beta"), 2).unwrap();
+        assert!(
+            candidates.iter().any(|c| c.source_id.value() == b.value()),
+            "round-robin scan must reach the later source within the budget"
+        );
     }
 }

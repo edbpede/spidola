@@ -32,6 +32,12 @@ pub struct RefreshOutcome {
     pub source: SourceId,
     /// Number of channels in the new catalog.
     pub inserted: u64,
+    /// Staged rows coalesced away by a shared `(source_id, identity)` — duplicate-identity
+    /// collisions within this batch (e.g. two playlist entries carrying the same `tvg-id`).
+    /// The swap keeps one row per identity; this is how many were dropped, surfaced so callers
+    /// can report the loss instead of it being silent. `inserted + duplicates_dropped` equals
+    /// the number of rows staged.
+    pub duplicates_dropped: u64,
 }
 
 /// A point in the refresh flow at which work can be interrupted (fault injection in tests;
@@ -155,17 +161,29 @@ impl Refresh<'_> {
     /// transaction is rolled back (prior catalog intact) before the error propagates.
     pub fn commit(mut self) -> DbResult<RefreshOutcome> {
         self.run_checkpoint(Checkpoint::AfterStage)?;
+        // Count staged rows before the swap so we can report how many the `INSERT OR IGNORE`
+        // below coalesces away (duplicate `(source_id, identity)` within this batch).
+        let staged = self
+            .guard
+            .query_row("SELECT COUNT(*) FROM _refresh_staging", [], |row| {
+                row.get::<_, u64>(0)
+            })?;
         self.guard.execute(
             "DELETE FROM channels WHERE source_id = ?1",
             params![self.source.value()],
         )?;
         self.run_checkpoint(Checkpoint::DuringSwap)?;
+        // `OR IGNORE` keeps a source with duplicate identities refreshable — dirty playlists
+        // tag mirrors/variants with one `tvg-id`, which the identity design intentionally
+        // treats as the same channel; a plain INSERT would abort the whole refresh and wedge
+        // the source. The dropped rows are reported on the outcome rather than lost silently.
         let insert_sql = format!(
             "INSERT OR IGNORE INTO channels({IMPORT_COLUMNS}) \
              SELECT {IMPORT_COLUMNS} FROM _refresh_staging"
         );
         self.guard.execute(&insert_sql, [])?;
         let inserted = self.guard.changes();
+        let duplicates_dropped = staged.saturating_sub(inserted);
         self.guard.execute("DELETE FROM _refresh_staging", [])?;
         // Merge FTS5 segments after a bulk swap so the search budget holds (PRD §9).
         crate::search_index::optimize(&self.guard)?;
@@ -176,6 +194,7 @@ impl Refresh<'_> {
         Ok(RefreshOutcome {
             source: self.source,
             inserted,
+            duplicates_dropped,
         })
     }
 }
@@ -269,6 +288,26 @@ mod tests {
         r2.commit().unwrap();
         let conn = db.reader().unwrap();
         assert!(favorites::is_favorite(&conn, source, fav_identity).unwrap());
+    }
+
+    #[test]
+    fn duplicate_identities_are_counted_not_silently_dropped() {
+        let db = Db::open_in_memory().unwrap();
+        let source = seed_source(&db);
+
+        // Two entries that resolve to the SAME identity (a dirty playlist tagging two mirrors
+        // with one `tvg-id`). The swap keeps one row; the collision must be reported, not lost.
+        let a = new_channel("A");
+        let mut b = new_channel("B");
+        b.identity = a.identity;
+
+        let mut r = db.begin_refresh(source).unwrap();
+        r.stage(&[a, b]).unwrap();
+        let outcome = r.commit().unwrap();
+
+        assert_eq!(outcome.inserted, 1);
+        assert_eq!(outcome.duplicates_dropped, 1);
+        assert_eq!(load_names(&db, source).len(), 1);
     }
 
     fn checkpoint_variants() -> impl Strategy<Value = Checkpoint> {
