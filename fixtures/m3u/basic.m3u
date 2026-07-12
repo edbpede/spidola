@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Provenance: hand-authored minimal well-formed playlist; no external source, no scrubbing.
+# Exercises: EXTM3U header, EXTINF with tvg-id/tvg-logo/group-title, live + VOD entries.
+#EXTM3U
+#EXTINF:-1 tvg-id="bbc.one.uk" tvg-logo="http://logos.example/bbc1.png" group-title="News",BBC One HD
+http://headend.example/live/bbc1.ts
+#EXTINF:-1 tvg-id="bbc.two.uk" group-title="News",BBC Two HD
+http://headend.example/live/bbc2.ts
+#EXTINF:0 tvg-id="movie.1" group-title="Movies",Some Movie (2024)
+http://headend.example/vod/movie1.mkv

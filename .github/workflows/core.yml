@@ -38,6 +38,9 @@ jobs:
       - name: clippy (deny warnings)
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
+      - name: secret-logging guard
+        run: tools/ci/check-secret-logging.sh
+
       - name: test
         run: cargo test --workspace
 

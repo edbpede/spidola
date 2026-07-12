@@ -30,6 +30,9 @@ allow = [
   "Unicode-3.0",
   "MPL-2.0",
   "CC0-1.0",
+  # Permissive data license for webpki-roots' bundled Mozilla CA root set,
+  # required by the tvOS rustls TLS trust-root fix (TECH_SPEC §12).
+  "CDLA-Permissive-2.0",
   "LGPL-2.1-only",
   "LGPL-2.1-or-later",
   "LGPL-3.0-only",
@@ -41,6 +44,9 @@ exceptions = []
 [bans]
 multiple-versions = "warn"
 wildcards = "warn"
+# Workspace-internal `path` dependencies are intentionally unversioned; only external
+# wildcard version requirements are a smell.
+allow-wildcard-paths = true
 # No OpenSSL / native-tls anywhere: rustls only, so Apple/Android cross-compilation
 # stays sane (TECH_SPEC §4.5, §12).
 deny = [

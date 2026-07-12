@@ -12,5 +12,14 @@ repository.workspace = true
 description = "Developer automation (binding generation, packaging, fixtures, release) — the cargo-xtask pattern."
 publish = false
 
+[dependencies]
+core-model = { path = "../core-model" }
+core-db = { path = "../core-db" }
+core-fetch = { path = "../core-fetch" }
+core-parse = { path = "../core-parse" }
+core-search = { path = "../core-search" }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+
 [lints]
 workspace = true

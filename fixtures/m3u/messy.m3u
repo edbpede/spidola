@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Provenance: hand-authored corruption cases distilled from common real-world M3U bugs.
+# Exercises: dangling EXTINF with no URL, a stray non-URL line, blank lines, an HLS tag,
+#            and a bare (EXTINF-less) URL. Tolerant parsing must skip-and-count, not fail.
+#EXTM3U
+
+#EXTINF:-1,Has A URL
+http://headend.example/live/ok1.ts
+
+#EXTINF:-1,This EXTINF Has No URL Before The Next One
+#EXTINF:-1,Recovered After Dangling
+http://headend.example/live/ok2.ts
+
+this is a stray line that is not a url and must be skipped
+
+#EXT-X-VERSION:3
+http://headend.example/live/bare3.ts

@@ -48,38 +48,38 @@ Two standing rules apply to **every** task in this plan and are not repeated per
 
 ## Phase 1 — Rust core foundations
 
-- [ ] **`core-model` — domain types**
-  - [ ] Newtype identifiers; `Source` enum (m3u-url / m3u-file / xtream); `Channel`, `Category`, `EpgEntry`, `Favorite`, `PlaybackHistoryEntry`
-  - [ ] Validated stream-locator type ("parse, don't validate" constructor)
-  - [ ] Secret types: redacted Debug, zeroize-on-drop, no serde on raw values; unit tests proving redaction
-- [ ] **Error taxonomy scaffolding (first, not last)**
-  - [ ] Per-crate thiserror v2 error enums with source chains, stubbed for every crate in this phase
-  - [ ] The flattened FFI-facing error enum drafted in `core-api` with variant-to-UX mapping table cross-checked against PRD §6.3
-- [ ] **Logging pipeline scaffolding (first, not last)**
-  - [ ] `tracing` initialized in `core-api` with target-per-crate convention; ring buffer subscriber for export
-  - [ ] CI grep guarding against Debug-formatting of secret types in log macros
-- [ ] **`core-db` — persistence**
-  - [ ] Connection pool (WAL, single writer / multiple readers); rusqlite bundled
-  - [ ] Numbered forward-only migrations (rusqlite_migration); migration test harness (every historical schema → head)
-  - [ ] Repositories: sources, channels, favorites, history, settings (one file each per §3.2)
-  - [ ] FTS5 search index with trigger maintenance; contentless-delete configuration
-  - [ ] Staging-and-swap refresh transaction with fault-injection property test (fail at any point → prior catalog intact)
-  - [ ] Stable per-source channel identity hash so favorites/hidden survive refresh
-- [ ] **`core-fetch` — HTTP**
-  - [ ] reqwest + rustls client construction; timeouts (connect / read / overall deadline); redirect hop cap
-  - [ ] Per-source user-agent and header injection
-  - [ ] Streaming body → sink adapter (no full buffering)
-  - [ ] Per-source self-signed-TLS escape hatch, off by default, unit-tested for scoping
-- [ ] **`core-parse` — M3U (streaming)**
-  - [ ] Line/state-machine lexer; extinf attribute handling with unknown-attribute preservation
-  - [ ] Batch sink trait; bounded-memory invariant benchmarked (peak ≈ one batch regardless of input size)
-  - [ ] Diagnostics ledger (skipped-entry accounting) surfaced in import results
-  - [ ] Encoding sniffing with UTF-8-lossy fallback
-  - [ ] Property tests: random mutation of fixtures never panics; accounting invariant holds
-  - [ ] Seed `fixtures/m3u/` golden corpus with provenance notes
-- [ ] **`core-search`**
-  - [ ] Prefix query compilation over FTS5; source/type filters; trigram fuzzy fallback ranking
-  - [ ] Criterion benchmark at a generated 50k-channel dataset against the 50 ms budget
+- [x] **`core-model` — domain types**
+  - [x] Newtype identifiers; `Source` enum (m3u-url / m3u-file / xtream); `Channel`, `Category`, `EpgEntry`, `Favorite`, `PlaybackHistoryEntry`
+  - [x] Validated stream-locator type ("parse, don't validate" constructor)
+  - [x] Secret types: redacted Debug, zeroize-on-drop, no serde on raw values; unit tests proving redaction
+- [x] **Error taxonomy scaffolding (first, not last)**
+  - [x] Per-crate thiserror v2 error enums with source chains, stubbed for every crate in this phase
+  - [x] The flattened FFI-facing error enum drafted in `core-api` with variant-to-UX mapping table cross-checked against PRD §6.3
+- [x] **Logging pipeline scaffolding (first, not last)**
+  - [x] `tracing` initialized in `core-api` with target-per-crate convention; ring buffer subscriber for export
+  - [x] CI grep guarding against Debug-formatting of secret types in log macros
+- [x] **`core-db` — persistence**
+  - [x] Connection pool (WAL, single writer / multiple readers); rusqlite bundled
+  - [x] Numbered forward-only migrations (rusqlite_migration); migration test harness (every historical schema → head)
+  - [x] Repositories: sources, channels, favorites, history, settings (one file each per §3.2)
+  - [x] FTS5 search index with trigger maintenance; contentless-delete configuration
+  - [x] Staging-and-swap refresh transaction with fault-injection property test (fail at any point → prior catalog intact)
+  - [x] Stable per-source channel identity hash so favorites/hidden survive refresh
+- [x] **`core-fetch` — HTTP**
+  - [x] reqwest + rustls client construction; timeouts (connect / read / overall deadline); redirect hop cap
+  - [x] Per-source user-agent and header injection
+  - [x] Streaming body → sink adapter (no full buffering)
+  - [x] Per-source self-signed-TLS escape hatch, off by default, unit-tested for scoping
+- [x] **`core-parse` — M3U (streaming)**
+  - [x] Line/state-machine lexer; extinf attribute handling with unknown-attribute preservation
+  - [x] Batch sink trait; bounded-memory invariant benchmarked (peak ≈ one batch regardless of input size)
+  - [x] Diagnostics ledger (skipped-entry accounting) surfaced in import results
+  - [x] Encoding sniffing with UTF-8-lossy fallback
+  - [x] Property tests: random mutation of fixtures never panics; accounting invariant holds
+  - [x] Seed `fixtures/m3u/` golden corpus with provenance notes
+- [x] **`core-search`**
+  - [x] Prefix query compilation over FTS5; source/type filters; trigram fuzzy fallback ranking
+  - [x] Criterion benchmark at a generated 50k-channel dataset against the 50 ms budget
 
 **Exit criteria:** a CLI-driven integration test (via `xtask`) imports a 50k-channel fixture from a local HTTP stub into SQLite within budget, searches it under 50 ms, and survives fault-injected refresh — all under the phase's error and logging rules.
 

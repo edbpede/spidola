@@ -63,6 +63,8 @@ hooks = [
   # Rust core — crates/ (rustfmt + clippy at deny-warnings; §9 core lane).
   { id = "cargo-fmt", name = "cargo fmt", entry = "cargo fmt --all", language = "system", types = ["rust"], files = "^crates/", pass_filenames = false },
   { id = "cargo-clippy", name = "cargo clippy", entry = "cargo clippy --workspace --all-targets --all-features -- -D warnings", language = "system", types = ["rust"], files = "^crates/", pass_filenames = false },
+  # Secret-logging guard — no log macro may format an exposed secret value (TECH_SPEC §4.8, §12).
+  { id = "check-secret-logging", name = "secret-logging guard", entry = "tools/ci/check-secret-logging.sh", language = "system", types = ["rust"], files = "^crates/", pass_filenames = false },
   # cargo-deny — advisory feed + license allow-list (§12); runs on manifest/lock/deny changes.
   { id = "cargo-deny", name = "cargo deny", entry = "cargo deny check", language = "system", files = "(^|/)(Cargo\\.(toml|lock)|deny\\.toml)$", pass_filenames = false },
   # tvOS shell — apps/tvos/ (toolchain-bundled swift-format + SwiftLint; §9 apple lane).
