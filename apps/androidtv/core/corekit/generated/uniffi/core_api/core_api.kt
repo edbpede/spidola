@@ -1140,7 +1140,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_sourceservice_add_m3u_url() != 16147) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_core_api_checksum_method_sourceservice_delete() != 44257) {
+    if (lib.uniffi_core_api_checksum_method_sourceservice_delete() != 58115) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_sourceservice_list() != 24283) {
@@ -1158,7 +1158,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_sourceservice_set_enabled() != 27694) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_core_api_checksum_constructor_core_new() != 31194) {
+    if (lib.uniffi_core_api_checksum_constructor_core_new() != 15257) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_importlistener_on_progress() != 23344) {
@@ -2096,8 +2096,9 @@ open class Core: Disposable, AutoCloseable, CoreInterface
      *
      * # Errors
      * Returns [`ApiError::Internal`] if the logging pipeline cannot be installed (a competing
-     * `tracing` subscriber already exists) or the runtime cannot start, and
-     * [`ApiError::StorageCorrupt`] if the database cannot be opened or migrated.
+     * `tracing` subscriber already exists, or a live `Core` already owns the host-sink slot — a
+     * `Core` is single-per-process), or the runtime cannot start, and [`ApiError::StorageCorrupt`]
+     * if the database cannot be opened or migrated.
      */
     constructor(`config`: CoreConfig, `secrets`: SecretStore, `logSink`: LogSink) :
         this(UniffiWithHandle, 
@@ -3544,6 +3545,10 @@ public interface SourceServiceInterface {
     /**
      * Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history.
      *
+     * Cancels every in-flight refresh for this source first, so each detached task aborts at its
+     * next batch boundary (releasing the writer and reporting `Cancelled`) instead of fetching a
+     * catalog for a source that is about to vanish and then failing under the writer.
+     *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
      */
@@ -3730,6 +3735,10 @@ open class SourceService: Disposable, AutoCloseable, SourceServiceInterface
     
     /**
      * Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history.
+     *
+     * Cancels every in-flight refresh for this source first, so each detached task aborts at its
+     * next batch boundary (releasing the writer and reporting `Cancelled`) instead of fetching a
+     * catalog for a source that is about to vanish and then failing under the writer.
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a write failure.

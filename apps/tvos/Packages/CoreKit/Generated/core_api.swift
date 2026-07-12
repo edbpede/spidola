@@ -889,8 +889,9 @@ open class Core: CoreProtocol, @unchecked Sendable {
      *
      * # Errors
      * Returns [`ApiError::Internal`] if the logging pipeline cannot be installed (a competing
-     * `tracing` subscriber already exists) or the runtime cannot start, and
-     * [`ApiError::StorageCorrupt`] if the database cannot be opened or migrated.
+     * `tracing` subscriber already exists, or a live `Core` already owns the host-sink slot — a
+     * `Core` is single-per-process), or the runtime cannot start, and [`ApiError::StorageCorrupt`]
+     * if the database cannot be opened or migrated.
      */
 public convenience init(config: CoreConfig, secrets: SecretStore, logSink: LogSink)throws  {
     let handle =
@@ -1690,6 +1691,10 @@ public protocol SourceServiceProtocol: AnyObject, Sendable {
     /**
      * Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history.
      *
+     * Cancels every in-flight refresh for this source first, so each detached task aborts at its
+     * next batch boundary (releasing the writer and reporting `Cancelled`) instead of fetching a
+     * catalog for a source that is about to vanish and then failing under the writer.
+     *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
      */
@@ -1816,6 +1821,10 @@ open func addM3uUrl(name: String, url: String, userAgent: String?, acceptInvalid
     
     /**
      * Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history.
+     *
+     * Cancels every in-flight refresh for this source first, so each detached task aborts at its
+     * next batch boundary (releasing the writer and reporting `Cancelled`) instead of fetching a
+     * catalog for a source that is about to vanish and then failing under the writer.
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
@@ -4835,7 +4844,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_sourceservice_add_m3u_url() != 16147) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_core_api_checksum_method_sourceservice_delete() != 44257) {
+    if (uniffi_core_api_checksum_method_sourceservice_delete() != 58115) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_sourceservice_list() != 24283) {
@@ -4853,7 +4862,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_sourceservice_set_enabled() != 27694) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_core_api_checksum_constructor_core_new() != 31194) {
+    if (uniffi_core_api_checksum_constructor_core_new() != 15257) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_importlistener_on_progress() != 23344) {
