@@ -15,6 +15,7 @@ use std::collections::VecDeque;
 use std::fmt::Write as _;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
+use thiserror::Error;
 use tracing::field::{Field, Visit};
 use tracing::{Event, Subscriber};
 use tracing_subscriber::layer::{Context, Layer};
@@ -192,17 +193,32 @@ impl LogHandle {
     }
 }
 
-/// The one pipeline: built and installed on the first [`init`] call, shared by every later one.
-static LOG_HANDLE: OnceLock<LogHandle> = OnceLock::new();
+/// The reason [`init`] could not install the global pipeline.
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum LogInitError {
+    /// A global `tracing` subscriber was already installed (by this process or the host) before
+    /// the first `init`, so this pipeline never became the active dispatcher: its ring buffer and
+    /// level control are detached from live events. The failure is surfaced rather than returning
+    /// a live-looking handle.
+    #[error("a global tracing subscriber is already installed: {0}")]
+    AlreadyInstalled(String),
+}
 
-/// Initializes the global tracing pipeline (best-effort: a no-op if one is already set).
+/// The one pipeline outcome: computed on the first [`init`] call, shared by every later one.
+static LOG_HANDLE: OnceLock<Result<LogHandle, LogInitError>> = OnceLock::new();
+
+/// Initializes the global tracing pipeline and returns a [`LogHandle`] for export and runtime
+/// level control. Intended to be called once at library initialization in `core-api`.
 ///
-/// Returns a [`LogHandle`] for export and runtime level control. Intended to be called once
-/// at library initialization in `core-api`. Idempotent: the first call builds and installs the
-/// pipeline; every later call returns a clone of that same live handle (and its `config` is
-/// ignored), so a second caller never receives a detached buffer/reload handle.
-#[must_use]
-pub fn init(config: &LogConfig) -> LogHandle {
+/// Idempotent: the first call builds and installs the pipeline and caches its outcome; every
+/// later call returns a clone of that same cached outcome (its `config` is ignored), so a second
+/// caller never builds its own competing, detached pipeline.
+///
+/// # Errors
+/// Returns [`LogInitError::AlreadyInstalled`] if a global `tracing` subscriber was already
+/// installed when the first `init` ran. In that case the returned handle would be detached (empty
+/// exports, no-op level control), so the failure is surfaced instead of returning it.
+pub fn init(config: &LogConfig) -> Result<LogHandle, LogInitError> {
     LOG_HANDLE
         .get_or_init(|| {
             let ring = RingBuffer::new(config.ring_capacity);
@@ -211,17 +227,19 @@ pub fn init(config: &LogConfig) -> LogHandle {
             let subscriber = Registry::default()
                 .with(filter_layer)
                 .with(RingLayer::new(ring.clone()));
-            // Best-effort: another subscriber may already own the global slot. `OnceLock` guards
-            // against a *second* `init` racing in with its own detached pipeline.
-            let _ = subscriber.try_init();
+            // Surface a lost global-slot race rather than caching a detached, live-looking handle;
+            // `OnceLock` makes this first outcome authoritative for every later caller.
+            subscriber
+                .try_init()
+                .map_err(|e| LogInitError::AlreadyInstalled(e.to_string()))?;
             let set_directives: DirectiveSetter = Arc::new(move |directives: &str| {
                 let filter = EnvFilter::try_new(directives).map_err(|e| e.to_string())?;
                 reload_handle.reload(filter).map_err(|e| e.to_string())
             });
-            LogHandle {
+            Ok(LogHandle {
                 ring,
                 set_directives,
-            }
+            })
         })
         .clone()
 }
@@ -273,11 +291,14 @@ mod tests {
 
     #[test]
     fn init_returns_the_same_live_handle_across_calls() {
-        // A second `init` must not hand back a detached handle: both calls share the one live
-        // ring, so a line pushed via the first is visible through the second's `export_logs`.
+        // Nothing else in this test binary installs a *global* subscriber (the other tests use the
+        // scoped `with_default`), so the first `init` wins the global slot and returns a live
+        // handle. A second `init` must return a clone of that same handle — sharing the one live
+        // ring, so a line pushed via the first is visible through the second's `export_logs`
+        // (proving it is not a fresh, detached buffer).
         let cfg = LogConfig::default();
-        let first = init(&cfg);
-        let second = init(&cfg);
+        let first = init(&cfg).expect("first init installs the global subscriber");
+        let second = init(&cfg).expect("second init returns the cached live handle");
         first.ring().push("probe line".to_owned());
         assert!(second.export_logs().iter().any(|l| l == "probe line"));
     }

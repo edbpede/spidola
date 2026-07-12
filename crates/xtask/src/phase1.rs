@@ -32,6 +32,7 @@ use core_search::{SearchRequest, search};
 pub(crate) struct Report {
     pub channels_served: usize,
     pub inserted: u64,
+    pub duplicates_dropped: u64,
     pub emitted: u64,
     pub skipped: u64,
     pub invalid_locators: u64,
@@ -46,6 +47,7 @@ impl std::fmt::Display for Report {
         writeln!(f, "Phase 1 verification")?;
         writeln!(f, "  served channels    : {}", self.channels_served)?;
         writeln!(f, "  inserted           : {}", self.inserted)?;
+        writeln!(f, "  duplicates dropped : {}", self.duplicates_dropped)?;
         writeln!(
             f,
             "  emitted / skipped  : {} / {}",
@@ -130,6 +132,7 @@ pub(crate) async fn verify(channels: usize) -> anyhow::Result<Report> {
     Ok(Report {
         channels_served: channels,
         inserted: import.inserted,
+        duplicates_dropped: import.duplicates_dropped,
         emitted: import.emitted,
         skipped: import.skipped,
         invalid_locators: import.invalid,
@@ -142,6 +145,7 @@ pub(crate) async fn verify(channels: usize) -> anyhow::Result<Report> {
 
 struct ImportSummary {
     inserted: u64,
+    duplicates_dropped: u64,
     emitted: u64,
     skipped: u64,
     invalid: u64,
@@ -186,6 +190,7 @@ fn run_staging(
     let outcome = refresh.commit()?;
     Ok(ImportSummary {
         inserted: outcome.inserted,
+        duplicates_dropped: outcome.duplicates_dropped,
         emitted: diagnostics.emitted(),
         skipped: diagnostics.skipped(),
         invalid,
