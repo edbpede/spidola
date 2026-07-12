@@ -38,6 +38,10 @@ bytes = "1"
 # Async runtime (owned by core-api) + observability.
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros", "time"] }
 tracing = "0.1"
+# UniFFI (proc-macro mode): the single boundary definition generating idiomatic Swift +
+# Kotlin bindings (TECH_SPEC §5). `tokio` feature lets exported `async fn`s drive the
+# core-owned runtime; `cli` (xtask only) exposes `uniffi_bindgen_main` for generation.
+uniffi = "0.32"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 rand = "0.9"

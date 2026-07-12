@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Convenience alias so the documented `cargo xtask <task>` runs the developer-automation
+# binary (the cargo-xtask pattern, TECH_SPEC §3.3). `default-run` in crates/xtask/Cargo.toml
+# disambiguates it from the bundled `uniffi-bindgen` helper binary.
+[alias]
+xtask = "run --quiet --package xtask --"

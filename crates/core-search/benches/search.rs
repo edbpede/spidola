@@ -42,7 +42,7 @@ fn build_db(channels: usize) -> Db {
         )
         .unwrap()
     };
-    let mut refresh = db.begin_refresh(source).unwrap();
+    let mut refresh = db.begin_staging(source).unwrap();
     let mut batch: Vec<NewChannel> = Vec::with_capacity(1000);
     for i in 0..channels {
         let name = format!("Channel {i} {}", WORDS[i % WORDS.len()]);
@@ -65,7 +65,7 @@ fn build_db(channels: usize) -> Db {
     if !batch.is_empty() {
         refresh.stage(&batch).unwrap();
     }
-    refresh.commit().unwrap();
+    refresh.commit(&db).unwrap();
     db
 }
 

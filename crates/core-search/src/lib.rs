@@ -272,9 +272,9 @@ mod tests {
             .unwrap()
         };
         let batch: Vec<NewChannel> = names.iter().map(|(n, g)| channel(n, g)).collect();
-        let mut refresh = db.begin_refresh(source).unwrap();
+        let mut refresh = db.begin_staging(source).unwrap();
         refresh.stage(&batch).unwrap();
-        refresh.commit().unwrap();
+        refresh.commit(&db).unwrap();
         (db, source)
     }
 
@@ -367,9 +367,9 @@ mod tests {
             .unwrap()
         };
         let batch: Vec<NewChannel> = chans.iter().map(|(n, g)| channel(n, g)).collect();
-        let mut refresh = db.begin_refresh(source).unwrap();
+        let mut refresh = db.begin_staging(source).unwrap();
         refresh.stage(&batch).unwrap();
-        refresh.commit().unwrap();
+        refresh.commit(db).unwrap();
         source
     }
 

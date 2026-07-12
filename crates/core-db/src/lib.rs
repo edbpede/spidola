@@ -20,6 +20,6 @@ pub mod search_index;
 pub use error::{DbError, DbResult};
 pub use migrations::SCHEMA_VERSION;
 pub use pool::{Db, ReaderGuard};
-pub use refresh::{Refresh, RefreshOutcome};
+pub use refresh::{RefreshCommit, RefreshOutcome, Staging};
 pub use repo::channels::NewChannel;
 pub use repo::history::NewHistory;

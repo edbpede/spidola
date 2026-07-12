@@ -27,15 +27,34 @@ let the three CI lanes prove the tree still builds green.
 
 ### Apple targets and the Tier-2 note
 
-The core builds for `aarch64-apple-tvos` plus the tvOS simulator variant and is packaged
-with the generated Swift bindings into an XCFramework by `xtask` (Phase 2). These targets
-were promoted from Tier 3 to **Tier 2** upstream, so the pinned stable toolchain ships
-prebuilt standard libraries for them — no `build-std` needed.
+The core builds for `aarch64-apple-tvos` plus its Apple-silicon simulator variant
+(`aarch64-apple-tvos-sim`) and is packaged with the generated Swift bindings into an
+XCFramework by `xtask` (Phase 2). These two targets are **Tier 2** upstream, so the pinned
+stable toolchain ships prebuilt standard libraries for them — no `build-std` needed. The
+Intel simulator target (`x86_64-apple-tvos`) remains Tier 3 (no prebuilt std) and is
+intentionally not built — CI and current Macs are Apple-silicon-only.
 
 **Fallback (documented, not the default):** should a future pin ever sit behind that
 promotion, build the tvOS targets on a nightly toolchain with
 `-Z build-std=std,panic_abort` and the appropriate `--target`. This path is retained only
 as an escape hatch; the stable Tier-2 route is the supported one.
+
+### FFI bindings and packaging (`xtask`)
+
+The UniFFI boundary is generated and packaged by `cargo xtask` (the cargo-xtask pattern, not
+shell scripts):
+
+| Task | What it does |
+|---|---|
+| `cargo xtask gen-bindings` | (Re)generate the committed Swift + Kotlin bindings in library mode |
+| `cargo xtask check-bindings` | Reproducibility gate: fail if committed bindings drift from the Rust definitions (core CI lane) |
+| `cargo xtask package-xcframework` | Build the tvOS device + simulator static libs and assemble `CoreFFI.xcframework` (Apple CI lane) |
+| `cargo xtask package-android` | Build the per-ABI `libcore_api.so` via cargo-ndk into a `jniLibs` tree (Android CI lane) |
+
+The XCFramework build needs the tvOS Rust targets (`rustup target add aarch64-apple-tvos
+aarch64-apple-tvos-sim`); the Android build needs the Android Rust targets (`rustup target add
+aarch64-linux-android armv7-linux-androideabi x86_64-linux-android`), `cargo-ndk`, and the
+pinned NDK (`ANDROID_NDK_HOME`).
 
 ## Apple (tvOS shell)
 

@@ -11,6 +11,9 @@ authors.workspace = true
 repository.workspace = true
 description = "Developer automation (binding generation, packaging, fixtures, release) — the cargo-xtask pattern."
 publish = false
+# Two binaries live here (the task runner + the `uniffi-bindgen` helper); make the task
+# runner the default so `cargo run -p xtask` / the `xtask` alias are unambiguous.
+default-run = "xtask"
 
 [dependencies]
 core-model = { path = "../core-model" }
@@ -18,8 +21,14 @@ core-db = { path = "../core-db" }
 core-fetch = { path = "../core-fetch" }
 core-parse = { path = "../core-parse" }
 core-search = { path = "../core-search" }
+core-api = { path = "../core-api" }
 anyhow = { workspace = true }
 tokio = { workspace = true }
+# `cli` exposes `uniffi::uniffi_bindgen_main`, driving the `uniffi-bindgen` helper binary
+# that generates the Swift + Kotlin bindings in library mode (TECH_SPEC §5).
+uniffi = { workspace = true, features = ["cli"] }
+# Drift check writes fresh bindings to a scratch dir before diffing the committed copies.
+tempfile = { workspace = true }
 
 [lints]
 workspace = true

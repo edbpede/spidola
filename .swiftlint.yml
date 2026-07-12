@@ -14,6 +14,8 @@ excluded:
   - "**/.build"
   - "**/*.build"
   - "**/Package.swift" # SPM manifests are build config, not app code.
+  - apps/tvos/Packages/CoreKit/Generated # UniFFI-generated bindings (not hand-written).
+  - apps/tvos/contract-harness # Bare FFI test harness, not shell code (TECH_SPEC §10).
 
 line_length:
   warning: 120

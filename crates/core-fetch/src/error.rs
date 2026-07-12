@@ -57,7 +57,12 @@ pub enum FetchError {
 pub type FetchResult<T> = Result<T, FetchError>;
 
 /// Classifies a `reqwest::Error` into the matchable [`FetchError`] set.
-pub(crate) fn classify(err: reqwest::Error) -> FetchError {
+///
+/// Public so an orchestration layer that streams a [`reqwest::Response`] body directly
+/// (e.g. `core-api`'s import bridging async fetch to a blocking parser) keeps HTTP error
+/// classification here in `core-fetch` rather than reimplementing it.
+#[must_use]
+pub fn classify(err: reqwest::Error) -> FetchError {
     if err.is_timeout() {
         FetchError::Timeout(err)
     } else if err.is_connect() {

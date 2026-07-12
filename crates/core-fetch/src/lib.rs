@@ -18,5 +18,5 @@ mod tls;
 
 pub use body::{ByteSink, StreamError, stream_to_sink};
 pub use client::{FetchConfig, HttpClient};
-pub use error::{FetchError, FetchResult};
+pub use error::{FetchError, FetchResult, classify};
 pub use headers::RequestSpec;

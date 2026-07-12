@@ -34,12 +34,14 @@ jobs:
 
       - name: swift-format lint (strict)
         run: |
-          find apps/tvos -name '*.swift' -print0 | xargs -0 swift format lint --strict
+          find apps/tvos -name '*.swift' \
+            -not -path '*/Generated/*' -not -path '*/contract-harness/*' \
+            -print0 | xargs -0 swift format lint --strict
 
       - name: SwiftLint
         run: |
           brew install swiftlint
-          cd apps/tvos && swiftlint lint --strict
+          swiftlint lint --strict
 
       - name: Build SPM packages
         run: |
@@ -64,3 +66,31 @@ jobs:
           for pkg in apps/tvos/Packages/*/; do
             (cd "$pkg" && swift test) || true
           done
+
+  # FFI parity keel (TECH_SPEC §5, §10): build the Swift contract harness against the real
+  # compiled core and run the same fixture flow as the Rust + Kotlin harnesses.
+  contract:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select pinned Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26.6"
+
+      - name: Show pinned Rust toolchain
+        run: rustup show
+
+      - uses: Swatinem/rust-cache@v2
+
+      # Packaging (TECH_SPEC §9): the tvOS targets are Rust Tier 2, so prebuilt std ships with
+      # the pinned stable toolchain — no `-Z build-std` (fallback in docs/toolchains.md).
+      - name: Add tvOS Rust targets (Tier 2)
+        run: rustup target add aarch64-apple-tvos aarch64-apple-tvos-sim
+
+      - name: Build tvOS XCFramework
+        run: cargo run -p xtask -- package-xcframework
+
+      - name: Swift FFI contract harness
+        run: tools/ci/build-contract-harness-tvos.sh
