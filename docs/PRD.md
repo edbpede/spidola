@@ -128,7 +128,7 @@ Every screen is designed for D-pad traversal first: focus order is predictable (
 
 ### 8.5 The signature: the channel strip
 
-The one memorable element is the in-playback channel strip — a broadcast-style lower-third that slides up over live video on select. It shows the current channel's logo, name, and now/next EPG in a single 
+The one memorable element is the in-playback channel strip — a broadcast-style lower-third that slides up over live video on select. It shows the current channel's logo, name, and now/next EPG in a single
 disciplined band, with adjacent channels peeking above and below for zap-ahead browsing; a thin ribbon of the SMPTE bar spectrum, three pixels tall, underlines the band as the only decorative flourish in the entire app. It is fast (appears in one frame, never stalls video), dismisses on back or timeout, and is the primary way the channel-zapper persona lives in the app. Every other surface stays quiet so this one can sing.
 
 ### 8.6 Motion and copy

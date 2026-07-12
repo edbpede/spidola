@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Detekt overlay on top of the default config (buildUponDefaultConfig = true). Complexity
+# and length rules are advisory per the modularity doctrine (TECH_SPEC §3.1): they warn and
+# never fail the build on their own.
+
+build:
+  maxIssues: 0
+
+complexity:
+  active: true
+  LongMethod:
+    active: false
+  LongParameterList:
+    active: false
+  TooManyFunctions:
+    active: false
+  CyclomaticComplexMethod:
+    active: false
+
+Compose:
+  active: true

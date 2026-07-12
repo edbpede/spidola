@@ -1,0 +1,46 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Spidola Rust core — virtual workspace manifest.
+# Layer model: TECH_SPEC §2; crate purposes: §3.3; conventions: §3.3 + rust-dev-pro.md.
+
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.96.1"
+license = "AGPL-3.0-or-later"
+authors = ["Spidola contributors"]
+repository = "https://github.com/edbpede/spidola"
+homepage = "https://github.com/edbpede/spidola"
+
+# Shared dependency versions are declared once here and referenced from member
+# crates with `{ workspace = true }`. Phase 1+ populates this as crates gain real
+# dependencies (rusqlite, reqwest, thiserror, tokio, uniffi, …); intentionally
+# empty in the Phase 0 skeleton.
+[workspace.dependencies]
+
+# Workspace lints — NOT inherited automatically; every member opts in with
+# `[lints] workspace = true`. See rust-dev-pro.md and TECH_SPEC §3.3.
+[workspace.lints.rust]
+# `unsafe_code` is `warn` (not `forbid`) at the workspace level because `core-api`
+# will host UniFFI-generated FFI glue; every crate that can adds `#![forbid(unsafe_code)]`.
+unsafe_code = "warn"
+unreachable_pub = "warn"
+
+[workspace.lints.clippy]
+# Review-prompt tier: pedantic at warn with priority -1 so individual lints below win.
+pedantic = { level = "warn", priority = -1 }
+# Standing rule (error handling, TECH_SPEC §4.7): flag unwrap/expect on fallible paths.
+# Warn-level so `#[cfg(test)]` modules may opt out with a scoped `#![allow(...)]`;
+# CI runs clippy with `-D warnings`, making these blocking for non-test code.
+unwrap_used = "warn"
+expect_used = "warn"
+# Complexity/length lints are ADVISORY per the modularity doctrine (TECH_SPEC §3.1):
+# warned here with generous thresholds (clippy.toml). Under CI's `-D warnings` a fired
+# lint is answered in review with either a refactor or a scoped, commented
+# `#[allow(...)]` recording the single concept — never a global threshold bump.
+too_many_lines = "warn"
+cognitive_complexity = "warn"

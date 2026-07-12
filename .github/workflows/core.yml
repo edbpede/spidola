@@ -1,0 +1,54 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Core lane (TECH_SPEC §9): rustfmt, clippy (deny-warnings), tests, cargo-deny, REUSE.
+# These are the exact gates mirrored locally by the prek Rust hooks. Advisory
+# complexity/length lints stay at warn via the workspace `[lints]` table + clippy.toml
+# (modularity doctrine §3.1); a fired complexity lint is answered in review with a
+# refactor or a scoped, commented `#[allow(...)]`, never a global threshold bump.
+name: core
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # rust-toolchain.toml pins 1.96.1 with rustfmt + clippy; rustup honours it.
+      - name: Show pinned toolchain
+        run: rustup show
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+
+      - name: clippy (deny warnings)
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: test
+        run: cargo test --workspace
+
+      - name: cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+
+  reuse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: REUSE compliance
+        uses: fsfe/reuse-action@v5

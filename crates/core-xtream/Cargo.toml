@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+[package]
+name = "core-xtream"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Xtream Codes API client and mapping into core-model types."
+publish = false
+
+[lints]
+workspace = true

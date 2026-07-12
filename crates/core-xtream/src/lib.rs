@@ -1,0 +1,15 @@
+// SPDX-FileCopyrightText: 2026 Spidola contributors
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+//! `core-xtream` — typed Xtream Codes client; nothing Xtream-shaped leaks upward.
+//!
+//! Phase 0 skeleton: modules are declared per TECH_SPEC §3.2; their public
+//! surface is re-exported from here as it lands in later phases.
+#![forbid(unsafe_code)]
+
+pub mod auth;
+pub mod catalog;
+pub mod epg;
+pub mod series;
+pub mod urls;
+pub mod wire;

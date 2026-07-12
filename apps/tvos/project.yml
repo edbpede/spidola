@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# XcodeGen spec: `xcodegen generate` produces Spidola.xcodeproj (kept out of the tree so
+# the project stays text-reviewable). The Apple CI lane generates then builds it.
+name: Spidola
+options:
+  bundleIdPrefix: dev.spidola
+  createIntermediateGroups: true
+  deploymentTarget:
+    tvOS: "18.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+packages:
+  CoreKit: { path: Packages/CoreKit }
+  DesignSystem: { path: Packages/DesignSystem }
+  PlayerContract: { path: Packages/PlayerContract }
+  PlayerMPV: { path: Packages/PlayerMPV }
+  PlayerAV: { path: Packages/PlayerAV }
+  FeatureBrowse: { path: Packages/FeatureBrowse }
+  FeaturePlayback: { path: Packages/FeaturePlayback }
+  FeatureSources: { path: Packages/FeatureSources }
+  FeatureSearch: { path: Packages/FeatureSearch }
+  FeatureSettings: { path: Packages/FeatureSettings }
+targets:
+  Spidola:
+    type: application
+    platform: tvOS
+    deploymentTarget: "18.0"
+    sources: [App]
+    info:
+      path: App/Info.plist
+    dependencies:
+      - package: CoreKit
+      - package: DesignSystem
+      - package: PlayerContract
+      - package: PlayerMPV
+      - package: PlayerAV
+      - package: FeatureBrowse
+      - package: FeaturePlayback
+      - package: FeatureSources
+      - package: FeatureSearch
+      - package: FeatureSettings
+schemes:
+  Spidola:
+    build:
+      targets: { Spidola: all }
+    run:
+      config: Debug

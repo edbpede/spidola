@@ -15,32 +15,32 @@ Two standing rules apply to **every** task in this plan and are not repeated per
 
 ## Phase 0 — Repository, governance, and toolchain bootstrap
 
-- [ ] **Repository skeleton**
-  - [ ] Create the monorepo with the exact tree from TECH_SPEC §3.2 (empty crates/modules with placeholder manifests)
-  - [ ] Add root `.gitignore` (Rust · Swift/Xcode/SPM · Kotlin/Android/Gradle · macOS); `Cargo.lock` and SwiftPM `Package.resolved` are committed for reproducibility (§9)
-  - [ ] Add `.augment/rules/` containing the three coding-standard documents
-  - [ ] Add `LICENSES/` (AGPL-3.0-or-later plus dependency license texts) and REUSE configuration
-  - [ ] Add SPDX headers to all seed files; wire the REUSE lint
-  - [ ] Commit `docs/` with PRD, TECH_SPEC, and this plan
+- [x] **Repository skeleton**
+  - [x] Create the monorepo with the exact tree from TECH_SPEC §3.2 (empty crates/modules with placeholder manifests)
+  - [x] Add root `.gitignore` (Rust · Swift/Xcode/SPM · Kotlin/Android/Gradle · macOS); `Cargo.lock` and SwiftPM `Package.resolved` are committed for reproducibility (§9)
+  - [x] Add `.augment/rules/` containing the three coding-standard documents
+  - [x] Add `LICENSES/` (AGPL-3.0-or-later plus dependency license texts) and REUSE configuration
+  - [x] Add SPDX headers to all seed files; wire the REUSE lint
+  - [x] Commit `docs/` with PRD, TECH_SPEC, and this plan
 - [x] **Governance (launch-blocking, PRD §10)**
   - [x] Decide and document the contributor model (recommendation: DCO + explicit App Store distribution grant)
   - [x] Add CONTRIBUTING with the modularity doctrine summary and the two standing rules above
   - [x] Run the "Spidola" trademark / store-name availability check (original name "Orbita" failed and was replaced; App Store Connect reservation remains the definitive test, tracked in Phase 7)
-- [ ] **Toolchain pins**
-  - [ ] `rust-toolchain.toml` pinned to 1.96.1; workspace manifest with resolver 3, edition 2024, `workspace.lints` per rules file
-  - [ ] `docs/toolchains.md` recording the Xcode/Swift (6.3.x) and Kotlin (2.4.0) / AGP / KSP2 / Gradle pins; build scripts assert them
-  - [ ] `deny.toml` with the advisory feed and the license allow-list (permissive + LGPL; copyleft-incompatible denied)
-- [ ] **Local commit hooks (`prek`)**
-  - [ ] Install `prek` and add `prek.toml` at the repo root (config schema: <https://prek.j178.dev/configuration/>); set `default_install_hook_types` so one `prek install` wires both the pre-commit and commit-msg shims
-  - [ ] Builtin fast gates: whitespace / EOF / LF line-endings, merge-conflict + case-conflict guards, large-file + private-key detection, JSON/TOML/YAML validation, and no-commit-to-`main`
-  - [ ] Conventional Commits check on the commit-msg stage; gitleaks secret scan (TECH_SPEC §12)
-  - [ ] Path-scoped local gates mirroring the three CI lanes (§9): Rust `cargo fmt` + `clippy -D warnings` + `cargo deny` under `crates/`; tvOS `swift-format` + SwiftLint under `apps/tvos/`; Android TV `ktlint` + `detekt` (Compose ruleset) under `apps/androidtv/`
-  - [ ] Keep local gates to fast format/lint only — full Swift/Kotlin compilation, simulator/emulator smoke tests, and the REUSE lint stay CI-side; document `prek install` and `prek run --all-files` in CONTRIBUTING
-- [ ] **CI skeleton (three lanes, TECH_SPEC §9)**
-  - [ ] Core lane: rustfmt, clippy (deny-warnings), test, cargo-deny, REUSE lint
-  - [ ] Android lane: Gradle build, ktlint, detekt (+ Compose ruleset), unit tests
-  - [ ] Apple lane: Xcode build, swift-format, SwiftLint, Swift Testing
-  - [ ] Advisory complexity/length lints configured at **warn** per the modularity doctrine (never CI-failing alone)
+- [x] **Toolchain pins**
+  - [x] `rust-toolchain.toml` pinned to 1.96.1; workspace manifest with resolver 3, edition 2024, `workspace.lints` per rules file
+  - [x] `docs/toolchains.md` recording the Xcode/Swift (6.3.x) and Kotlin (2.4.0) / AGP / KSP2 / Gradle pins; build scripts assert them
+  - [x] `deny.toml` with the advisory feed and the license allow-list (permissive + LGPL; copyleft-incompatible denied)
+- [x] **Local commit hooks (`prek`)**
+  - [x] Install `prek` and add `prek.toml` at the repo root (config schema: <https://prek.j178.dev/configuration/>); set `default_install_hook_types` so one `prek install` wires both the pre-commit and commit-msg shims
+  - [x] Builtin fast gates: whitespace / EOF / LF line-endings, merge-conflict + case-conflict guards, large-file + private-key detection, JSON/TOML/YAML validation, and no-commit-to-`main`
+  - [x] Conventional Commits check on the commit-msg stage; gitleaks secret scan (TECH_SPEC §12)
+  - [x] Path-scoped local gates mirroring the three CI lanes (§9): Rust `cargo fmt` + `clippy -D warnings` + `cargo deny` under `crates/`; tvOS `swift-format` + SwiftLint under `apps/tvos/`; Android TV `ktlint` + `detekt` (Compose ruleset) under `apps/androidtv/`
+  - [x] Keep local gates to fast format/lint only — full Swift/Kotlin compilation, simulator/emulator smoke tests, and the REUSE lint stay CI-side; document `prek install` and `prek run --all-files` in CONTRIBUTING
+- [x] **CI skeleton (three lanes, TECH_SPEC §9)**
+  - [x] Core lane: rustfmt, clippy (deny-warnings), test, cargo-deny, REUSE lint
+  - [x] Android lane: Gradle build, ktlint, detekt (+ Compose ruleset), unit tests
+  - [x] Apple lane: Xcode build, swift-format, SwiftLint, Swift Testing
+  - [x] Advisory complexity/length lints configured at **warn** per the modularity doctrine (never CI-failing alone)
 
 **Exit criteria:** empty-but-real projects build green in all three lanes; REUSE and cargo-deny pass; `prek run --all-files` passes on the seed tree; governance decisions documented.
 

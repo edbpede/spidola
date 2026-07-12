@@ -1,0 +1,55 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# cargo-deny policy (TECH_SPEC §9 core lane, §12 license engineering).
+# Enforced in CI and mirrored locally by the prek `cargo-deny` hook.
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+# RustSec advisory database (default git source). No dependencies yet in the
+# Phase 0 skeleton, so the graph is empty and this passes trivially.
+ignore = []
+
+[licenses]
+version = 2
+# Allow-list model: permissive licenses plus LGPL (media libs) and the project's own
+# AGPL-3.0-or-later. Anything not listed is denied — this is how copyleft-incompatible
+# licenses are kept out (TECH_SPEC §12).
+allow = [
+  "AGPL-3.0-or-later",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "MIT",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "Unicode-3.0",
+  "MPL-2.0",
+  "CC0-1.0",
+  "LGPL-2.1-only",
+  "LGPL-2.1-or-later",
+  "LGPL-3.0-only",
+  "LGPL-3.0-or-later",
+]
+confidence-threshold = 0.9
+exceptions = []
+
+[bans]
+multiple-versions = "warn"
+wildcards = "warn"
+# No OpenSSL / native-tls anywhere: rustls only, so Apple/Android cross-compilation
+# stays sane (TECH_SPEC §4.5, §12).
+deny = [
+  { name = "openssl" },
+  { name = "openssl-sys" },
+  { name = "native-tls" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

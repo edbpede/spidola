@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+[package]
+name = "core-pair"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "The LAN-only pairing micro-server (on while its screen is visible)."
+publish = false
+
+[lints]
+workspace = true

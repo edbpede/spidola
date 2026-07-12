@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Release lane (TECH_SPEC §9, §3.2). Phase 0 stub: it validates that release automation is
+# wired and fails legibly until Phase 7 fills in the signed store pipelines, the Android
+# direct-release fat APK with checksums, third-party notices, and the conventional-commit
+# changelog. Every release artifact will embed the exact core git revision.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release automation not yet implemented
+        run: |
+          echo "Release engineering lands in Phase 7 (TECH_SPEC §9)."
+          echo "Tag: ${GITHUB_REF_NAME:-<none>} — core revision: ${GITHUB_SHA}"
+          exit 1
