@@ -87,23 +87,23 @@ Two standing rules apply to **every** task in this plan and are not repeated per
 
 ## Phase 2 — FFI boundary and packaging
 
-- [ ] **`core-api` façade**
-  - [ ] Owned Tokio multi-thread runtime; blocking-adapter discipline for all `core-db` calls
-  - [ ] Services (one file each): source, catalog (paged-by-contract), search, favorites, settings — Xtream and pairing stubbed
-  - [ ] Task-handle pattern: quick return + progress/completion/failure via callback listener; honest cancellation at batch boundaries
-  - [ ] Startup handshake reporting core version, schema version, boundary version
-- [ ] **UniFFI (proc-macro mode)**
-  - [ ] Records/enums for the domain surface; async methods throughout; callback interfaces for events, secrets, and the log sink
-  - [ ] Threading contract documented on every callback interface (may arrive on any thread)
-  - [ ] `xtask` targets: generate Swift + Kotlin bindings; drift check for CI
-- [ ] **Packaging**
-  - [ ] XCFramework build for aarch64-apple-tvos + simulator (Tier 2 stable toolchain; nightly build-std fallback documented)
-  - [ ] cargo-ndk AAR/prefab for arm64-v8a, armeabi-v7a, x86_64
-  - [ ] Reproducibility check in CI (rebuild bindings, fail on drift)
-- [ ] **Contract tests (parity keel)**
-  - [ ] Minimal Swift and Kotlin harnesses executing the same fixture flows against the real compiled core, asserting identical results
-  - [ ] Panic-across-FFI detector: any core panic in contract tests is a red build
-  - [ ] Error-mapping tests: every FFI error variant constructed and asserted representable on both sides
+- [x] **`core-api` façade**
+  - [x] Owned Tokio multi-thread runtime; blocking-adapter discipline for all `core-db` calls
+  - [x] Services (one file each): source, catalog (paged-by-contract), search, favorites, settings — Xtream and pairing stubbed
+  - [x] Task-handle pattern: quick return + progress/completion/failure via callback listener; honest cancellation at batch boundaries
+  - [x] Startup handshake reporting core version, schema version, boundary version
+- [x] **UniFFI (proc-macro mode)**
+  - [x] Records/enums for the domain surface; async methods throughout; callback interfaces for events, secrets, and the log sink
+  - [x] Threading contract documented on every callback interface (may arrive on any thread)
+  - [x] `xtask` targets: generate Swift + Kotlin bindings; drift check for CI
+- [x] **Packaging**
+  - [x] XCFramework build for aarch64-apple-tvos + simulator (Tier 2 stable toolchain; nightly build-std fallback documented)
+  - [x] cargo-ndk AAR/prefab for arm64-v8a, armeabi-v7a, x86_64
+  - [x] Reproducibility check in CI (rebuild bindings, fail on drift)
+- [x] **Contract tests (parity keel)**
+  - [x] Minimal Swift and Kotlin harnesses executing the same fixture flows against the real compiled core, asserting identical results
+  - [x] Panic-across-FFI detector: any core panic in contract tests is a red build
+  - [x] Error-mapping tests: every FFI error variant constructed and asserted representable on both sides
 
 **Exit criteria:** both shells (bare test harnesses, no UI yet) import a fixture playlist through the boundary, receive progress callbacks, cancel mid-import, and log through their sink — with identical observable results.
 

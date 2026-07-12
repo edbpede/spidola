@@ -30,3 +30,15 @@ path = [
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Gradle, Inc."
 SPDX-License-Identifier = "Apache-2.0"
+
+# UniFFI-generated Swift + Kotlin bindings (produced by `cargo xtask gen-bindings` in library
+# mode from the AGPL Rust definitions). Committed for reproducible shell builds and the CI
+# drift check; regenerated code carries no inline header.
+[[annotations]]
+path = [
+  "apps/tvos/Packages/CoreKit/Generated/**",
+  "apps/androidtv/core/corekit/generated/**",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Spidola contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"

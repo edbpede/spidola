@@ -49,6 +49,11 @@ jobs:
         with:
           command: check
 
+      # Reproducibility gate (TECH_SPEC §5, §9): regenerate the Swift + Kotlin bindings from the
+      # Rust definitions and fail if the committed copies drift.
+      - name: bindings drift check
+        run: cargo run --quiet -p xtask -- check-bindings
+
   reuse:
     runs-on: ubuntu-latest
     steps:

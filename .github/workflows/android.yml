@@ -46,3 +46,41 @@ jobs:
 
       - name: Unit tests
         run: ./gradlew testDebugUnitTest
+
+  # FFI parity keel (TECH_SPEC §5, §10): build the Kotlin contract harness against the real
+  # compiled core (host arch, loaded via JNA) and run the same fixture flow as the Rust + Swift
+  # harnesses. Isolated from the main job so a harness-tooling issue never masks a build break.
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: fwilhe2/setup-kotlin@main
+        with:
+          version: "2.4.0"
+
+      - name: Show pinned Rust toolchain
+        run: rustup show
+
+      - uses: Swatinem/rust-cache@v2
+
+      # Packaging (TECH_SPEC §7, §9): build the per-ABI `libcore_api.so` via cargo-ndk.
+      - uses: android-actions/setup-android@v3
+
+      - name: Install cargo-ndk + NDK
+        run: |
+          cargo install cargo-ndk --locked
+          NDK_VERSION=28.2.13676358
+          yes | sdkmanager "ndk;$NDK_VERSION" >/dev/null
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+
+      - name: Build Android jniLibs
+        run: cargo run -p xtask -- package-android
+
+      - name: Kotlin FFI contract harness
+        run: "$GITHUB_WORKSPACE/tools/ci/build-contract-harness-android.sh"

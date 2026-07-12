@@ -24,7 +24,7 @@ use core_model::ModelError;
 use core_search::SearchError;
 
 /// The stable, user-mappable error surface the shells receive across the FFI.
-#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[derive(Debug, Clone, PartialEq, Eq, Error, uniffi::Error)]
 pub enum ApiError {
     /// The source's server could not be reached.
     #[error("can't reach the source right now")]

@@ -16,9 +16,11 @@ default_install_hook_types = ["pre-commit", "commit-msg"]
 [[repos]]
 repo = "builtin"
 hooks = [
-  { id = "trailing-whitespace" },
-  { id = "end-of-file-fixer" },
-  { id = "mixed-line-ending", args = ["--fix=lf"] },
+  # The UniFFI-generated bindings are verbatim artifacts that must match `xtask gen-bindings`
+  # byte-for-byte (the CI drift check depends on it), so the whitespace/EOF fixers skip them.
+  { id = "trailing-whitespace", exclude = "^apps/(tvos/Packages/CoreKit/Generated|androidtv/core/corekit/generated)/" },
+  { id = "end-of-file-fixer", exclude = "^apps/(tvos/Packages/CoreKit/Generated|androidtv/core/corekit/generated)/" },
+  { id = "mixed-line-ending", args = ["--fix=lf"], exclude = "^apps/(tvos/Packages/CoreKit/Generated|androidtv/core/corekit/generated)/" },
   { id = "check-merge-conflict" },
   { id = "check-case-conflict" },
   { id = "check-added-large-files", args = ["--maxkb=512"] },
@@ -68,10 +70,14 @@ hooks = [
   # cargo-deny — advisory feed + license allow-list (§12); runs on manifest/lock/deny changes.
   { id = "cargo-deny", name = "cargo deny", entry = "cargo deny check", language = "system", files = "(^|/)(Cargo\\.(toml|lock)|deny\\.toml)$", pass_filenames = false },
   # tvOS shell — apps/tvos/ (toolchain-bundled swift-format + SwiftLint; §9 apple lane).
-  { id = "swift-format", name = "swift-format", entry = "swift format --in-place", language = "system", types = ["swift"], files = "^apps/tvos/" },
-  { id = "swiftlint", name = "swiftlint", entry = "swiftlint lint --strict", language = "system", types = ["swift"], files = "^apps/tvos/" },
+  # UniFFI-generated bindings and the bare FFI contract harness are excluded: the generated
+  # Swift must match `xtask gen-bindings` byte-for-byte (reformatting it would fail the drift
+  # check), and the harness is test plumbing, not shell code (mirrors the Apple CI exclusions).
+  { id = "swift-format", name = "swift-format", entry = "swift format --in-place", language = "system", types = ["swift"], files = "^apps/tvos/", exclude = "^apps/tvos/(Packages/CoreKit/Generated|contract-harness)/" },
+  { id = "swiftlint", name = "swiftlint", entry = "swiftlint lint --strict", language = "system", types = ["swift"], files = "^apps/tvos/", exclude = "^apps/tvos/(Packages/CoreKit/Generated|contract-harness)/" },
   # Android TV shell — apps/androidtv/ (ktlint + detekt with the Compose ruleset; §9 android lane).
   # Gradle-driven so detekt loads the Compose ruleset; fires only when Kotlin under apps/androidtv/ is staged.
-  { id = "ktlint", name = "ktlint", entry = "apps/androidtv/gradlew --project-dir apps/androidtv ktlintCheck", language = "system", types = ["kotlin"], files = "^apps/androidtv/", pass_filenames = false },
-  { id = "detekt", name = "detekt", entry = "apps/androidtv/gradlew --project-dir apps/androidtv detekt", language = "system", types = ["kotlin"], files = "^apps/androidtv/", pass_filenames = false },
+  # The generated bindings and the bare harness live outside the Gradle source sets and are excluded here too.
+  { id = "ktlint", name = "ktlint", entry = "apps/androidtv/gradlew --project-dir apps/androidtv ktlintCheck", language = "system", types = ["kotlin"], files = "^apps/androidtv/", exclude = "^apps/androidtv/(contract-harness|core/corekit/generated)/", pass_filenames = false },
+  { id = "detekt", name = "detekt", entry = "apps/androidtv/gradlew --project-dir apps/androidtv detekt", language = "system", types = ["kotlin"], files = "^apps/androidtv/", exclude = "^apps/androidtv/(contract-harness|core/corekit/generated)/", pass_filenames = false },
 ]

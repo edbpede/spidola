@@ -13,7 +13,7 @@
 
 use std::collections::VecDeque;
 use std::fmt::Write as _;
-use std::sync::{Arc, Mutex, OnceLock, PoisonError};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError, RwLock};
 
 use thiserror::Error;
 use tracing::field::{Field, Visit};
@@ -38,6 +38,87 @@ pub mod targets {
     pub const PARSE: &str = "spidola::parse";
     /// Search.
     pub const SEARCH: &str = "spidola::search";
+}
+
+/// Severity of a forwarded log record, mapped one-to-one from `tracing::Level`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum LogLevel {
+    /// `tracing::Level::ERROR`.
+    Error,
+    /// `tracing::Level::WARN`.
+    Warn,
+    /// `tracing::Level::INFO`.
+    Info,
+    /// `tracing::Level::DEBUG`.
+    Debug,
+    /// `tracing::Level::TRACE`.
+    Trace,
+}
+
+impl From<&tracing::Level> for LogLevel {
+    fn from(level: &tracing::Level) -> Self {
+        match *level {
+            tracing::Level::ERROR => Self::Error,
+            tracing::Level::WARN => Self::Warn,
+            tracing::Level::INFO => Self::Info,
+            tracing::Level::DEBUG => Self::Debug,
+            tracing::Level::TRACE => Self::Trace,
+        }
+    }
+}
+
+/// One log event forwarded to the host sink. Secret values are absent by construction (the
+/// secret types redact their `Debug`), so a record never carries credential material (§12).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct LogRecord {
+    /// Severity.
+    pub level: LogLevel,
+    /// The event's target (one of [`targets`]), which the shell maps to a native category.
+    pub target: String,
+    /// The rendered message plus structured fields.
+    pub message: String,
+}
+
+/// The host log sink (`OSLog` on tvOS, logcat on Android, TECH_SPEC §4.8).
+///
+/// Foreign-implemented only, so this is a UniFFI callback interface. **Threading contract:**
+/// [`Self::log`] is invoked synchronously from whichever core thread emitted the event and may
+/// arrive on *any* thread; the shell forwards it to its platform logger without blocking.
+#[uniffi::export(callback_interface)]
+pub trait LogSink: Send + Sync {
+    /// Forwards one log record to the platform logger.
+    fn log(&self, record: LogRecord);
+}
+
+/// The installed host sink, set once the core is initialized. Read on every (already
+/// level-filtered) event, so an absent sink or a disabled level costs a single lock read.
+static SINK: RwLock<Option<Arc<dyn LogSink>>> = RwLock::new(None);
+
+/// Installs (or replaces) the host log sink. Called once from the core constructor after the
+/// pipeline is initialized; the [`SinkLayer`] added at init forwards subsequent events to it.
+pub fn install_sink(sink: Arc<dyn LogSink>) {
+    let mut guard = SINK.write().unwrap_or_else(PoisonError::into_inner);
+    *guard = Some(sink);
+}
+
+/// A `tracing` layer that forwards each event to the installed host [`LogSink`].
+struct SinkLayer;
+
+impl<S: Subscriber> Layer<S> for SinkLayer {
+    fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
+        let guard = SINK.read().unwrap_or_else(PoisonError::into_inner);
+        let Some(sink) = guard.as_ref() else {
+            return; // no host sink yet (pre-init events); the ring buffer still captured it
+        };
+        let meta = event.metadata();
+        let mut visitor = LineVisitor::default();
+        event.record(&mut visitor);
+        sink.log(LogRecord {
+            level: LogLevel::from(meta.level()),
+            target: meta.target().to_owned(),
+            message: visitor.text.trim().to_owned(),
+        });
+    }
 }
 
 /// A bounded, shareable buffer of the most recent formatted log lines.
@@ -226,7 +307,10 @@ pub fn init(config: &LogConfig) -> Result<LogHandle, LogInitError> {
             let (filter_layer, reload_handle) = reload::Layer::new(env);
             let subscriber = Registry::default()
                 .with(filter_layer)
-                .with(RingLayer::new(ring.clone()));
+                .with(RingLayer::new(ring.clone()))
+                // The host sink is forwarded to here; it reads the global slot set later by
+                // `install_sink`, so init order (pipeline first, sink after) is not a race.
+                .with(SinkLayer);
             // Surface a lost global-slot race rather than caching a detached, live-looking handle;
             // `OnceLock` makes this first outcome authoritative for every later caller.
             subscriber

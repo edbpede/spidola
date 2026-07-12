@@ -1,0 +1,7 @@
+module core_apiFFI {
+    header "core_apiFFI.h"
+    export *
+    use "Darwin"
+    use "_Builtin_stdbool"
+    use "_Builtin_stdint"
+}

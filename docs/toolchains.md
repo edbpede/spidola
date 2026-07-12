@@ -37,6 +37,22 @@ promotion, build the tvOS targets on a nightly toolchain with
 `-Z build-std=std,panic_abort` and the appropriate `--target`. This path is retained only
 as an escape hatch; the stable Tier-2 route is the supported one.
 
+### FFI bindings and packaging (`xtask`)
+
+The UniFFI boundary is generated and packaged by `cargo xtask` (the cargo-xtask pattern, not
+shell scripts):
+
+| Task | What it does |
+|---|---|
+| `cargo xtask gen-bindings` | (Re)generate the committed Swift + Kotlin bindings in library mode |
+| `cargo xtask check-bindings` | Reproducibility gate: fail if committed bindings drift from the Rust definitions (core CI lane) |
+| `cargo xtask package-xcframework` | Build the tvOS device + simulator static libs and assemble `CoreFFI.xcframework` (Apple CI lane) |
+| `cargo xtask package-android` | Build the per-ABI `libcore_api.so` via cargo-ndk into a `jniLibs` tree (Android CI lane) |
+
+The XCFramework build needs the tvOS Rust targets (`rustup target add aarch64-apple-tvos
+aarch64-apple-tvos-sim x86_64-apple-tvos`); the Android build needs `cargo-ndk` and the pinned
+NDK (`ANDROID_NDK_HOME`).
+
 ## Apple (tvOS shell)
 
 | Item | Pin |

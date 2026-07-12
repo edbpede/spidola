@@ -19,8 +19,8 @@ use std::time::{Duration, Instant};
 use anyhow::{Context, anyhow};
 use tokio::sync::mpsc;
 
-use core_db::{Db, NewChannel, repo};
-use core_model::channel::{ChannelOverrides, MediaKind, channel_identity};
+use core_db::{Db, repo};
+use core_model::channel::channel_identity;
 use core_model::ids::SourceId;
 use core_model::locator::StreamLocator;
 use core_model::source::{Source, SourceCommon};
@@ -209,42 +209,13 @@ impl ChannelSink for StagingSink<'_, '_> {
     fn accept(&mut self, batch: Vec<ParsedChannel>) -> Result<(), Self::Error> {
         let mut mapped = Vec::with_capacity(batch.len());
         for parsed in batch {
-            match to_new_channel(parsed) {
+            match core_api::import::map_parsed(parsed) {
                 Some(channel) => mapped.push(channel),
                 None => self.invalid += 1, // invalid locator: skip-and-count, never fail
             }
         }
         self.refresh.stage(&mapped)
     }
-}
-
-/// Maps a raw parsed channel to a domain import row, deriving identity and validating the
-/// locator (parse, don't validate). Returns `None` if the URL is not a valid locator.
-fn to_new_channel(parsed: ParsedChannel) -> Option<NewChannel> {
-    let locator = StreamLocator::parse(&parsed.url).ok()?;
-    let identity = channel_identity(parsed.tvg_id(), &parsed.url, &parsed.name);
-    let group_title = parsed.group().map(str::to_owned);
-    let logo = parsed.logo().map(str::to_owned);
-    let ParsedChannel {
-        name,
-        user_agent,
-        headers,
-        ..
-    } = parsed;
-    Some(NewChannel {
-        identity,
-        name,
-        group_title,
-        logo,
-        locator,
-        kind: MediaKind::Live,
-        category: None,
-        overrides: ChannelOverrides {
-            user_agent,
-            headers,
-            preferred_engine: None,
-        },
-    })
 }
 
 /// Runs a representative search five times and returns the hit count and minimum latency
@@ -278,7 +249,7 @@ fn abort_refresh_and_check(
 ) -> anyhow::Result<(u64, bool)> {
     {
         let mut refresh = db.begin_refresh(source)?;
-        let replacement = to_new_channel(ParsedChannel {
+        let replacement = core_api::import::map_parsed(ParsedChannel {
             name: "Replacement".to_owned(),
             url: "http://host.example/live/replacement.ts".to_owned(),
             duration_secs: Some(-1.0),

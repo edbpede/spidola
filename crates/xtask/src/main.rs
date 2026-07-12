@@ -6,9 +6,20 @@
 //! not shell scripts (TECH_SPEC §3.3).
 #![forbid(unsafe_code)]
 
+mod bindings;
+mod packaging;
+mod paths;
 mod phase1;
 
 use anyhow::anyhow;
+
+const USAGE: &str = "usage: cargo xtask <task>\n  \
+tasks:\n  \
+  phase1-verify      run the Phase 1 end-to-end pipeline verification\n  \
+  gen-bindings       generate the Swift + Kotlin UniFFI bindings (library mode)\n  \
+  check-bindings     fail if the committed bindings drift from the Rust definitions\n  \
+  package-xcframework  build the tvOS XCFramework (device + simulator)\n  \
+  package-android    build the Android per-ABI jniLibs via cargo-ndk";
 
 fn main() -> anyhow::Result<()> {
     match std::env::args().nth(1).as_deref() {
@@ -19,7 +30,11 @@ fn main() -> anyhow::Result<()> {
             print!("{report}");
             Ok(())
         }
-        Some(other) => Err(anyhow!("unknown task `{other}`; try `phase1-verify`")),
-        None => Err(anyhow!("usage: cargo xtask <task>  (tasks: phase1-verify)")),
+        Some("gen-bindings") => bindings::generate(),
+        Some("check-bindings") => bindings::check(),
+        Some("package-xcframework") => packaging::xcframework(),
+        Some("package-android") => packaging::android(),
+        Some(other) => Err(anyhow!("unknown task `{other}`\n{USAGE}")),
+        None => Err(anyhow!("{USAGE}")),
     }
 }
