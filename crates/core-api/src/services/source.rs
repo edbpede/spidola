@@ -6,6 +6,7 @@
 //! flow the boundary exit criteria exercise.
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use core_db::{Db, repo};
@@ -24,9 +25,13 @@ use crate::runtime::CoreRuntime;
 pub struct SourceService {
     rt: Arc<CoreRuntime>,
     db: Arc<Db>,
-    /// Cancellation tokens for in-flight refreshes, keyed by source id, so [`Self::delete`]
-    /// can abort a running refresh for a source it is about to remove.
-    refreshes: Arc<Mutex<HashMap<i64, CancelToken>>>,
+    /// Cancellation tokens for in-flight refreshes, keyed by source id then by a unique
+    /// per-refresh sequence. Nesting keeps concurrent refreshes of the same source distinct, so
+    /// [`Self::delete`] can abort *every* running refresh for a source it is about to remove and
+    /// each refresh deregisters only its own token.
+    refreshes: Arc<Mutex<HashMap<i64, HashMap<u64, CancelToken>>>>,
+    /// Monotonic source of the unique per-refresh keys used within [`Self::refreshes`].
+    next_refresh_seq: AtomicU64,
 }
 
 impl SourceService {
@@ -36,6 +41,7 @@ impl SourceService {
             rt,
             db,
             refreshes: Arc::new(Mutex::new(HashMap::new())),
+            next_refresh_seq: AtomicU64::new(0),
         })
     }
 }
@@ -144,23 +150,27 @@ impl SourceService {
 
     /// Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history.
     ///
-    /// Cancels any in-flight refresh for this source first, so the detached task aborts at its
+    /// Cancels every in-flight refresh for this source first, so each detached task aborts at its
     /// next batch boundary (releasing the writer and reporting `Cancelled`) instead of fetching a
     /// catalog for a source that is about to vanish and then failing under the writer.
     ///
     /// # Errors
     /// Returns [`ApiError::StorageCorrupt`] on a write failure.
     pub async fn delete(&self, id: i64) -> Result<(), ApiError> {
-        // Signal cancellation before contending for the writer: whether the delete or the
-        // refresh's staging transaction wins the writer mutex, the refresh observes the flag at
+        // Signal cancellation before contending for the writer: whether the delete or a
+        // refresh's staging transaction wins the writer mutex, each refresh observes the flag at
         // its next boundary and rolls back cleanly rather than surfacing a spurious failure.
+        // Take the id's whole bucket so *all* of its concurrent refreshes are cancelled, not
+        // just whichever registered most recently.
         let active = self
             .refreshes
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .remove(&id);
-        if let Some(token) = active {
-            token.cancel();
+        if let Some(tokens) = active {
+            for token in tokens.into_values() {
+                token.cancel();
+            }
         }
         let db = Arc::clone(&self.db);
         self.rt
@@ -181,19 +191,29 @@ impl SourceService {
         let db = Arc::clone(&self.db);
         let listener: Arc<dyn ImportListener> = Arc::from(listener);
         let task_token = token.clone();
-        // Register so a concurrent `delete(id)` can cancel this refresh.
+        // Register under a unique per-refresh key so a concurrent `delete(id)` cancels *every*
+        // active refresh for this id, and (below) this task deregisters only its own token even
+        // when a sibling refresh for the same id registers or completes concurrently.
+        let seq = self.next_refresh_seq.fetch_add(1, Ordering::Relaxed);
         self.refreshes
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
-            .insert(id, token.clone());
+            .entry(id)
+            .or_default()
+            .insert(seq, token.clone());
         let refreshes = Arc::clone(&self.refreshes);
         self.rt.spawn(async move {
             run_refresh(db, SourceId::new(id), task_token, listener).await;
-            // Deregister once finished so the map does not accumulate stale tokens.
-            refreshes
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .remove(&id);
+            // Deregister only this refresh; prune the id's bucket once it holds no more in-flight
+            // refreshes so the map stays bounded by the concurrently-active refreshes.
+            let mut guard = refreshes.lock().unwrap_or_else(PoisonError::into_inner);
+            let bucket_empty = guard.get_mut(&id).is_some_and(|tokens| {
+                tokens.remove(&seq);
+                tokens.is_empty()
+            });
+            if bucket_empty {
+                guard.remove(&id);
+            }
         });
         Arc::new(TaskHandle::new(token))
     }
