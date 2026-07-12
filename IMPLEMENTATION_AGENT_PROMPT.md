@@ -23,13 +23,13 @@ Read `docs/IMPLEMENTATION_PLAN.md` and locate the exact section matching the tas
 - **The two standing rules** at the top of the plan — they apply to *every* task and are not repeated per item; violations are review blockers:
   - **Error handling** — no bare unwrap/expect on a fallible path (Rust), no untyped or swallowed error (Swift), no caught-and-ignored exception or leaked `Result` across a module boundary (Kotlin); every new failure path maps into the layer's error taxonomy per TECH_SPEC §4.7.
   - **Logging** — every new subsystem lands with tracing spans (core) or subsystem/category logging (shells) wired into the pipeline per TECH_SPEC §4.8, with secrets provably absent from output.
-- **Dependencies** on prior tasks/phases — phases are strictly sequential, and several tasks are load-bearing for later work (e.g. Phase 1's error-taxonomy and logging scaffolding come *first, not last*; the Phase 2 FFI contract tests underpin the parity policy; the Phase 5 player contract precedes any engine; ADR-worthy decisions must actually land in `docs/adr/`). Check that prerequisite items are marked `- [x]`. If any required dependency is incomplete, **stop and report which dependencies are missing** before proceeding.
-- **Budgets, gotchas, and notes** embedded in the task — PRD `§`-references, performance numbers (they are requirements, not aspirations), parenthetical notes, and decisions deferred to ADRs.
+- **Dependencies** on prior tasks/phases — phases are strictly sequential, and several tasks are load-bearing for later work (e.g. Phase 1's error-taxonomy and logging scaffolding come *first, not last*; the Phase 2 FFI contract tests underpin the parity policy; the Phase 5 player contract precedes any engine). Check that prerequisite items are marked `- [x]`. If any required dependency is incomplete, **stop and report which dependencies are missing** before proceeding.
+- **Budgets, gotchas, and notes** embedded in the task — PRD `§`-references, performance numbers (they are requirements, not aspirations), parenthetical notes, and decisions explicitly deferred to a later phase.
 - **Cross-references** to the PRD's non-goals (§4), platform parity policy (§7), UX direction (§8), quality bars (§9), and licensing/compliance (§10), and to the TECH_SPEC's modularity doctrine (§3.1), monorepo tree (§3.2), error/logging policies (§4.7/§4.8), FFI rules (§5), engine contract (§8), and security/license engineering (§12) — all of which constrain this task's implementation.
 
 ### Step 2: Read Project Coding Standards
 
-Read the rules files in `.augment/rules/` in full — `rust-dev-pro.md` for core work, `swift-dev-pro.md` for tvOS work, `kotlin-dev-pro.md` for Android TV work; all that apply to the task. They are **normative, not advisory** (TECH_SPEC §1); every line of code you produce **must** comply. Where TECH_SPEC and a rules file conflict, the conflict is a bug in one of them, resolved by ADR — the sanctioned divergences already on record are listed under Project Invariants below. Key requirements (non-exhaustive — the full documents govern, including their anti-pattern tables):
+Read the rules files in `.augment/rules/` in full — `rust-dev-pro.md` for core work, `swift-dev-pro.md` for tvOS work, `kotlin-dev-pro.md` for Android TV work; all that apply to the task. They are **normative, not advisory** (TECH_SPEC §1); every line of code you produce **must** comply. Where TECH_SPEC and a rules file conflict, the conflict is a bug in one of them, resolved by amending the offending document — the sanctioned divergences already on record are listed under Project Invariants below. Key requirements (non-exhaustive — the full documents govern, including their anti-pattern tables):
 
 **Rust core (1.96.1 / edition 2024)**
 
@@ -76,10 +76,10 @@ Before writing any code:
 
 1. Use `codebase-retrieval` (the primary code-search tool — semantic, always reflects disk) to find all types, modules, and functions referenced by the task. Batch related symbols into a single detailed query.
 2. Read any files that will be modified or extended (e.g. root `Cargo.toml`, `rust-toolchain.toml`, `deny.toml`, `prek.toml`, crate manifests, `apps/tvos/Packages/*/Package.swift`, `apps/androidtv/settings.gradle.kts`, `gradle/libs.versions.toml`, existing `crates/*`, `apps/*`, and `.github/workflows/`).
-3. Understand the monorepo layout established by TECH_SPEC §3.2 (`crates/core-{model,parse,xtream,db,fetch,search,pair,api}` + `xtask`, `apps/tvos/` with local SPM packages, `apps/androidtv/` with `app`/`core`/`player`/`feature` modules, `fixtures/`, `tools/`, `docs/adr/`) and keep new code inside the correct module boundary.
+3. Understand the monorepo layout established by TECH_SPEC §3.2 (`crates/core-{model,parse,xtream,db,fetch,search,pair,api}` + `xtask`, `apps/tvos/` with local SPM packages, `apps/androidtv/` with `app`/`core`/`player`/`feature` modules, `fixtures/`, `tools/`) and keep new code inside the correct module boundary.
 4. Check for existing tests that cover related functionality (Rust unit/property/criterion suites per crate; the FFI contract-test harnesses; Swift Testing suites; kotlin.test/Compose suites) — and whether the `fixtures/` corpus already models the input you need.
 5. Reference `docs/TECH_SPEC.md` for architectural context: the layer model (§2), workspace conventions (§3.3), core crate designs (§4), the FFI boundary rules (§5), the shell architectures (§6–7), the engine contract (§8), CI lanes (§9), testing strategy (§10), performance engineering (§11), and security/license engineering (§12). Reference `docs/PRD.md` for product behavior: feature requirements (§6), parity policy (§7), UX/remote mapping and the channel strip (§8), and quality bars (§9).
-6. Treat prior ADRs in `docs/adr/` and the TECH_SPEC §14 decision log as settled — do not relitigate them in code.
+6. Treat the TECH_SPEC §14 decision log as settled — do not relitigate its decisions in code.
 
 ### Step 4: Implement the Task
 
@@ -87,7 +87,7 @@ For each subtask (checklist item):
 
 1. **Plan** the implementation approach before writing code.
 2. **Write** the code with full file paths, following the module layout and naming conventions already established.
-3. **Explain** any non-obvious architectural decisions inline (brief comments where logic isn't self-evident — no unnecessary doc comments). Decisions the plan or spec flags for an ADR get an ADR in `docs/adr/`.
+3. **Explain** any non-obvious architectural decisions inline (brief comments where logic isn't self-evident — no unnecessary doc comments). Decisions the plan or spec flags as significant are captured by amending the relevant doc (PRD/TECH_SPEC §14 decision log).
 4. **Test** — write corresponding tests in the correct tier: Rust unit tests for pure logic (parsers, ranking, selection policy), proptest for parser robustness and the staging-swap fault-injection property, criterion for budgeted paths, migration tests for schema changes; FFI contract tests (both bindings, same fixture, identical results) for boundary changes; Swift Testing / kotlin.test for view-model logic against a fake CoreKit; Compose/simulator UI smoke tests for focus behavior.
 5. **Verify** — run and report the lanes the task touches:
    - Core: `cargo fmt --all -- --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`, `cargo deny check`, REUSE lint
@@ -102,12 +102,12 @@ For each subtask (checklist item):
 - Validate external/untrusted data at system boundaries. Wire deserialization of Xtream responses is defensive (numbers-as-strings, missing fields — tested against scrubbed real-world fixtures); M3U parsing is tolerant (skip-and-count, never fail the import); Spidola's own domain types use "parse, don't validate" constructors so illegal states don't construct.
 - FFI records are flat, owned data; every I/O-touching service method is async; every list-returning method is **paged by contract** (offset/limit or cursor) — no unbounded collections ever cross the boundary.
 - No stringly-typed identifiers or bool flags — newtypes and enums; no `Any`-equivalents leaking (Rust `dyn` only where earned, Swift `any` minimized, Kotlin platform types never trusted as non-null).
-- **No adjacent-ecosystem habits**: no server-side async-SQL patterns in the core (rusqlite is the decided ADR); no UIKit-first or Combine patterns on tvOS; no phone-Material, Leanback, or `TvLazy*` idioms on Android (all three rules files end with an anti-pattern section — treat the "Wrong" column as forbidden).
+- **No adjacent-ecosystem habits**: no server-side async-SQL patterns in the core (rusqlite is the decided approach); no UIKit-first or Combine patterns on tvOS; no phone-Material, Leanback, or `TvLazy*` idioms on Android (all three rules files end with an anti-pattern section — treat the "Wrong" column as forbidden).
 
 #### Project Invariants (violations are defects, not style issues)
 
 - **The core is the single source of truth** for all persisted data; shells cache nothing durable except images and player-engine internals. Business state never accumulates in a shell.
-- **Playback lives in the shells, not the core** (ADR); both platforms implement the shared engine contract (TECH_SPEC §8) with the fixed EngineError taxonomy (SourceUnreachable, Unauthorized, UnsupportedFormat, DecoderFailed, Timeout, Unknown-with-detail). Selection policy: per-channel override → per-source override → platform default. **Automatic fallback is loud, never silent**: only UnsupportedFormat/DecoderFailed trigger the one-button "Try other player" (+ remember-for-channel toggle).
+- **Playback lives in the shells, not the core** (TECH_SPEC §14); both platforms implement the shared engine contract (TECH_SPEC §8) with the fixed EngineError taxonomy (SourceUnreachable, Unauthorized, UnsupportedFormat, DecoderFailed, Timeout, Unknown-with-detail). Selection policy: per-channel override → per-source override → platform default. **Automatic fallback is loud, never silent**: only UnsupportedFormat/DecoderFailed trigger the one-button "Try other player" (+ remember-for-channel toggle).
 - **Secrets never touch SQLite or logs** (TECH_SPEC §12): Xtream credentials and token-bearing headers flow only through the host-secrets callback (Keychain / Keystore-backed prefs); the DB stores opaque keys; secret types redact Debug, zeroize on drop, and never serde-serialize raw values.
 - **Parsers are streaming and memory-bounded**: peak parser memory ≈ one batch regardless of playlist size; bytes flow network → parser → DB batch with no full buffering. This is what makes 50k channels honest on 1 GB devices.
 - **All HTTP lives in `core-fetch`** (reqwest + rustls; no OpenSSL). The one sanctioned exception is shell-side artwork fetching (public logo URLs via platform image pipelines); authed artwork routes through a core resolver.
@@ -153,7 +153,7 @@ After all work is done, provide a concise summary:
 - Phase exit criteria progress (cite the plan's Exit criteria line and the two standing rules)
 
 ## Architectural Decisions
-- Decision 1: rationale (+ ADR reference if the plan/spec called for one)
+- Decision 1: rationale
 ...
 
 ## Deviations from Plan
