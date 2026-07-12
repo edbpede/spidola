@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Pins the Rust toolchain for reproducible builds (TECH_SPEC §9).
+# The Apple tvOS targets (aarch64-apple-tvos + simulator) are Tier 2 on this
+# toolchain; docs/toolchains.md records the nightly build-std fallback.
+[toolchain]
+channel = "1.96.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

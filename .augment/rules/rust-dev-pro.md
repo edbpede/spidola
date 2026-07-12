@@ -868,4 +868,3 @@ fn render(rows: &[&str]) -> String {
 | serde / serde_json | 1.x | — |
 | rand | 0.9.x | — |
 | sqlx / sea-orm / diesel | 0.8.x / 2.x / 2.x | — |
-

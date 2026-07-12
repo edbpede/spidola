@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 # prek.toml — pre-commit hooks configuration
 # Docs: https://prek.j178.dev/configuration/
 #
@@ -54,7 +57,7 @@ hooks = [
 repo = "local"
 hooks = [
   # DCO sign-off — every commit certifies the DCO and grants the App Store exception
-  # (docs/adr/0001-contributor-model.md, CONTRIBUTING.md). Commit with `git commit -s`.
+  # (CONTRIBUTING.md + APPSTORE_EXCEPTION.md; decision logged in TECH_SPEC §14). Commit with `git commit -s`.
   # The GitHub DCO check on PRs is the authoritative gate; this is the fast local mirror.
   { id = "dco-signoff", name = "DCO sign-off (Signed-off-by)", entry = "sh -c 'grep -qE \"^Signed-off-by: .+ <.+@.+>\" \"$1\" || { echo \"Commit message is missing a Signed-off-by line (DCO). Commit with: git commit -s\"; exit 1; }' --", language = "system", stages = ["commit-msg"] },
   # Rust core — crates/ (rustfmt + clippy at deny-warnings; §9 core lane).

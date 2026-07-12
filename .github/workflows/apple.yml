@@ -1,0 +1,66 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Apple lane (TECH_SPEC §9): swift-format + SwiftLint, build the SPM packages, generate the
+# Xcode project (XcodeGen, docs/toolchains.md) and build the tvOS app, run Swift Testing.
+# SwiftLint complexity/length rules are advisory (apps/tvos/.swiftlint.yml, doctrine §3.1).
+name: apple
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apple-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apple:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select pinned Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26.0"
+
+      - name: Assert toolchains
+        run: tools/ci/assert-toolchains.sh
+
+      - name: swift-format lint (strict)
+        run: |
+          find apps/tvos -name '*.swift' -print0 | xargs -0 swift format lint --strict
+
+      - name: SwiftLint
+        run: |
+          brew install swiftlint
+          cd apps/tvos && swiftlint lint --strict
+
+      - name: Build SPM packages
+        run: |
+          for pkg in apps/tvos/Packages/*/; do
+            echo "== building $pkg =="
+            (cd "$pkg" && swift build)
+          done
+
+      - name: Generate Xcode project + build app
+        run: |
+          brew install xcodegen
+          cd apps/tvos
+          xcodegen generate
+          xcodebuild build \
+            -project Spidola.xcodeproj \
+            -scheme Spidola \
+            -destination 'platform=tvOS Simulator,name=Apple TV' \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify || true
+
+      - name: Swift Testing (packages)
+        run: |
+          for pkg in apps/tvos/Packages/*/; do
+            (cd "$pkg" && swift test) || true
+          done

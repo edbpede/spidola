@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Behavioural thresholds the `[lints]` table cannot express. MSRV is read from the
+# workspace `rust-version` (1.96.1). Thresholds are generous on purpose: complexity
+# lints are review prompts, not gates (modularity doctrine, TECH_SPEC §3.1).
+cognitive-complexity-threshold = 30
+too-many-arguments-threshold = 10
+
+# Framework / product / crate proper nouns that `clippy::doc_markdown` (pedantic) would
+# otherwise demand be backticked. First-party domain types (SourceId, the *Service names,
+# …) are NOT listed here — those are fenced in prose. `..` keeps clippy's built-in defaults.
+doc-valid-idents = [
+  "..",
+  "TECH_SPEC",
+  "SQLite",
+  "UniFFI",
+  "XCFramework",
+  "rusqlite_migration",
+  "xtask",
+  "Xtream",
+  "XMLTV",
+  "MPVKit",
+  "ExoPlayer",
+  "AVPlayer",
+  "Media3",
+  "libmpv",
+  "OpenSSL",
+]

@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# REUSE annotations (spec 3.3) for seed files that do not carry an inline SPDX header:
+# prose/docs, generated lockfiles, and committed binary tooling artifacts. Everything
+# else declares its license inline. Verified by `reuse lint` in the core CI lane.
+version = 1
+
+[[annotations]]
+path = ["LICENSE", "Cargo.lock"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Spidola contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# All Markdown prose (docs/, CONTRIBUTING.md, APPSTORE_EXCEPTION.md, .augment/rules/,
+# fixtures provenance READMEs) is project documentation under the project license.
+[[annotations]]
+path = ["*.md", "**/*.md"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Spidola contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# The Gradle wrapper is third-party tooling (Apache-2.0). The gradlew/gradlew.bat scripts
+# already carry inline SPDX headers; the binary jar and the generated properties file cannot.
+[[annotations]]
+path = [
+  "apps/androidtv/gradle/wrapper/gradle-wrapper.jar",
+  "apps/androidtv/gradle/wrapper/gradle-wrapper.properties",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Gradle, Inc."
+SPDX-License-Identifier = "Apache-2.0"

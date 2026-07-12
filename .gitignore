@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # Spidola — repository ignore rules
 # Stack: Rust core (crates/) · Swift/tvOS (apps/tvos/) · Kotlin/Android TV (apps/androidtv/)
 #

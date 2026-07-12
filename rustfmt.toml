@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Stable rustfmt only (rust-dev-pro.md): keep this minimal and let defaults rule.
+edition = "2024"
+max_width = 100
