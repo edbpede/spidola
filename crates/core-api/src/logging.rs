@@ -90,15 +90,42 @@ pub trait LogSink: Send + Sync {
     fn log(&self, record: LogRecord);
 }
 
-/// The installed host sink, set once the core is initialized. Read on every (already
+/// The installed host sink, owned by the live [`Core`] while it exists. Read on every (already
 /// level-filtered) event, so an absent sink or a disabled level costs a single lock read.
+///
+/// The slot holds at most one owner: `install_sink` refuses a second install and [`clear_sink`]
+/// releases it on `Core` drop. A single process-global [`SinkLayer`] routes *every* event to
+/// whatever is here, so silently replacing a live owner would redirect the first `Core`'s
+/// still-running events to the second host's callback — hence the guard.
 static SINK: RwLock<Option<Arc<dyn LogSink>>> = RwLock::new(None);
 
-/// Installs (or replaces) the host log sink. Called once from the core constructor after the
-/// pipeline is initialized; the [`SinkLayer`] added at init forwards subsequent events to it.
-pub fn install_sink(sink: Arc<dyn LogSink>) {
+/// The host-sink slot is already owned by a live [`Core`]. Surfaced instead of clobbering it,
+/// so a second in-process `Core` cannot silently redirect the first's events to its own callback.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[error("a host log sink is already installed by a live Core")]
+pub struct SinkInUse;
+
+/// Installs the host log sink. Called once from the core constructor after the pipeline is
+/// initialized; the [`SinkLayer`] added at init forwards subsequent events to it.
+///
+/// # Errors
+/// Returns [`SinkInUse`] if a sink is already installed (a live `Core` owns the slot). The slot
+/// is released by [`clear_sink`] when that `Core` drops, so a `Core` constructed afterward
+/// installs cleanly.
+pub fn install_sink(sink: Arc<dyn LogSink>) -> Result<(), SinkInUse> {
     let mut guard = SINK.write().unwrap_or_else(PoisonError::into_inner);
+    if guard.is_some() {
+        return Err(SinkInUse);
+    }
     *guard = Some(sink);
+    Ok(())
+}
+
+/// Releases the host-sink slot. Called from `Core`'s `Drop` so a torn-down host's callback is not
+/// retained and a subsequently constructed `Core` can install its own sink.
+pub fn clear_sink() {
+    let mut guard = SINK.write().unwrap_or_else(PoisonError::into_inner);
+    *guard = None;
 }
 
 /// A `tracing` layer that forwards each event to the installed host [`LogSink`].

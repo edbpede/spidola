@@ -140,6 +140,9 @@ fn run_staging(
     let span = info_span!(target: targets::IMPORT, "import", source = source_id.value());
     let _entered = span.enter();
 
+    // Takes the single writer connection and holds it for this whole function — across the
+    // streaming `rx.blocking_recv()` loop below — so all other writer ops block for the
+    // download's duration. Deliberate; see `Db::begin_refresh` for the tradeoff and memory bound.
     let mut refresh = db.begin_refresh(source_id)?;
     let mut parser = M3uParser::new();
     let mut sink = ProgressSink {

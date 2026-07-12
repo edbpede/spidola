@@ -5,7 +5,8 @@
 //! (TECH_SPEC §4.6). Xtream add is stubbed until Phase 6; this phase covers M3U-by-URL, the
 //! flow the boundary exit criteria exercise.
 
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, PoisonError};
 
 use core_db::{Db, repo};
 use core_model::ids::SourceId;
@@ -23,12 +24,19 @@ use crate::runtime::CoreRuntime;
 pub struct SourceService {
     rt: Arc<CoreRuntime>,
     db: Arc<Db>,
+    /// Cancellation tokens for in-flight refreshes, keyed by source id, so [`Self::delete`]
+    /// can abort a running refresh for a source it is about to remove.
+    refreshes: Arc<Mutex<HashMap<i64, CancelToken>>>,
 }
 
 impl SourceService {
     /// Builds the service over shared runtime and database handles.
     pub(crate) fn new(rt: Arc<CoreRuntime>, db: Arc<Db>) -> Arc<Self> {
-        Arc::new(Self { rt, db })
+        Arc::new(Self {
+            rt,
+            db,
+            refreshes: Arc::new(Mutex::new(HashMap::new())),
+        })
     }
 }
 
@@ -136,9 +144,24 @@ impl SourceService {
 
     /// Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history.
     ///
+    /// Cancels any in-flight refresh for this source first, so the detached task aborts at its
+    /// next batch boundary (releasing the writer and reporting `Cancelled`) instead of fetching a
+    /// catalog for a source that is about to vanish and then failing under the writer.
+    ///
     /// # Errors
     /// Returns [`ApiError::StorageCorrupt`] on a write failure.
     pub async fn delete(&self, id: i64) -> Result<(), ApiError> {
+        // Signal cancellation before contending for the writer: whether the delete or the
+        // refresh's staging transaction wins the writer mutex, the refresh observes the flag at
+        // its next boundary and rolls back cleanly rather than surfacing a spurious failure.
+        let active = self
+            .refreshes
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(&id);
+        if let Some(token) = active {
+            token.cancel();
+        }
         let db = Arc::clone(&self.db);
         self.rt
             .run_blocking(move || {
@@ -158,8 +181,19 @@ impl SourceService {
         let db = Arc::clone(&self.db);
         let listener: Arc<dyn ImportListener> = Arc::from(listener);
         let task_token = token.clone();
+        // Register so a concurrent `delete(id)` can cancel this refresh.
+        self.refreshes
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(id, token.clone());
+        let refreshes = Arc::clone(&self.refreshes);
         self.rt.spawn(async move {
             run_refresh(db, SourceId::new(id), task_token, listener).await;
+            // Deregister once finished so the map does not accumulate stale tokens.
+            refreshes
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .remove(&id);
         });
         Arc::new(TaskHandle::new(token))
     }

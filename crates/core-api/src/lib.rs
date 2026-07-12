@@ -93,8 +93,9 @@ impl Core {
     ///
     /// # Errors
     /// Returns [`ApiError::Internal`] if the logging pipeline cannot be installed (a competing
-    /// `tracing` subscriber already exists) or the runtime cannot start, and
-    /// [`ApiError::StorageCorrupt`] if the database cannot be opened or migrated.
+    /// `tracing` subscriber already exists, or a live `Core` already owns the host-sink slot — a
+    /// `Core` is single-per-process), or the runtime cannot start, and [`ApiError::StorageCorrupt`]
+    /// if the database cannot be opened or migrated.
     #[uniffi::constructor]
     pub fn new(
         config: CoreConfig,
@@ -106,10 +107,13 @@ impl Core {
             ring_capacity: logging::DEFAULT_RING_CAPACITY,
         })
         .map_err(|_| ApiError::Internal)?;
-        logging::install_sink(Arc::from(log_sink));
 
         let rt = Arc::new(CoreRuntime::new()?);
         let db = Db::open(Path::new(&config.db_path)).map_err(ApiError::from)?;
+        // Claim the process-global host-sink slot last: it fails if a live `Core` already owns it,
+        // and installing only after the fallible steps above means a transient runtime/db failure
+        // never leaves the slot occupied (which would then block every future construction).
+        logging::install_sink(Arc::from(log_sink)).map_err(|_| ApiError::Internal)?;
         tracing::info!(target: targets::DB, path = %config.db_path, "core initialized");
         Ok(Arc::new(Self {
             rt,
@@ -178,5 +182,15 @@ impl Core {
     #[must_use]
     pub fn export_logs(&self) -> Vec<String> {
         self.log.export_logs()
+    }
+}
+
+impl Drop for Core {
+    /// Releases the process-global host-sink slot this `Core` claimed in [`Core::new`], so its
+    /// callback into a now-torn-down host is not retained and a subsequently constructed `Core`
+    /// installs its own sink cleanly. Sound because [`Core::new`] refuses a second live `Core`,
+    /// so the slot this drop clears is always the one this `Core` installed.
+    fn drop(&mut self) {
+        logging::clear_sink();
     }
 }

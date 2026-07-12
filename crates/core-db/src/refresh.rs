@@ -89,6 +89,16 @@ CREATE TEMP TABLE _refresh_staging (
 impl Db {
     /// Opens a staging-and-swap refresh for `source`.
     ///
+    /// The returned [`Refresh`] holds the single writer connection (pool.rs) for its whole
+    /// lifetime — from here through `commit`/drop. A caller that streams slow work in between
+    /// (the import pipeline pulls an HTTP body batch-by-batch under one `Refresh`) keeps the
+    /// writer for that entire span, so every other writer op (add/rename/enable/delete/favorite/
+    /// setting, for any source) blocks until it finishes. That is the deliberate cost of the
+    /// single-writer + one-`BEGIN IMMEDIATE` + connection-local TEMP staging model, which bounds
+    /// peak memory to one batch and makes the swap atomic (§4.4). Decoupling would mean staging
+    /// off the writer connection (e.g. a shared temp-file staging DB) and taking the writer only
+    /// for the final swap.
+    ///
     /// # Errors
     /// Returns [`DbError`](crate::error::DbError) if the transaction cannot be opened.
     pub fn begin_refresh(&self, source: SourceId) -> DbResult<Refresh<'_>> {
