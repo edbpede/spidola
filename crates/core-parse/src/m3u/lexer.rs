@@ -75,10 +75,15 @@ mod tests {
         );
         assert_eq!(classify("#EXTGRP: News "), Line::Group("News"));
         assert_eq!(classify("#EXT-X-VERSION:3"), Line::OtherDirective);
+        // REUSE-IgnoreStart
+        // The literal below is test data, not a real SPDX tag; it confirms that a
+        // SPDX-shaped comment line is classified as an ignorable directive like any
+        // other `#`-prefixed line.
         assert_eq!(
             classify("# SPDX-License-Identifier: X"),
             Line::OtherDirective
         );
+        // REUSE-IgnoreEnd
         assert_eq!(classify("   "), Line::Blank);
         assert_eq!(classify("http://a/b.ts"), Line::Url("http://a/b.ts"));
     }
