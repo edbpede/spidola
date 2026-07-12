@@ -21,11 +21,11 @@ Two standing rules apply to **every** task in this plan and are not repeated per
   - [ ] Add `.augment/rules/` containing the three coding-standard documents
   - [ ] Add `LICENSES/` (AGPL-3.0-or-later plus dependency license texts) and REUSE configuration
   - [ ] Add SPDX headers to all seed files; wire the REUSE lint
-  - [ ] Commit `docs/` with PRD, TECH_SPEC, this plan, and an empty `adr/` with the seed ADRs from TECH_SPEC §14
+  - [ ] Commit `docs/` with PRD, TECH_SPEC, and this plan
 - [ ] **Governance (launch-blocking, PRD §10)**
   - [x] Decide and document the contributor model (recommendation: DCO + explicit App Store distribution grant)
   - [x] Add CONTRIBUTING with the modularity doctrine summary and the two standing rules above
-  - [x] Run the "Spidola" trademark / store-name availability check (original name "Orbita" failed and was replaced — ADR-0002; App Store Connect reservation remains the definitive test, tracked in Phase 7)
+  - [x] Run the "Spidola" trademark / store-name availability check (original name "Orbita" failed and was replaced; App Store Connect reservation remains the definitive test, tracked in Phase 7)
 - [ ] **Toolchain pins**
   - [ ] `rust-toolchain.toml` pinned to 1.96.1; workspace manifest with resolver 3, edition 2024, `workspace.lints` per rules file
   - [ ] `docs/toolchains.md` recording the Xcode/Swift (6.3.x) and Kotlin (2.4.0) / AGP / KSP2 / Gradle pins; build scripts assert them
@@ -42,7 +42,7 @@ Two standing rules apply to **every** task in this plan and are not repeated per
   - [ ] Apple lane: Xcode build, swift-format, SwiftLint, Swift Testing
   - [ ] Advisory complexity/length lints configured at **warn** per the modularity doctrine (never CI-failing alone)
 
-**Exit criteria:** empty-but-real projects build green in all three lanes; REUSE and cargo-deny pass; `prek run --all-files` passes on the seed tree; governance decisions recorded as ADRs.
+**Exit criteria:** empty-but-real projects build green in all three lanes; REUSE and cargo-deny pass; `prek run --all-files` passes on the seed tree; governance decisions documented.
 
 ---
 
@@ -240,8 +240,8 @@ Two standing rules apply to **every** task in this plan and are not repeated per
 
 - [ ] **EPG timeline grid** — virtualized two-axis grid within TV performance budgets
 - [ ] **Recording (Android only, PRD §6.8)** — remux-to-storage while watching; storage management UX; explicit non-support messaging on tvOS
-- [ ] **Restreaming decision (ADR)** — build (reusing the pairing server posture + AGPL §13 link) or defer to dedicated tools
-- [ ] **Sync decision (ADR)** — stay with export/import or design a self-hostable sync target
+- [ ] **Restreaming decision** — build (reusing the pairing server posture + AGPL §13 link) or defer to dedicated tools
+- [ ] **Sync decision** — stay with export/import or design a self-hostable sync target
 - [ ] **Platform expansion review** — assess phone/tablet ports now that core + contract are proven
 
-**Exit criteria:** each item resolved by shipped feature or recorded ADR; no silent backlog.
+**Exit criteria:** each item resolved by shipped feature or documented decision; no silent backlog.

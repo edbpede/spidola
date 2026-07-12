@@ -32,7 +32,7 @@
 | CI | GitHub Actions macOS runners | GitHub Actions Linux runners | clippy, rustfmt, cargo-deny, tests |
 | License | AGPL-3.0-or-later app code; LGPL media libs | AGPL-3.0-or-later app code; LGPL media libs | AGPL-3.0-or-later; REUSE/SPDX throughout |
 
-Language-level coding standards are **normative, not advisory**, and live in the repository at `.augment/rules/rust-dev-pro.md`, `.augment/rules/swift-dev-pro.md`, and `.augment/rules/kotlin-dev-pro.md`. This specification defers to them for idiom-level decisions (what this document calls "the Rust/Swift/Kotlin guidelines"); where this document and a rules file conflict, the conflict is a bug in one of them, resolved by ADR.
+Language-level coding standards are **normative, not advisory**, and live in the repository at `.augment/rules/rust-dev-pro.md`, `.augment/rules/swift-dev-pro.md`, and `.augment/rules/kotlin-dev-pro.md`. This specification defers to them for idiom-level decisions (what this document calls "the Rust/Swift/Kotlin guidelines"); where this document and a rules file conflict, the conflict is a bug in one of them, resolved by amending the offending document.
 
 ## 2. Architecture overview
 
@@ -69,8 +69,7 @@ spidola/
 │   ├── PRD.md
 │   ├── TECH_SPEC.md
 │   ├── IMPLEMENTATION_PLAN.md
-│   ├── toolchains.md              # pinned Xcode / SDK / NDK versions
-│   └── adr/                       # one file per architecture decision
+│   └── toolchains.md              # pinned Xcode / SDK / NDK versions
 ├── fixtures/
 │   ├── m3u/                       # golden playlist corpus, provenance-noted
 │   ├── xmltv/
@@ -278,9 +277,9 @@ License engineering: every file carries an SPDX header (AGPL-3.0-or-later for pr
 
 ## 13. Versioning and release
 
-Semantic versioning on the app; the core carries an independent schema version (DB) and boundary version (FFI) checked in the startup handshake. DB migrations are forward-only; a downgraded app refusing a newer schema fails with a clear message rather than guessing. Release cadence follows the PRD milestones, with each release documented by a changelog generated from conventional commits. Every architecture-level decision made or changed after this document is recorded as an ADR in `docs/adr/`; this document is amended by PR like any code.
+Semantic versioning on the app; the core carries an independent schema version (DB) and boundary version (FFI) checked in the startup handshake. DB migrations are forward-only; a downgraded app refusing a newer schema fails with a clear message rather than guessing. Release cadence follows the PRD milestones, with each release documented by a changelog generated from conventional commits. Architecture-level decisions made or changed after this document are captured by amending this document by PR like any code.
 
-## 14. Appendix — decision log (initial ADR seeds)
+## 14. Appendix — decision log
 
 **Rust core with native shells over any cross-platform UI framework.** Flutter lacks tvOS support entirely and is second-class on Android TV; Kotlin Multiplatform would share logic but forfeit the Rust engine the project explicitly wants. UniFFI gives both platforms idiomatic bindings from one definition. Consequence accepted: two UIs to maintain — mitigated by the shared engine contract and FFI contract tests.
 
