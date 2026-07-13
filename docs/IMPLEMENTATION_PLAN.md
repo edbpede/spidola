@@ -123,11 +123,11 @@ Two standing rules apply to **every** task in this plan and are not repeated per
     - Post-M0 production hardening: migrate the composition root to Hilt/KSP2 as the dependency graph grows
   - [x] corekit: UniFFI wrapper, coroutine/Flow adapters with end-to-end cancellation, Keystore-backed secrets callback, tagged logcat sink
   - [x] feature:browse rendering a fixture channel list using tv-material components, foundation lazy lists, focus-restorer, pivot scrolling
-- [ ] **CI completion**
+- [x] **CI completion**
   - [x] Emulator D-pad traversal smoke test (Android)
   - [x] Simulator unit/state + D-pad traversal smoke tests (tvOS)
   - [x] Both apps pass their local virtual-device runtime checklist (Android TV emulator + tvOS Simulator)
-  - [ ] Updated Android native-build + emulator workflow passes on GitHub Actions
+  - [x] Updated Android native-build + emulator workflow passes on GitHub Actions
   - Physical Android TV and Apple TV hardware runs are deferred and non-blocking for M0 until
     suitable devices are available; retain them as later validation for hardware-specific behavior
 

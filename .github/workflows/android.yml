@@ -82,25 +82,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Android TV emulator smoke test
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 36
-          target: android-tv
-          arch: x86_64
-          profile: tv_1080p
-          working-directory: apps/androidtv
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          disable-animations: true
-          script: |
-            adb logcat -c
-            set +e
-            ./gradlew :app:connectedDebugAndroidTest
-            status=$?
-            set -e
-            mkdir -p "$GITHUB_WORKSPACE/target/androidtv-m0"
-            adb logcat -d -v threadtime > "$GITHUB_WORKSPACE/target/androidtv-m0/logcat.txt"
-            adb exec-out screencap -p > "$GITHUB_WORKSPACE/target/androidtv-m0/final-screen.png"
-            exit "$status"
+        run: '"$GITHUB_WORKSPACE/tools/ci/run-android-tv-emulator-ci.sh"'
 
       - name: Retain Android M0 evidence
         if: always()
