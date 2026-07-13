@@ -18,7 +18,11 @@ let package = Package(
     .target(
       name: "FeatureBrowse",
       dependencies: ["CoreKit", "DesignSystem"]
-    )
+    ),
+    .testTarget(
+      name: "FeatureBrowseTests",
+      dependencies: ["FeatureBrowse", "CoreKit"]
+    ),
   ],
   swiftLanguageModes: [.v6]
 )

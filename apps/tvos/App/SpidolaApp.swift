@@ -9,11 +9,21 @@ import SwiftUI
 @main
 struct SpidolaApp: App {
   @State private var container = AppContainer()
+  @State private var isReady = false
 
   var body: some Scene {
     WindowGroup {
-      RootView(catalog: container.catalog)
-        .task { await container.seedFixtureIfNeeded() }
+      Group {
+        if isReady {
+          RootView(catalog: container.catalog)
+        } else {
+          ProgressView("Preparing fixture catalog…")
+        }
+      }
+      .task {
+        await container.seedFixtureIfNeeded()
+        isReady = true
+      }
     }
   }
 }

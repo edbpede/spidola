@@ -28,8 +28,20 @@ final class AppContainer {
         logSink: OSLogSink()
       )
       let handshake = core.handshake()
+      let coreVersion = handshake.coreVersion
+      let schemaVersion = handshake.schemaVersion
+      let boundaryVersion = handshake.boundaryVersion
+      guard
+        coreVersion.isEmpty == false,
+        schemaVersion == Self.supportedSchemaVersion,
+        boundaryVersion == Self.supportedBoundaryVersion
+      else {
+        fatalError(
+          "Incompatible core: \(coreVersion), schema \(schemaVersion), boundary \(boundaryVersion)"
+        )
+      }
       logger.info(
-        "core \(handshake.coreVersion, privacy: .public), schema \(handshake.schemaVersion), boundary \(handshake.boundaryVersion)"
+        "core \(coreVersion, privacy: .public), schema \(schemaVersion), boundary \(boundaryVersion)"
       )
       self.core = core
     } catch {
@@ -40,9 +52,16 @@ final class AppContainer {
 
   func seedFixtureIfNeeded() async {
     do {
-      guard try await core.sources().isEmpty else { return }
+      let sources = try await core.sources()
+      if let fixture = sources.first(where: { $0.name == Self.fixtureSourceName }) {
+        let page = try await core.page(sourceId: fixture.id, offset: 0, limit: 1)
+        if page.total > 0 { return }
+        try await core.deleteSource(id: fixture.id)
+      } else if sources.isEmpty == false {
+        return
+      }
       let url = serveFixtureOnce(Self.fixturePlaylist())
-      let source = try await core.addM3uUrl(name: "Fixture Catalog", url: url)
+      let source = try await core.addM3uUrl(name: Self.fixtureSourceName, url: url)
       for await event in core.importSource(id: source.id) {
         switch event {
         case .progress:
@@ -51,6 +70,7 @@ final class AppContainer {
           logger.info("seeded \(outcome.inserted) channels")
         case .failed(let error):
           logger.error("fixture import failed: \(String(describing: error), privacy: .public)")
+          try? await core.deleteSource(id: source.id)
         }
       }
     } catch {
@@ -68,6 +88,9 @@ final class AppContainer {
   }
 
   private static let fixtureChannelCount = 24
+  private static let fixtureSourceName = "Fixture Catalog"
+  private static let supportedBoundaryVersion: UInt32 = 1
+  private static let supportedSchemaVersion: UInt32 = 1
 }
 
 /// Serves `body` once over HTTP/1.1 from an ephemeral `127.0.0.1` port and returns its URL. Same
@@ -102,7 +125,8 @@ private func serveFixtureOnce(_ body: [UInt8]) -> String {
     var request = [UInt8](repeating: 0, count: 2048)
     _ = recv(client, &request, request.count, 0)
     let header =
-      "HTTP/1.1 200 OK\r\nContent-Type: application/x-mpegurl\r\nContent-Length: \(body.count)\r\nConnection: close\r\n\r\n"
+      "HTTP/1.1 200 OK\r\nContent-Type: application/x-mpegurl\r\n"
+      + "Content-Length: \(body.count)\r\nConnection: close\r\n\r\n"
     let headerBytes = Array(header.utf8)
     _ = headerBytes.withUnsafeBytes { send(client, $0.baseAddress, headerBytes.count, 0) }
     _ = body.withUnsafeBytes { send(client, $0.baseAddress, body.count, 0) }

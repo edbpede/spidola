@@ -3,380 +3,278 @@ SPDX-FileCopyrightText: 2026 Spidola contributors
 SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
-# Handoff — bring the tvOS lane to green (Milestone M0)
+# Handoff — tvOS M0 walking skeleton
 
-Audience: an AI agent with **computer-use control of this Mac** (GUI + terminal). Goal: take the
-tvOS shell from "written but never compiled" to **building, linting, testing, and running** on the
-tvOS Simulator, then (optionally) on a real Apple TV — matching the Apple CI lane in
-`.github/workflows/apple.yml`.
+This handoff records the verified state of the tvOS lane on branch
+`feat/phase-3-walking-skeleton-m0` as of 2026-07-13. The lane is no longer “written but never
+compiled”: the Rust core is wired into Swift, every package and the app build for tvOS, the
+simulator test scheme passes, and the fixture/focus flow has been observed.
 
-This is the companion to PR #5 (`feat/phase-3-walking-skeleton-m0`). The **Android** lane in that PR
-is already implemented and verified. The **tvOS** lane is faithful groundwork: every Swift file
-passes `swift format --strict`, but nothing has been compiled because the machine that produced it
-had **no Xcode / tvOS SDK**. Expect to make small fixes; this document tells you exactly where.
+The only M0 validation intentionally left open is a run on real Apple TV hardware. GitHub-hosted
+CI, commit, and push also remain for the next operator.
 
----
+## Verified environment
 
-## 0. Current state — read this first
+- Repo: `/Users/dkp/Documents/GitHub/edbpede/spidola`
+- Xcode: 26.6, build `17F113`
+- Swift: 6.3.3
+- Rust: 1.96.1
+- tvOS Simulator runtime: 26.5
+- Deployment target: tvOS 18.0
+- Local simulator used: Apple TV 4K (3rd generation)
+- Supporting tools: XcodeGen 2.45.4, xcbeautify 3.2.1, SwiftLint 0.65.0
 
-- Repo root: `/Users/dkp/Documents/GitHub/edbpede/spidola`. Work on branch
-  `feat/phase-3-walking-skeleton-m0` (already pushed; PR #5 open against `main`).
-- The tvOS source you must get compiling (all new, unverified):
-  - `apps/tvos/Packages/DesignSystem/Sources/DesignSystem/` — `SpidolaPalette`, `SpidolaType`,
-    `SpidolaSpacing`, `SpidolaFocusRing`, `SpidolaTheme`.
-  - `apps/tvos/Packages/CoreKit/Sources/CoreKit/` — `SpidolaCore`, `KeychainSecretStore`,
-    `OSLogSink`. These `import core_api` (the generated UniFFI Swift module) — **this import does
-    not resolve yet** (see Step 3 + Step 4, the critical wiring).
-  - `apps/tvos/Packages/FeatureBrowse/Sources/FeatureBrowse/` — `BrowseUiState`, `BrowseModel`,
-    `BrowseView`. `FeatureBrowse/Package.swift` was updated to depend on `CoreKit` + `DesignSystem`.
-  - `apps/tvos/App/` — `SpidolaApp`, `RootView`, `AppContainer` (composition root + fixture seeder).
-- The generated bindings already exist and are committed at
-  `apps/tvos/Packages/CoreKit/Generated/` (`core_api.swift`, `core_apiFFI.h`,
-  `core_apiFFI.modulemap`). **Do not hand-edit them** — they are build artifacts.
-- Pinned toolchains live in `docs/toolchains.md`: **Xcode 26.6.x (Swift 6.3.3)**, tvOS deployment
-  target **18.0**, **Rust 1.96.1**. `tools/ci/assert-toolchains.sh` enforces them.
-
-> The single most important task is **Step 4**: wire the compiled Rust core (an XCFramework) and the
-> generated Swift bindings into the `CoreKit` Swift package so `import core_api` resolves. Until that
-> is done, nothing that touches the core compiles.
-
----
-
-## 1. Install and select Xcode 26.6 (pinned)
-
-Prefer the `xcodes` CLI (scriptable, exact-version). GUI/App Store also works but is slower.
+Check the pins before doing anything else:
 
 ```sh
-# Homebrew must exist; install it first if `which brew` is empty:
-#   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-brew install xcodesorg/made/xcodes   # the community-standard Xcode installer CLI
-brew install aria2                   # faster, more reliable Apple downloads (recommended by xcodes)
-
-xcodes update
-xcodes install 26.6                  # downloads + installs to /Applications; will prompt for Apple ID
-xcodes select 26.6                   # make it active
-sudo xcodebuild -license accept      # accept the license non-interactively
-xcode-select -p                      # sanity: should point at .../Xcode-26.6.app/Contents/Developer
-xcodebuild -version                  # sanity: Xcode 26.6, Build ...; Swift should report 6.3.3
+cd /Users/dkp/Documents/GitHub/edbpede/spidola
+tools/ci/assert-toolchains.sh
+xcrun simctl list runtimes | rg tvOS
+xcrun simctl list devices available | rg 'Apple TV'
 ```
 
-If `xcodes install` fails on Apple ID / 2FA over CLI, fall back to the **Mac App Store** (GUI):
-open App Store, search "Xcode", install, then run `sudo xcode-select -s /Applications/Xcode.app`
-and `sudo xcodebuild -license accept`.
+If an Xcode operation requires privilege on the current machine, use `sudo -n`; never request or
+handle the user's password.
 
-### Install the tvOS platform + Simulator runtime
+## What is now wired
 
-Xcode 26 does not bundle every platform by default. Install the tvOS SDK + a Simulator runtime:
+`apps/tvos/Packages/CoreKit/Package.swift` contains:
 
-```sh
-# Preferred (Xcode 16+ / 26): downloads the current tvOS platform for this Xcode.
-xcodebuild -downloadPlatform tvOS
+- a local `CoreFFI` binary target backed by `CoreFFI.xcframework`;
+- a `core_api` target that compiles `Generated/core_api.swift` and depends on `CoreFFI`;
+- a `CoreKit` target dependency on `core_api`.
 
-# If the above stalls on a 26.x runtime, use xcodes (list, then install the matching tvOS):
-xcodes runtimes                      # find the exact "tvOS 26.x" string
-xcodes runtimes install "tvOS 26.x"  # substitute the real version from the list
+The generated header and module map are excluded from the Swift source target because the
+XCFramework already publishes the `core_apiFFI` Clang module. Do not hand-edit anything under
+`apps/tvos/Packages/CoreKit/Generated/`.
 
-# Verify a tvOS Simulator runtime + a usable device exist:
-xcrun simctl list runtimes | grep -i tvos
-xcrun simctl list devicetypes | grep -i "Apple TV"
+The staged framework and generated Xcode project are build products and are ignored:
+
+```text
+apps/tvos/Packages/CoreKit/CoreFFI.xcframework/
+apps/tvos/Spidola.xcodeproj/
 ```
 
-Create/boot an "Apple TV" simulator if none is listed:
+The Rust packager sets `TVOS_DEPLOYMENT_TARGET=18.0` for both device and simulator archives. This
+prevents a framework rebuilt with the tvOS 26.5 SDK from acquiring a 26.5 minimum OS version.
 
-```sh
-xcrun simctl create "Apple TV" "com.apple.CoreSimulator.SimDeviceType.Apple-TV-4K-3rd-generation-1080p" "com.apple.CoreSimulator.SimRuntime.tvOS-26-x"
-open -a Simulator
-```
-
----
-
-## 2. Install the supporting CLI tools
-
-```sh
-brew install swiftlint xcodegen xcbeautify
-swiftlint version        # sanity
-xcodegen --version       # sanity
-swift format --version   # bundled with the toolchain; should be ~6.3.x
-```
-
-`swift format` (SwiftSyntax-based) and `swiftlint` (SourceKit-based) are both required by CI.
-`swiftlint` needs a real Xcode selected — that is why it could not run on the previous machine.
-
----
-
-## 3. Build the Rust core into the tvOS XCFramework
-
-The Swift `CoreKit` links the Rust core through an XCFramework produced by `xtask`. Rust is pinned by
-`rust-toolchain.toml`; `rustup` installs 1.96.1 automatically on first `cargo` use.
+## Rebuild and stage the XCFramework
 
 ```sh
 cd /Users/dkp/Documents/GitHub/edbpede/spidola
 
-# Confirm the committed bindings still match the Rust definitions (no drift):
 cargo run -p xtask -- check-bindings
-
-# tvOS Rust targets are Tier 2 (prebuilt std ships with the pinned stable toolchain — no build-std):
 rustup target add aarch64-apple-tvos aarch64-apple-tvos-sim
-
-# Build device + simulator static libs and assemble the framework:
 cargo run -p xtask -- package-xcframework
-# -> produces target/xcframework/CoreFFI.xcframework
-ls -la target/xcframework/CoreFFI.xcframework
+
+rm -rf apps/tvos/Packages/CoreKit/CoreFFI.xcframework
+cp -R target/xcframework/CoreFFI.xcframework \
+  apps/tvos/Packages/CoreKit/CoreFFI.xcframework
 ```
 
-`CoreFFI.xcframework` bundles `core_apiFFI` (the C FFI, exposed as a Clang module via its
-`module.modulemap`). The generated `Generated/core_api.swift` is the Swift layer that `import`s
-`core_apiFFI`.
+The remove-before-copy is intentional: plain `cp -R` is not idempotent when the destination
+already exists.
 
----
+Expected slices:
 
-## 4. CRITICAL — wire the XCFramework + generated bindings into `CoreKit`
+- `tvos-arm64` for device;
+- `tvos-arm64-simulator` for Apple silicon Simulator;
+- Clang module `core_apiFFI` in both slices.
 
-Today `apps/tvos/Packages/CoreKit/Package.swift` compiles only `Sources/CoreKit` and has **no
-reference to the XCFramework or the generated Swift**. That was fine when `CoreKit` was an empty
-stub; now that `SpidolaCore.swift` does `import core_api`, the package will not build until you add:
+## Build the Swift packages correctly
 
-1. a **binary target** for `CoreFFI.xcframework` (provides the `core_apiFFI` C module), and
-2. a **`core_api`** Swift target that compiles `Generated/core_api.swift` and depends on `CoreFFI`,
-3. and make `CoreKit` depend on `core_api`.
-
-### Recommended layout
-
-Copy the framework next to the package (keeps `Package.swift` paths clean; git-ignore the copy):
+Plain `swift build` targets the macOS host and is not a valid tvOS verification command for these
+packages. Build with the tvOS Simulator SDK and triple:
 
 ```sh
-cp -R target/xcframework/CoreFFI.xcframework apps/tvos/Packages/CoreKit/CoreFFI.xcframework
-printf '\n# Local UniFFI framework (built by `cargo xtask package-xcframework`)\napps/tvos/Packages/CoreKit/CoreFFI.xcframework/\n' >> .gitignore
-```
+cd /Users/dkp/Documents/GitHub/edbpede/spidola
+sdk="$(xcrun --sdk appletvsimulator --show-sdk-path)"
 
-Then set `apps/tvos/Packages/CoreKit/Package.swift` to (adjust names only if the build complains):
-
-```swift
-// swift-tools-version: 6.3
-// SPDX-FileCopyrightText: 2026 Spidola contributors
-// SPDX-License-Identifier: AGPL-3.0-or-later
-import PackageDescription
-
-let package = Package(
-  name: "CoreKit",
-  platforms: [.tvOS(.v18)],
-  products: [
-    .library(name: "CoreKit", targets: ["CoreKit"])
-  ],
-  targets: [
-    .binaryTarget(name: "CoreFFI", path: "CoreFFI.xcframework"),
-    .target(
-      name: "core_api",
-      dependencies: ["CoreFFI"],
-      path: "Generated",
-      // Compile only the generated Swift; the header + modulemap ship inside the XCFramework.
-      sources: ["core_api.swift"]
-    ),
-    .target(name: "CoreKit", dependencies: ["core_api"]),
-  ],
-  swiftLanguageModes: [.v6]
-)
-```
-
-> Alternative without copying: point the binary target at
-> `path: "../../../../target/xcframework/CoreFFI.xcframework"`. The copy-and-gitignore approach is
-> less fragile and mirrors how the app build consumes it.
-
-### The Apple CI lane needs the framework too
-
-`.github/workflows/apple.yml`'s `apple` job builds each SPM package with `swift build` but never
-builds the XCFramework (only the separate `contract` job does). Once `CoreKit` depends on it, add
-these steps to the `apple` job **before** "Build SPM packages":
-
-```yaml
-      - name: Add tvOS Rust targets
-        run: rustup target add aarch64-apple-tvos aarch64-apple-tvos-sim
-      - name: Build + stage the UniFFI XCFramework
-        run: |
-          cargo run -p xtask -- package-xcframework
-          cp -R target/xcframework/CoreFFI.xcframework apps/tvos/Packages/CoreKit/CoreFFI.xcframework
-```
-
-(Optionally teach `xtask package-xcframework` to also drop the copy into
-`apps/tvos/Packages/CoreKit/` so local and CI paths are identical.)
-
----
-
-## 5. Build the SPM packages and fix compile errors
-
-Build in dependency order; DesignSystem and CoreKit first, then FeatureBrowse.
-
-```sh
-cd apps/tvos
-for pkg in Packages/DesignSystem Packages/CoreKit Packages/FeatureBrowse; do
-  echo "== $pkg =="; ( cd "$pkg" && swift build ) || break
+for pkg in apps/tvos/Packages/*/; do
+  echo "== building $pkg =="
+  swift build \
+    --package-path "$pkg" \
+    --triple arm64-apple-tvos18.0-simulator \
+    --sdk "$sdk"
 done
+
+# Also compile the BrowseModel test bundle.
+swift build --build-tests \
+  --package-path apps/tvos/Packages/FeatureBrowse \
+  --triple arm64-apple-tvos18.0-simulator \
+  --sdk "$sdk"
 ```
 
-The code is unverified — expect a handful of fixes. Likely spots, in priority order:
+The BrowseModel tests cover loading, empty, ready mapping, and retryable error state. They use
+XCTest and are also compiled into the app's tvOS UI-test runner, which is the reliable way to
+execute both logic and UI tests on this Xcode/runtime combination.
 
-- **`CoreKit/Sources/CoreKit/SpidolaCore.swift`** — the `Source.id` extension pattern-matches
-  `case .m3uUrl(let id, _, _, _, _)` etc. Confirm the associated-value arity against the real
-  generated `Source` enum in `Generated/core_api.swift` and adjust the underscores if it differs.
-  Also confirm `Core.init(config:secrets:logSink:)`, `SourceService.list()/addM3uUrl/refresh`,
-  and `CatalogService.channels(sourceId:offset:limit:)` signatures match the generated code.
-- **Sendable / actor isolation** — `SpidolaCore`, `KeychainSecretStore`, `OSLogSink`, and the
-  private `ImportListenerAdapter` are `final class`es intended to satisfy the generated protocols'
-  `Sendable` requirement without `@unchecked`. If the compiler objects, prefer an `actor` or a
-  truly-immutable design over `@unchecked Sendable` (project rule: never `@unchecked Sendable`).
-- **`FeatureBrowse/.../BrowseView.swift`** — `@FocusState private var focusedID: Int64?` with
-  `.focused($focusedID, equals:)`, and `.buttonStyle(.plain)` + `.spidolaFocusRing(isFocused:)`.
-  Verify focus visuals actually appear; tune if `.plain` suppresses too much.
-- **`App/AppContainer.swift`** — `URL.documentsDirectory` (tvOS 17+), the POSIX loopback server
-  (mirrors `apps/tvos/contract-harness/main.swift`; that file is proven), and the
-  `for await event in core.importSource(id:)` consumption.
-- **`App/SpidolaApp.swift`** — `@State private var container = AppContainer()` where
-  `AppContainer` is `@MainActor`. If SwiftUI complains about isolation at the App entry point,
-  construct the container lazily inside the scene instead.
+Do not use standalone `xcodebuild test -scheme FeatureBrowse` as the primary local/CI test path.
+On this machine Xcode built the raw package test bundle, then intermittently stalled in its
+simulator install/launch worker. The app scheme's runner installs and completes consistently.
 
-Re-run `swift format --in-place --recursive Packages App` after edits, then
-`swift format lint --strict` to stay clean.
-
----
-
-## 6. Generate the Xcode project and run the app on the tvOS Simulator
+## Generate and build the app
 
 ```sh
-cd apps/tvos
-xcodegen generate                     # produces Spidola.xcodeproj from project.yml (kept out of git)
+cd /Users/dkp/Documents/GitHub/edbpede/spidola/apps/tvos
+xcodegen generate
 
-# Build for the Simulator (no signing needed):
+cd /Users/dkp/Documents/GitHub/edbpede/spidola
+set -o pipefail
 xcodebuild build \
-  -project Spidola.xcodeproj \
+  -project apps/tvos/Spidola.xcodeproj \
   -scheme Spidola \
-  -destination 'platform=tvOS Simulator,name=Apple TV' \
+  -destination 'generic/platform=tvOS Simulator' \
+  -derivedDataPath target/DerivedData-tvOS \
   CODE_SIGNING_ALLOWED=NO | xcbeautify
-
-# Install + launch on a booted simulator to actually see it:
-xcrun simctl boot "Apple TV" 2>/dev/null || true
-open -a Simulator
-APP=$(find ~/Library/Developer/Xcode/DerivedData -name 'Spidola.app' -path '*tvOS*' | head -1)
-xcrun simctl install booted "$APP"
-xcrun simctl launch --console booted dev.spidola.tv
 ```
 
-**Verify by observation (this is the M0 point):**
+`project.yml` excludes `x86_64` for the Simulator because the XCFramework intentionally contains
+the Apple-silicon simulator slice only. The app uses the external `App/Info.plist`, bundle ID
+`dev.spidola.tv`, version `0.0.0` (build 1), and a tvOS 18.0 minimum deployment target.
 
-- The browse list renders channels from the fixture (the app seeds "Fixture Catalog" over loopback
-  on first launch — see `AppContainer.seedFixtureIfNeeded()`). If it stays on the empty state,
-  check the boot logs: `xcrun simctl spawn booted log stream --predicate 'subsystem == "dev.spidola.tv"'`
-  and confirm `spidola::boot` / `spidola::import` records appear (this also proves the OSLog sink
-  and the core→shell log interleave required by the M0 exit criteria).
-- Drive the **D-pad** with the Simulator remote (Hardware ▸ or the on-screen remote): focus should
-  move predictably and the focused row should show the Test-Card Amber ring + lift.
-- If loopback seeding misbehaves in the sandbox, it is acceptable for M0 to instead point the seeder
-  at a small on-disk file served locally; the important invariant is that channels arrive **through
-  the core**, never fabricated in the shell.
+The deterministic app product is:
 
----
+```text
+target/DerivedData-tvOS/Build/Products/Debug-appletvsimulator/Spidola.app
+```
 
-## 7. Lint, test, and mirror the full Apple CI lane locally
+## Run the complete simulator test gate
+
+Boot a simulator, then run the single scheme. Use `OS=latest` in CI; a UDID is convenient locally.
 
 ```sh
 cd /Users/dkp/Documents/GitHub/edbpede/spidola
 
-tools/ci/assert-toolchains.sh                       # rustc 1.96.1, Swift 6.3.x, Xcode present
+xcrun simctl boot 'Apple TV 4K (3rd generation)' 2>/dev/null || true
+xcrun simctl bootstatus 'Apple TV 4K (3rd generation)' -b
 
-# swift-format (strict) over hand-written tvOS sources (excludes generated + harness):
-find apps/tvos -name '*.swift' -not -path '*/Generated/*' -not -path '*/contract-harness/*' \
+set -o pipefail
+xcodebuild test \
+  -project apps/tvos/Spidola.xcodeproj \
+  -scheme Spidola \
+  -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest' \
+  -derivedDataPath target/DerivedData-tvOS \
+  CODE_SIGNING_ALLOWED=NO | xcbeautify
+```
+
+The `SpidolaUITests` runner executes five tests:
+
+- four `BrowseModelTests` for loading/empty/ready/error state;
+- `SpidolaUITests.testFixtureCatalogAndDpadFocus`, which cold-launches the app, waits for Channel 1,
+  verifies initial focus, presses remote Down, and verifies Channel 2 receives focus.
+
+Latest local result: **5 tests, 0 failures**. The UI test keeps a screenshot attachment showing
+Channel 2 with the Test-Card Amber focus treatment.
+
+## Runtime behavior verified
+
+The app now:
+
+1. creates and validates the Rust core handshake before rendering browse;
+2. seeds a 24-channel fixture through the real core boundary on first launch;
+3. removes a failed/empty fixture source so a later launch can recover;
+4. waits for seeding before constructing `RootView`, avoiding a first-launch empty-state race;
+5. renders the fixture list and moves focus predictably with the tvOS remote.
+
+The following simulator logs were observed in order:
+
+```text
+[dev.spidola.tv:spidola::db] core initialized ...
+[dev.spidola.tv:spidola::boot] core 0.0.0, schema 1, boundary 1
+[dev.spidola.tv:spidola::import] import committed inserted=24 ...
+[dev.spidola.tv:spidola::boot] seeded 24 channels
+```
+
+Recheck them with:
+
+```sh
+xcrun simctl spawn booted log show \
+  --last 5m --style compact --info --debug \
+  --predicate 'subsystem == "dev.spidola.tv"'
+```
+
+This is the M0 core/shell log-interleave evidence: database and import records originate in the
+core sink, while handshake and seed records originate in the app shell under the same subsystem.
+
+Computer Use was verified after granting its macOS permissions. It returned the live Simulator
+window state and screenshots, launched Spidola from the tvOS Home Screen, showed Channel 1 with
+initial focus, and moved the Test-Card Amber focus treatment to Channel 2 after a Down key press.
+This direct GUI observation corroborates the XCUITest assertion and retained result-bundle image.
+
+## Full local quality gate
+
+```sh
+cd /Users/dkp/Documents/GitHub/edbpede/spidola
+
+tools/ci/assert-toolchains.sh
+
+find apps/tvos -name '*.swift' \
+  -not -path '*/.build/*' \
+  -not -path '*/Generated/*' \
+  -not -path '*/contract-harness/*' \
   -print0 | xargs -0 swift format lint --strict
 
-swiftlint lint --strict                             # now works with Xcode selected
-
-# Swift Testing per package. Add a BrowseModel test that mirrors the Android BrowseViewModelTest
-# (fake CatalogAccess -> loading/empty/ready/error). Put it under
-# Packages/FeatureBrowse/Tests/FeatureBrowseTests/ and declare a test target in that Package.swift.
-for pkg in apps/tvos/Packages/*/; do ( cd "$pkg" && swift test ) || true; done
-
-# Optionally run the whole thing exactly as CI does:
-#   act -j apple      # if `act` (nektos/act) is installed, otherwise push and watch GitHub Actions
-```
-
-Also confirm the **FFI parity keel** still passes (it links the host core, not the XCFramework):
-
-```sh
+swiftlint lint --strict
+cargo fmt --all -- --check
+cargo clippy -p xtask --all-targets -- -D warnings
+cargo run -p xtask -- check-bindings
 tools/ci/build-contract-harness-tvos.sh
 ```
 
----
+Latest local contract result:
 
-## 8. (Optional) Run on a real Apple TV
+```text
+HARNESS OK — handshake=0.0.0/schema1/boundary1, import=2000 progress>=5,
+cancel=Cancelled, logSink+secrets wired
+```
 
-Real hardware is part of the M0 exit criteria and cannot be automated end-to-end.
+## Apple CI lane
 
-1. In `apps/tvos/project.yml`, set `settings.base.DEVELOPMENT_TEAM` to a valid 10-char Apple
-   Developer Team ID (currently empty), then `xcodegen generate` again. Keep `CODE_SIGN_STYLE:
-   Automatic`.
-2. Pair the Apple TV to Xcode: **Xcode ▸ Window ▸ Devices and Simulators ▸ Apple TV** (the TV must
-   be on the same network; enter the pairing code shown on the TV). GUI step — use computer-use.
-3. Build/run to the device:
-   ```sh
-   xcrun devicectl list devices                     # find the Apple TV UDID
-   xcodebuild -project apps/tvos/Spidola.xcodeproj -scheme Spidola \
-     -destination 'platform=tvOS,id=<UDID>' build
-   # then Run from Xcode (GUI) so provisioning + install are handled, or use devicectl to install.
-   ```
-4. Record a short manual checklist (cold start, browse renders, D-pad focus, back navigation) in the
-   PR — that is the "manual checklist recorded" M0 item.
+`.github/workflows/apple.yml` now:
 
----
+- installs the two Rust tvOS targets;
+- builds and stages the XCFramework before any Swift package build;
+- uses the tvOS Simulator triple/SDK for package compilation;
+- generates and builds the Xcode project with `pipefail` enabled;
+- executes the five-test app scheme on Apple TV 4K (3rd generation), `OS=latest`;
+- excludes `.build`, generated bindings, and the contract harness from hand-written Swift format
+  linting.
 
-## 9. Close out
+The workflow has been validated command-for-command locally but has not yet run on GitHub Actions
+for these uncommitted changes.
 
-- Update `docs/IMPLEMENTATION_PLAN.md` Phase 3 **only for what you actually verified**: check the
-  three **tvOS shell** sub-items once the app builds + runs, and add the emulator/simulator smoke
-  tests + hardware checklist under **CI completion**. The **Exit criteria (= M0)** line is satisfied
-  by evidence, not a checkbox — do not toggle it.
-- Commit with Conventional Commits **and DCO sign-off** (`git commit -s`); the `prek` hooks enforce
-  both. Java must be on `PATH` for the ktlint/detekt hooks:
-  `export JAVA_HOME=$(/usr/libexec/java_home -v 21); export PATH="$JAVA_HOME/bin:$PATH"`.
-  With Xcode present, do **not** skip `swiftlint` anymore.
-- Push to `feat/phase-3-walking-skeleton-m0` to update PR #5, or open a stacked PR.
+## Remaining optional hardware validation
 
----
+Real Apple TV hardware was not available and remains unchecked. To finish it:
 
-## Known issues / gotchas
+1. Set a valid `DEVELOPMENT_TEAM` without committing a personal team ID.
+2. Regenerate the project with XcodeGen.
+3. Pair the Apple TV in Xcode's Devices and Simulators window.
+4. Build/run from Xcode and record: cold start, fixture list, D-pad focus, and back navigation.
+5. Confirm the same core/shell records in Console.
 
-- **`import core_api` fails** → Step 4 not done (no XCFramework binary target). This is expected on a
-  fresh checkout.
-- **`swiftlint` fatal: "Loading sourcekitdInProc.framework failed"** → no real Xcode is selected;
-  run `xcode-select -p` and `sudo xcode-select -s /Applications/Xcode-26.6.app/Contents/Developer`.
-- **Android context (not your job, for awareness):** Hilt is deferred on Android because
-  Dagger 2.57/2.57.1 cannot read Kotlin 2.4 class metadata ("maximum supported version is 2.2.0").
-  Manual constructor DI is used instead. If you also touch Android, do not re-enable Hilt until a
-  Kotlin-2.4-compatible Dagger exists.
-- **Loopback fixture seeding on tvOS:** binding/serving on `127.0.0.1` generally does **not** trigger
-  the Local Network privacy prompt (that is for LAN peers), but if the OS blocks it, add
-  `NSLocalNetworkUsageDescription` to `App/Info.plist`. The real add-source flow replaces this
-  scaffolding in Phase 4.
-- **Do not commit** `Spidola.xcodeproj`, `.build/`, `DerivedData/`, or the copied
-  `CoreFFI.xcframework` — they are build products (gitignored / to be gitignored).
-- **Do not hand-edit** anything under `Generated/` or `.../corekit/generated/` — regenerate with
-  `cargo run -p xtask -- gen-bindings` if the core surface changes.
+## Definition of done
 
-## Definition of done (tvOS M0)
-
-- [ ] Xcode 26.6 + tvOS SDK + a tvOS Simulator runtime installed and selected.
-- [ ] `CoreFFI.xcframework` built and wired into `CoreKit` (`import core_api` resolves).
-- [ ] All `apps/tvos/Packages/*` build with `swift build`.
-- [ ] `xcodegen generate` + `xcodebuild build` (tvOS Simulator) succeed.
-- [ ] App launches on the Simulator, browses the fixture catalog, D-pad focus works with the
-      Test-Card Amber treatment, and core+shell logs interleave under `dev.spidola.tv`.
-- [ ] `swift format lint --strict` and `swiftlint --strict` clean; Swift Testing passes.
-- [ ] (Optional) Runs on a real Apple TV; manual checklist recorded.
-- [ ] Plan checkboxes updated; changes committed with DCO sign-off and pushed.
+- [x] Xcode 26.6, tvOS SDK, and a tvOS Simulator runtime installed and selected.
+- [x] `CoreFFI.xcframework` built at tvOS 18.0 and wired into `CoreKit`.
+- [x] All `apps/tvos/Packages/*` build for the tvOS Simulator SDK/triple.
+- [x] `xcodegen generate` and `xcodebuild build` succeed.
+- [x] App cold-launches, imports 24 fixture channels, and renders browse.
+- [x] Four BrowseModel state tests pass.
+- [x] Simulator D-pad focus smoke test passes with the Test-Card Amber treatment.
+- [x] Core and shell logs interleave under `dev.spidola.tv`.
+- [x] Format, SwiftLint, Rust xtask checks, binding drift check, and Swift contract harness pass.
+- [x] Phase 3 tvOS/simulator plan checkboxes updated only for verified work.
+- [ ] Optional real Apple TV run and manual checklist.
+- [ ] Run the updated Apple job on GitHub Actions.
+- [ ] Commit with a Conventional Commit + DCO sign-off and push/update the PR.
 
 ## Reference
 
-- Pins: `docs/toolchains.md`. Architecture: `docs/TECH_SPEC.md` (§5 FFI, §6 tvOS, §4.8 logging).
-- Apple CI lane: `.github/workflows/apple.yml`. Toolchain assertion: `tools/ci/assert-toolchains.sh`.
-- Packaging task: `crates/xtask/src/packaging.rs` (`package-xcframework`). Proven Swift socket
-  pattern: `apps/tvos/contract-harness/main.swift`.
-- xcodes CLI: <https://github.com/XcodesOrg/xcodes>. Simulator runtimes:
-  <https://developer.apple.com/documentation/xcode/installing-additional-simulator-runtimes>.
+- Toolchain pins: `docs/toolchains.md`
+- Architecture: `docs/TECH_SPEC.md` (§4.8 logging, §5 FFI, §6 tvOS)
+- Apple lane: `.github/workflows/apple.yml`
+- Xcode project source: `apps/tvos/project.yml`
+- Rust packaging: `crates/xtask/src/packaging.rs`
+- Swift socket/FFI reference: `apps/tvos/contract-harness/main.swift`

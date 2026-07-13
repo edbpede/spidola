@@ -79,6 +79,7 @@ private struct ChannelRow: View {
     }
     .buttonStyle(.plain)
     .spidolaFocusRing(isFocused: isFocused)
+    .accessibilityIdentifier("channel-\(item.name)")
   }
 }
 
