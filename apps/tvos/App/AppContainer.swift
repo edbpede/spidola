@@ -53,15 +53,25 @@ final class AppContainer {
   func seedFixtureIfNeeded() async {
     do {
       let sources = try await core.sources()
-      if let fixture = sources.first(where: { $0.name == Self.fixtureSourceName }) {
+      // Ownership is keyed on the id we persisted when we seeded, never on the mutable display
+      // name: a user source that happens to be named "Fixture Catalog" (e.g. a partial import from
+      // the Phase 4 add-source flow) must never be treated as ours and torn down. The name is
+      // re-verified only as a secondary guard, so a reused SQLite rowid (rowids are not
+      // `AUTOINCREMENT`) can never authorize deleting a source we did not create.
+      if let ownedId = Self.storedFixtureId,
+        let fixture = sources.first(where: { $0.id == ownedId }),
+        fixture.name == Self.fixtureSourceName
+      {  // swiftlint:disable:this opening_brace
         let page = try await core.page(sourceId: fixture.id, offset: 0, limit: 1)
         if page.total > 0 { return }
         try await core.deleteSource(id: fixture.id)
+        Self.storedFixtureId = nil
       } else if sources.isEmpty == false {
         return
       }
       let url = serveFixtureOnce(Self.fixturePlaylist())
       let source = try await core.addM3uUrl(name: Self.fixtureSourceName, url: url)
+      Self.storedFixtureId = source.id
       for await event in core.importSource(id: source.id) {
         switch event {
         case .progress:
@@ -71,10 +81,29 @@ final class AppContainer {
         case .failed(let error):
           logger.error("fixture import failed: \(String(describing: error), privacy: .public)")
           try? await core.deleteSource(id: source.id)
+          Self.storedFixtureId = nil
         }
       }
     } catch {
       logger.error("fixture seed failed: \(String(describing: error), privacy: .public)")
+    }
+  }
+
+  /// The rowid of the fixture this app seeded, persisted across launches so ownership survives a
+  /// later rename. Absent until the first successful seed; cleared when we tear the fixture down.
+  private static var storedFixtureId: Int64? {
+    get {
+      let defaults = UserDefaults.standard
+      guard defaults.object(forKey: fixtureIdKey) != nil else { return nil }
+      return Int64(defaults.integer(forKey: fixtureIdKey))
+    }
+    set {
+      let defaults = UserDefaults.standard
+      if let newValue {
+        defaults.set(Int(newValue), forKey: fixtureIdKey)
+      } else {
+        defaults.removeObject(forKey: fixtureIdKey)
+      }
     }
   }
 
@@ -89,6 +118,7 @@ final class AppContainer {
 
   private static let fixtureChannelCount = 24
   private static let fixtureSourceName = "Fixture Catalog"
+  private static let fixtureIdKey = "dev.spidola.tv.fixtureSourceId"
   private static let supportedBoundaryVersion: UInt32 = 1
   private static let supportedSchemaVersion: UInt32 = 1
 }
