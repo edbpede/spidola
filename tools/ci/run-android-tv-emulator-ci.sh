@@ -12,6 +12,7 @@ emulator_port=5554
 serial="emulator-$emulator_port"
 emulator_pid=""
 emulator_bin="${ANDROID_SDK_ROOT:?ANDROID_SDK_ROOT must be set}/emulator/emulator"
+export ANDROID_AVD_HOME="$HOME/.android/avd"
 
 cleanup() {
     adb -s "$serial" emu kill >/dev/null 2>&1 || true
@@ -21,7 +22,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-mkdir -p "$evidence_dir"
+mkdir -p "$evidence_dir" "$ANDROID_AVD_HOME"
 
 sdkmanager --install emulator "$system_image"
 printf 'no\n' | avdmanager create avd \
@@ -29,6 +30,7 @@ printf 'no\n' | avdmanager create avd \
     --name "$avd_name" \
     --package "$system_image" \
     --device tv_1080p
+printf 'hw.cpu.ncore=2\n' >> "$ANDROID_AVD_HOME/$avd_name.avd/config.ini"
 
 adb start-server
 "$emulator_bin" \
