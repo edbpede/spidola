@@ -90,7 +90,6 @@ jobs:
           profile: tv_1080p
           working-directory: apps/androidtv
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          disable-animations: true
           script: '"$GITHUB_WORKSPACE/tools/ci/run-android-tv-emulator-smoke.sh"'
 
       - name: Retain Android M0 evidence
