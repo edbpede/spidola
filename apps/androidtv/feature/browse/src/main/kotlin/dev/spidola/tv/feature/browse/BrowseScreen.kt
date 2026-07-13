@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -84,7 +85,10 @@ private fun ChannelList(channels: ImmutableList<ChannelItem>) {
         itemsIndexed(channels, key = { _, item -> item.key }) { index, item ->
             ChannelCard(
                 item = item,
-                modifier = if (index == 0) Modifier.focusRequester(firstItem) else Modifier,
+                modifier =
+                    Modifier
+                        .testTag("channel-$index")
+                        .then(if (index == 0) Modifier.focusRequester(firstItem) else Modifier),
             )
         }
     }

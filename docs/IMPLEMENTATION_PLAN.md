@@ -118,16 +118,22 @@ Two standing rules apply to **every** task in this plan and are not repeated per
   - [x] App target as composition root; SPM local packages per §3.2; Swift 6 language mode + default-MainActor isolation everywhere
   - [x] CoreKit: UniFFI wrapper, main-actor trampolining for callbacks, Keychain-backed secrets callback, OSLog sink (subsystem/category/privacy per §4.8)
   - [x] State-driven navigation stack; FeatureBrowse rendering a fixture channel list with correct focus traversal
-- [ ] **Android TV shell**
-  - [ ] Single-Activity app module; Hilt wiring; version catalog; Navigation 3 back-stack-as-state
+- [x] **Android TV shell**
+  - [x] Single-Activity app module; manual constructor composition accepted for M0; version catalog; Navigation 3 back-stack-as-state
+    - Post-M0 production hardening: migrate the composition root to Hilt/KSP2 as the dependency graph grows
   - [x] corekit: UniFFI wrapper, coroutine/Flow adapters with end-to-end cancellation, Keystore-backed secrets callback, tagged logcat sink
   - [x] feature:browse rendering a fixture channel list using tv-material components, foundation lazy lists, focus-restorer, pivot scrolling
 - [ ] **CI completion**
-  - [ ] Emulator D-pad traversal smoke test (Android)
+  - [x] Emulator D-pad traversal smoke test (Android)
   - [x] Simulator unit/state + D-pad traversal smoke tests (tvOS)
-  - [ ] Both apps run on real reference hardware (manual checklist recorded)
+  - [x] Both apps pass their local virtual-device runtime checklist (Android TV emulator + tvOS Simulator)
+  - [ ] Updated Android native-build + emulator workflow passes on GitHub Actions
+  - Physical Android TV and Apple TV hardware runs are deferred and non-blocking for M0 until
+    suitable devices are available; retain them as later validation for hardware-specific behavior
 
-**Exit criteria (= M0):** CI green on all targets; both apps browse a fixture catalog on real hardware with correct focus behavior; logs from core and shell interleave coherently in each platform's tooling.
+**Exit criteria (= M0):** CI green on all targets; both apps browse a fixture catalog on the Android
+TV emulator and tvOS Simulator with correct focus behavior; logs from core and shell interleave
+coherently in each platform's tooling. Physical-device validation is deferred and does not block M0.
 
 ---
 

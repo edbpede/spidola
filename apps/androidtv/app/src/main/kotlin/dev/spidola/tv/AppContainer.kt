@@ -13,8 +13,8 @@ import dev.spidola.tv.core.corekit.SpidolaLogSink
  * The composition root's single wiring point for the core (TECH_SPEC §3.1: composition happens
  * only at the app shell). Manual constructor DI: the core is the one durable source of truth, so
  * it is created once here with the Keystore secrets store and logcat sink installed and nowhere
- * else. (Hilt is deferred until a Dagger release supports the pinned Kotlin's class metadata; see
- * IMPLEMENTATION_PLAN Phase 3.)
+ * else. This small graph is accepted for M0; Hilt/KSP2 remains the production-hardening target as
+ * the graph grows (see IMPLEMENTATION_PLAN Phase 3).
  */
 class AppContainer(context: Context) {
     val core: SpidolaCore =

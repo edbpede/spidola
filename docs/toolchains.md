@@ -69,8 +69,8 @@ pinned NDK (`ANDROID_NDK_HOME`).
 
 ## Android (Android TV shell)
 
-All versions live in `apps/androidtv/gradle/libs.versions.toml`; the values below are the
-Phase-0 pins and are refreshed there.
+Project and library versions live in `apps/androidtv/gradle/libs.versions.toml`; the external
+packaging-tool pin is also enforced in `.github/workflows/android.yml`.
 
 | Item | Pin |
 |---|---|
@@ -82,10 +82,11 @@ Phase-0 pins and are refreshed there.
 | compileSdk / targetSdk | **36** |
 | minSdk | **26** |
 | NDK | **28.2.13676358** (per-ABI core + libmpv builds, `tools/build-libmpv-android/`) |
+| cargo-ndk | **4.1.2** (Android native packaging) |
 | Compose for TV | `androidx.tv:tv-material` **1.1.x** on foundation lazy layouts |
 | Navigation | Navigation 3 (`androidx.navigation3`) |
 | Default / fallback player | Media3 ExoPlayer **1.10.x** (`media3-ui-compose`) / libmpv (JNI) |
-| DI | Hilt (KSP2 processing) |
+| DI | Manual constructor composition accepted for M0; Hilt with KSP2 is the post-M0 production-hardening target |
 
 > Android device/emulator ABIs: `arm64-v8a`, `armeabi-v7a` (devices) and `x86_64` (emulator).
 

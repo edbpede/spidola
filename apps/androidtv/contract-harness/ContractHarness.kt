@@ -35,6 +35,7 @@ import uniffi.core_api.LogRecord
 import uniffi.core_api.LogSink
 import uniffi.core_api.SecretStore
 import uniffi.core_api.Source
+import uniffi.core_api.uniffiEnsureInitialized
 
 private fun fail(message: String): Nothing {
     System.err.println("HARNESS FAIL: $message")
@@ -169,6 +170,7 @@ private fun sourceId(source: Source): Long =
 // -- The flow ----------------------------------------------------------------------------
 
 fun main() {
+    uniffiEnsureInitialized()
     val dbPath =
         java.io.File(
             System.getProperty("java.io.tmpdir"),
