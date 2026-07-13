@@ -3,13 +3,17 @@
 
 import SwiftUI
 
-// Phase 0 skeleton: the App target is a composition root only (TECH_SPEC §6). It wires
-// the CoreKit adapter and the feature slices in Phase 3 (the walking-skeleton milestone).
+/// The tvOS composition root (TECH_SPEC §6). It builds the app container once — wiring the core,
+/// Keychain secrets, and OSLog sink — then renders the navigation shell and seeds the M0 fixture
+/// catalog through the core.
 @main
 struct SpidolaApp: App {
+  @State private var container = AppContainer()
+
   var body: some Scene {
     WindowGroup {
-      RootView()
+      RootView(catalog: container.catalog)
+        .task { await container.seedFixtureIfNeeded() }
     }
   }
 }

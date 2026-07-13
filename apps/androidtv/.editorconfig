@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+[*.{kt,kts}]
+# @Composable functions are UI elements named in PascalCase by Compose convention, not verbs.
+ktlint_function_naming_ignore_when_annotated_with = Composable

@@ -4,6 +4,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -24,6 +26,10 @@ android {
         }
     }
 
+    buildFeatures {
+        compose = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
@@ -35,8 +41,20 @@ kotlin {
 }
 
 dependencies {
-    // Phase 0 keeps the composition root's graph minimal; Phase 3 wires Hilt, Navigation 3,
-    // the design system, the player contract/engines, and the feature slices.
     implementation(project(":core:corekit"))
+    implementation(project(":core:designsystem"))
     implementation(project(":feature:browse"))
+
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.foundation)
+    implementation(libs.androidx.tv.material)
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.activity:activity-compose:${libs.versions.activity.get()}")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:${libs.versions.lifecycle.get()}")
+
+    implementation(libs.navigation3.runtime)
+    implementation("androidx.navigation3:navigation3-ui:${libs.versions.navigation3.get()}")
+
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.coroutines)
 }

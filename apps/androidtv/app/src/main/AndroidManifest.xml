@@ -3,6 +3,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Fetching the user's own sources (and the M0 loopback fixture) needs network access. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- Living-room only: leanback required, touchscreen not. -->
     <uses-feature
         android:name="android.software.leanback"
@@ -11,14 +14,19 @@
         android:name="android.hardware.touchscreen"
         android:required="false" />
 
+    <!-- Many IPTV sources (and the loopback fixture) are plain HTTP; per-source TLS policy is
+         refined in later phases. -->
     <application
         android:name=".SpidolaApplication"
         android:allowBackup="false"
         android:banner="@drawable/banner"
-        android:label="@string/app_name">
+        android:label="@string/app_name"
+        android:theme="@style/Theme.Spidola"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@style/Theme.Spidola">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />

@@ -10,8 +10,15 @@ let package = Package(
   products: [
     .library(name: "FeatureBrowse", targets: ["FeatureBrowse"])
   ],
+  dependencies: [
+    .package(path: "../CoreKit"),
+    .package(path: "../DesignSystem"),
+  ],
   targets: [
-    .target(name: "FeatureBrowse")
+    .target(
+      name: "FeatureBrowse",
+      dependencies: ["CoreKit", "DesignSystem"]
+    )
   ],
   swiftLanguageModes: [.v6]
 )
