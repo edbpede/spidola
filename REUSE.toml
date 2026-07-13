@@ -20,6 +20,13 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Spidola contributors"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
 
+# Canonical project logo used by the repository documentation.
+[[annotations]]
+path = ["spidola-logo.svg"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Spidola contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
 # The Gradle wrapper is third-party tooling (Apache-2.0). The gradlew/gradlew.bat scripts
 # already carry inline SPDX headers; the binary jar and the generated properties file cannot.
 [[annotations]]

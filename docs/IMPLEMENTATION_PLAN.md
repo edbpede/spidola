@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="../spidola-logo.svg" alt="Spidola Logo" width="160" height="160">
+</p>
+
 # Spidola — Implementation Plan
 
 | | |
