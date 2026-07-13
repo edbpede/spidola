@@ -11,6 +11,7 @@ avd_name="spidola-android-tv-ci"
 emulator_port=5554
 serial="emulator-$emulator_port"
 emulator_pid=""
+emulator_bin="${ANDROID_SDK_ROOT:?ANDROID_SDK_ROOT must be set}/emulator/emulator"
 
 cleanup() {
     adb -s "$serial" emu kill >/dev/null 2>&1 || true
@@ -30,7 +31,7 @@ printf 'no\n' | avdmanager create avd \
     --device tv_1080p
 
 adb start-server
-emulator \
+"$emulator_bin" \
     -port "$emulator_port" \
     -avd "$avd_name" \
     -no-window \
