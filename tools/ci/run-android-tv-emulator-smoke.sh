@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Spidola contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# The emulator-runner action executes each newline in its `script` input in a separate shell.
-# Keep test execution, evidence capture, and exit-status propagation in one process.
+# Keep test execution, evidence capture, and exit-status propagation in one process so a failed
+# instrumentation test still retains its logcat and final-screen evidence.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/../.." && pwd)"
