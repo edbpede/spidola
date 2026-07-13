@@ -3,13 +3,24 @@
 
 package dev.spidola.tv
 
-import android.app.Activity
 import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import dev.spidola.tv.core.designsystem.SpidolaTheme
 
-// Phase 0 skeleton: the single-Activity composition root. Compose for TV, Navigation 3, and
-// the back-stack-as-state graph arrive in Phase 3 (the walking-skeleton milestone).
-class MainActivity : Activity() {
+/**
+ * The single Activity (TECH_SPEC §7). It is a thin host: it installs the theme and the
+ * Navigation 3 back-stack-as-state graph, handing the graph the core catalog from the app
+ * container, and owns nothing else.
+ */
+class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val container = (application as SpidolaApplication).container
+        setContent {
+            SpidolaTheme {
+                SpidolaNavHost(catalog = container.catalog)
+            }
+        }
     }
 }

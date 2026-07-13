@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: 2026 Spidola contributors -->
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<resources>
+    <!-- Studio (PRD §8.2) — the canvas, used as the window background so there is no light flash
+         before Compose draws. Kept in sync with SpidolaPalette.Studio. -->
+    <color name="studio">#12151A</color>
+</resources>

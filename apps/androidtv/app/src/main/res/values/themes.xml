@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: 2026 Spidola contributors -->
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<resources>
+    <!-- A bare host theme: no action bar, dark Studio window background. The actual UI theming
+         (palette, type, focus) is the Compose SpidolaTheme; this only styles the window shell. -->
+    <style name="Theme.Spidola" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/studio</item>
+    </style>
+</resources>

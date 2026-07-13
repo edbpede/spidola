@@ -19,5 +19,19 @@ complexity:
   CyclomaticComplexMethod:
     active: false
 
+naming:
+  active: true
+  # @Composable functions are PascalCase by Compose convention (a UI element, not a verb).
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
+
+style:
+  active: true
+  # Design tokens (palette hex, dp/sp scale values) are named constants whose value is the
+  # literal; flagging the literal inside the token's own declaration is noise.
+  MagicNumber:
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+
 Compose:
   active: true
