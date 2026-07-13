@@ -29,7 +29,10 @@ class FixtureSeeder(
                 when (event) {
                     is ImportEvent.Progress -> Unit
                     is ImportEvent.Complete -> Log.i(TAG, "seeded ${event.outcome.inserted} channels")
-                    is ImportEvent.Failed -> Log.w(TAG, "fixture import failed", event.error)
+                    is ImportEvent.Failed -> {
+                        Log.w(TAG, "fixture import failed", event.error)
+                        throw event.error
+                    }
                 }
             }
         }

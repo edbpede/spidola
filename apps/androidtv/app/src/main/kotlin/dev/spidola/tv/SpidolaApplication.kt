@@ -6,9 +6,10 @@ package dev.spidola.tv
 import android.app.Application
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 
 /**
  * The single-Activity composition root's application object. On start it builds the app container,
@@ -18,6 +19,9 @@ import kotlinx.coroutines.launch
  */
 class SpidolaApplication : Application() {
     lateinit var container: AppContainer
+        private set
+
+    lateinit var bootstrap: Deferred<Unit>
         private set
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -31,7 +35,7 @@ class SpidolaApplication : Application() {
             "core ${handshake.coreVersion}, schema ${handshake.schemaVersion}, " +
                 "boundary ${handshake.boundaryVersion}",
         )
-        appScope.launch { container.fixtureSeeder.seedIfNeeded() }
+        bootstrap = appScope.async { container.fixtureSeeder.seedIfNeeded() }
     }
 
     private companion object {

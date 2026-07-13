@@ -17,6 +17,7 @@ import uniffi.core_api.ImportProgress
 import uniffi.core_api.LogSink
 import uniffi.core_api.SecretStore
 import uniffi.core_api.Source
+import uniffi.core_api.uniffiEnsureInitialized
 
 /**
  * Reads the source list and a source's channel catalog one page at a time (paged by contract,
@@ -109,6 +110,9 @@ class SpidolaCore private constructor(
             logDirectives: String,
             secrets: SecretStore,
             logSink: LogSink,
-        ): SpidolaCore = SpidolaCore(Core(CoreConfig(dbPath, logDirectives), secrets, logSink))
+        ): SpidolaCore {
+            uniffiEnsureInitialized()
+            return SpidolaCore(Core(CoreConfig(dbPath, logDirectives), secrets, logSink))
+        }
     }
 }

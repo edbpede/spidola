@@ -6,7 +6,9 @@ package dev.spidola.tv
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
 import dev.spidola.tv.core.designsystem.SpidolaTheme
+import kotlinx.coroutines.launch
 
 /**
  * The single Activity (TECH_SPEC §7). It is a thin host: it installs the theme and the
@@ -16,10 +18,13 @@ import dev.spidola.tv.core.designsystem.SpidolaTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val container = (application as SpidolaApplication).container
-        setContent {
-            SpidolaTheme {
-                SpidolaNavHost(catalog = container.catalog)
+        val app = application as SpidolaApplication
+        lifecycleScope.launch {
+            app.bootstrap.await()
+            setContent {
+                SpidolaTheme {
+                    SpidolaNavHost(catalog = app.container.catalog)
+                }
             }
         }
     }

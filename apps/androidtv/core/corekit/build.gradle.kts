@@ -19,6 +19,10 @@ android {
     // `generated/` and compiled — never hand-edited — as part of this module.
     sourceSets["main"].java.srcDir("generated")
 
+    // `cargo run -p xtask -- package-android` generates this tree at the repository root. Keep
+    // native binaries out of tracked sources while packaging them with the CoreKit AAR/APK.
+    sourceSets["main"].jniLibs.srcDir(rootProject.file("../../target/jniLibs"))
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21

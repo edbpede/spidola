@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Spidola contributors
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-# Android lane (TECH_SPEC §9): Gradle build, ktlint, detekt (Compose ruleset), unit tests.
+# Android lane (TECH_SPEC §9): native core + APK, lint/static analysis, JVM tests, and a
+# real-core Android TV emulator smoke test.
 # Toolchain pins live in apps/androidtv/gradle/libs.versions.toml + the committed wrapper;
 # JDK is pinned to 21 (docs/toolchains.md). detekt/ktlint complexity rules are advisory
 # (config/detekt/detekt.yml, modularity doctrine §3.1).
@@ -36,7 +37,25 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
+      - name: Show pinned Rust toolchain
+        run: rustup show
+
+      - uses: Swatinem/rust-cache@v2
+
       - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install cargo-ndk + pinned NDK
+        run: |
+          cargo install cargo-ndk --locked --version 4.1.2
+          NDK_VERSION=28.2.13676358
+          yes | sdkmanager "ndk;$NDK_VERSION" >/dev/null
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+
+      - name: Add Android Rust targets
+        run: rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+
+      - name: Build Android jniLibs
+        run: cargo run -p xtask -- package-android
 
       - name: ktlint + detekt (advisory complexity)
         run: ./gradlew ktlintCheck detekt
@@ -46,6 +65,59 @@ jobs:
 
       - name: Unit tests
         run: ./gradlew testDebugUnitTest
+
+      - name: Verify native libraries in APK
+        run: |
+          apk=app/build/outputs/apk/debug/app-debug.apk
+          test -f "$apk"
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            count="$(zipinfo -1 "$apk" | awk -v entry="lib/$abi/libcore_api.so" '$0 == entry { count++ } END { print count + 0 }')"
+            test "$count" -eq 1
+          done
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Android TV emulator smoke test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: android-tv
+          arch: x86_64
+          profile: tv_1080p
+          working-directory: apps/androidtv
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            adb logcat -c
+            set +e
+            ./gradlew :app:connectedDebugAndroidTest
+            status=$?
+            set -e
+            mkdir -p "$GITHUB_WORKSPACE/target/androidtv-m0"
+            adb logcat -d -v threadtime > "$GITHUB_WORKSPACE/target/androidtv-m0/logcat.txt"
+            adb exec-out screencap -p > "$GITHUB_WORKSPACE/target/androidtv-m0/final-screen.png"
+            exit "$status"
+
+      - name: Retain Android M0 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-tv-m0
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            target/jniLibs/**/libcore_api.so
+            apps/androidtv/app/build/outputs/apk/debug/app-debug.apk
+            apps/androidtv/app/build/reports/androidTests/**
+            apps/androidtv/app/build/outputs/androidTest-results/**
+            apps/androidtv/app/build/outputs/connected_android_test_additional_output/**
+            apps/androidtv/**/build/reports/tests/**
+            apps/androidtv/**/build/test-results/**
+            target/androidtv-m0/**
 
   # FFI parity keel (TECH_SPEC §5, §10): build the Kotlin contract harness against the real
   # compiled core (host arch, loaded via JNA) and run the same fixture flow as the Rust + Swift
@@ -69,21 +141,5 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      # Packaging (TECH_SPEC §7, §9): build the per-ABI `libcore_api.so` via cargo-ndk.
-      - uses: android-actions/setup-android@v3
-
-      - name: Install cargo-ndk + NDK
-        run: |
-          cargo install cargo-ndk --locked
-          NDK_VERSION=28.2.13676358
-          yes | sdkmanager "ndk;$NDK_VERSION" >/dev/null
-          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
-
-      - name: Add Android Rust targets
-        run: rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
-
-      - name: Build Android jniLibs
-        run: cargo run -p xtask -- package-android
-
       - name: Kotlin FFI contract harness
-        run: "$GITHUB_WORKSPACE/tools/ci/build-contract-harness-android.sh"
+        run: '"$GITHUB_WORKSPACE/tools/ci/build-contract-harness-android.sh"'
