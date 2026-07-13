@@ -17,6 +17,10 @@ excluded:
   - apps/tvos/Packages/CoreKit/Generated # UniFFI-generated bindings (not hand-written).
   - apps/tvos/contract-harness # Bare FFI test harness, not shell code (TECH_SPEC §10).
 
+# swift-format owns collection-literal comma style; avoid a contradictory SwiftLint rule.
+disabled_rules:
+  - trailing_comma
+
 line_length:
   warning: 120
   error: 200

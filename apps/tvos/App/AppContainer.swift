@@ -28,8 +28,20 @@ final class AppContainer {
         logSink: OSLogSink()
       )
       let handshake = core.handshake()
+      let coreVersion = handshake.coreVersion
+      let schemaVersion = handshake.schemaVersion
+      let boundaryVersion = handshake.boundaryVersion
+      guard
+        coreVersion.isEmpty == false,
+        schemaVersion == Self.supportedSchemaVersion,
+        boundaryVersion == Self.supportedBoundaryVersion
+      else {
+        fatalError(
+          "Incompatible core: \(coreVersion), schema \(schemaVersion), boundary \(boundaryVersion)"
+        )
+      }
       logger.info(
-        "core \(handshake.coreVersion, privacy: .public), schema \(handshake.schemaVersion), boundary \(handshake.boundaryVersion)"
+        "core \(coreVersion, privacy: .public), schema \(schemaVersion), boundary \(boundaryVersion)"
       )
       self.core = core
     } catch {
@@ -40,9 +52,26 @@ final class AppContainer {
 
   func seedFixtureIfNeeded() async {
     do {
-      guard try await core.sources().isEmpty else { return }
+      let sources = try await core.sources()
+      // Ownership is keyed on the id we persisted when we seeded, never on the mutable display
+      // name: a user source that happens to be named "Fixture Catalog" (e.g. a partial import from
+      // the Phase 4 add-source flow) must never be treated as ours and torn down. The name is
+      // re-verified only as a secondary guard, so a reused SQLite rowid (rowids are not
+      // `AUTOINCREMENT`) can never authorize deleting a source we did not create.
+      if let ownedId = Self.storedFixtureId,
+        let fixture = sources.first(where: { $0.id == ownedId }),
+        fixture.name == Self.fixtureSourceName
+      {  // swiftlint:disable:this opening_brace
+        let page = try await core.page(sourceId: fixture.id, offset: 0, limit: 1)
+        if page.total > 0 { return }
+        try await core.deleteSource(id: fixture.id)
+        Self.storedFixtureId = nil
+      } else if sources.isEmpty == false {
+        return
+      }
       let url = serveFixtureOnce(Self.fixturePlaylist())
-      let source = try await core.addM3uUrl(name: "Fixture Catalog", url: url)
+      let source = try await core.addM3uUrl(name: Self.fixtureSourceName, url: url)
+      Self.storedFixtureId = source.id
       for await event in core.importSource(id: source.id) {
         switch event {
         case .progress:
@@ -51,10 +80,30 @@ final class AppContainer {
           logger.info("seeded \(outcome.inserted) channels")
         case .failed(let error):
           logger.error("fixture import failed: \(String(describing: error), privacy: .public)")
+          try? await core.deleteSource(id: source.id)
+          Self.storedFixtureId = nil
         }
       }
     } catch {
       logger.error("fixture seed failed: \(String(describing: error), privacy: .public)")
+    }
+  }
+
+  /// The rowid of the fixture this app seeded, persisted across launches so ownership survives a
+  /// later rename. Absent until the first successful seed; cleared when we tear the fixture down.
+  private static var storedFixtureId: Int64? {
+    get {
+      let defaults = UserDefaults.standard
+      guard defaults.object(forKey: fixtureIdKey) != nil else { return nil }
+      return Int64(defaults.integer(forKey: fixtureIdKey))
+    }
+    set {
+      let defaults = UserDefaults.standard
+      if let newValue {
+        defaults.set(Int(newValue), forKey: fixtureIdKey)
+      } else {
+        defaults.removeObject(forKey: fixtureIdKey)
+      }
     }
   }
 
@@ -68,6 +117,10 @@ final class AppContainer {
   }
 
   private static let fixtureChannelCount = 24
+  private static let fixtureSourceName = "Fixture Catalog"
+  private static let fixtureIdKey = "dev.spidola.tv.fixtureSourceId"
+  private static let supportedBoundaryVersion: UInt32 = 1
+  private static let supportedSchemaVersion: UInt32 = 1
 }
 
 /// Serves `body` once over HTTP/1.1 from an ephemeral `127.0.0.1` port and returns its URL. Same
@@ -102,7 +155,8 @@ private func serveFixtureOnce(_ body: [UInt8]) -> String {
     var request = [UInt8](repeating: 0, count: 2048)
     _ = recv(client, &request, request.count, 0)
     let header =
-      "HTTP/1.1 200 OK\r\nContent-Type: application/x-mpegurl\r\nContent-Length: \(body.count)\r\nConnection: close\r\n\r\n"
+      "HTTP/1.1 200 OK\r\nContent-Type: application/x-mpegurl\r\n"
+      + "Content-Length: \(body.count)\r\nConnection: close\r\n\r\n"
     let headerBytes = Array(header.utf8)
     _ = headerBytes.withUnsafeBytes { send(client, $0.baseAddress, headerBytes.count, 0) }
     _ = body.withUnsafeBytes { send(client, $0.baseAddress, body.count, 0) }

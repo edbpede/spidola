@@ -12,7 +12,15 @@ let package = Package(
     .library(name: "CoreKit", targets: ["CoreKit"])
   ],
   targets: [
-    .target(name: "CoreKit")
+    .binaryTarget(name: "CoreFFI", path: "CoreFFI.xcframework"),
+    .target(
+      name: "core_api",
+      dependencies: ["CoreFFI"],
+      path: "Generated",
+      exclude: ["core_apiFFI.h", "core_apiFFI.modulemap"],
+      sources: ["core_api.swift"]
+    ),
+    .target(name: "CoreKit", dependencies: ["core_api"]),
   ],
   swiftLanguageModes: [.v6]
 )

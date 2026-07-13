@@ -25,6 +25,7 @@ use crate::paths::{cargo, target_dir, workspace_root};
 /// The tvOS device target and the Apple-silicon simulator target.
 const TVOS_DEVICE: &str = "aarch64-apple-tvos";
 const TVOS_SIM_ARM: &str = "aarch64-apple-tvos-sim";
+const TVOS_DEPLOYMENT_TARGET: &str = "18.0";
 
 /// The Android ABIs shipped: two device ABIs plus `x86_64` for the emulator (TECH_SPEC §7).
 const ANDROID_ABIS: &[&str] = &["arm64-v8a", "armeabi-v7a", "x86_64"];
@@ -135,6 +136,7 @@ pub(crate) fn android() -> anyhow::Result<()> {
 fn build_static(root: &Path, target: &str) -> anyhow::Result<()> {
     let status = Command::new(cargo())
         .current_dir(root)
+        .env("TVOS_DEPLOYMENT_TARGET", TVOS_DEPLOYMENT_TARGET)
         .args(["build", "-p", "core-api", "--release", "--target", target])
         .status()
         .context("spawn cargo build")?;

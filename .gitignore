@@ -32,6 +32,9 @@ playground.xcworkspace
 .build/
 .swiftpm/
 # (Package.resolved is committed on purpose — see header)
+# XcodeGen output and the locally staged UniFFI framework are reproducible build products.
+apps/tvos/Spidola.xcodeproj/
+apps/tvos/Packages/CoreKit/CoreFFI.xcframework/
 
 # ── Kotlin / Android / Gradle (apps/androidtv) ──────────────────────────────
 .gradle/

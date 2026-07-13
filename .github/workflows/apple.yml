@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Apple lane (TECH_SPEC §9): swift-format + SwiftLint, build the SPM packages, generate the
-# Xcode project (XcodeGen, docs/toolchains.md) and build the tvOS app, run Swift Testing.
+# Xcode project (XcodeGen, docs/toolchains.md), build the tvOS app, and run XCTest.
 # SwiftLint complexity/length rules are advisory (apps/tvos/.swiftlint.yml, doctrine §3.1).
 name: apple
 
@@ -35,7 +35,8 @@ jobs:
       - name: swift-format lint (strict)
         run: |
           find apps/tvos -name '*.swift' \
-            -not -path '*/Generated/*' -not -path '*/contract-harness/*' \
+            -not -path '*/.build/*' -not -path '*/Generated/*' \
+            -not -path '*/contract-harness/*' \
             -print0 | xargs -0 swift format lint --strict
 
       - name: SwiftLint
@@ -43,29 +44,47 @@ jobs:
           brew install swiftlint
           swiftlint lint --strict
 
+      - name: Add tvOS Rust targets
+        run: rustup target add aarch64-apple-tvos aarch64-apple-tvos-sim
+
+      - name: Build + stage the UniFFI XCFramework
+        run: |
+          cargo run -p xtask -- package-xcframework
+          rm -rf apps/tvos/Packages/CoreKit/CoreFFI.xcframework
+          cp -R target/xcframework/CoreFFI.xcframework \
+            apps/tvos/Packages/CoreKit/CoreFFI.xcframework
+
       - name: Build SPM packages
         run: |
+          sdk="$(xcrun --sdk appletvsimulator --show-sdk-path)"
           for pkg in apps/tvos/Packages/*/; do
             echo "== building $pkg =="
-            (cd "$pkg" && swift build)
+            swift build \
+              --package-path "$pkg" \
+              --triple arm64-apple-tvos18.0-simulator \
+              --sdk "$sdk"
           done
 
       - name: Generate Xcode project + build app
         run: |
-          brew install xcodegen
+          set -o pipefail
+          brew install xcodegen xcbeautify
           cd apps/tvos
           xcodegen generate
           xcodebuild build \
             -project Spidola.xcodeproj \
             -scheme Spidola \
-            -destination 'platform=tvOS Simulator,name=Apple TV' \
-            CODE_SIGNING_ALLOWED=NO | xcbeautify || true
+            -destination 'generic/platform=tvOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify
 
-      - name: Swift Testing (packages)
+      - name: tvOS simulator unit + UI smoke tests
         run: |
-          for pkg in apps/tvos/Packages/*/; do
-            (cd "$pkg" && swift test) || true
-          done
+          set -o pipefail
+          xcodebuild test \
+            -project apps/tvos/Spidola.xcodeproj \
+            -scheme Spidola \
+            -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest' \
+            CODE_SIGNING_ALLOWED=NO | xcbeautify
 
   # FFI parity keel (TECH_SPEC §5, §10): build the Swift contract harness against the real
   # compiled core and run the same fixture flow as the Rust + Kotlin harnesses.

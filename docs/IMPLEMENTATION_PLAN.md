@@ -114,16 +114,17 @@ Two standing rules apply to **every** task in this plan and are not repeated per
 - [x] **Shared design tokens**
   - [x] Encode the PRD §8 palette, type scale, spacing, and focus treatment as tokens in both DesignSystem modules
   - [x] Focus appearance components (Test-Card Amber treatment riding platform focus behavior)
-- [ ] **tvOS shell**
-  - [ ] App target as composition root; SPM local packages per §3.2; Swift 6 language mode + default-MainActor isolation everywhere
-  - [ ] CoreKit: UniFFI wrapper, main-actor trampolining for callbacks, Keychain-backed secrets callback, OSLog sink (subsystem/category/privacy per §4.8)
-  - [ ] State-driven navigation stack; FeatureBrowse rendering a fixture channel list with correct focus traversal
+- [x] **tvOS shell**
+  - [x] App target as composition root; SPM local packages per §3.2; Swift 6 language mode + default-MainActor isolation everywhere
+  - [x] CoreKit: UniFFI wrapper, main-actor trampolining for callbacks, Keychain-backed secrets callback, OSLog sink (subsystem/category/privacy per §4.8)
+  - [x] State-driven navigation stack; FeatureBrowse rendering a fixture channel list with correct focus traversal
 - [ ] **Android TV shell**
   - [ ] Single-Activity app module; Hilt wiring; version catalog; Navigation 3 back-stack-as-state
   - [x] corekit: UniFFI wrapper, coroutine/Flow adapters with end-to-end cancellation, Keystore-backed secrets callback, tagged logcat sink
   - [x] feature:browse rendering a fixture channel list using tv-material components, foundation lazy lists, focus-restorer, pivot scrolling
 - [ ] **CI completion**
-  - [ ] Emulator D-pad traversal smoke test (Android); simulator UI smoke test (tvOS)
+  - [ ] Emulator D-pad traversal smoke test (Android)
+  - [x] Simulator unit/state + D-pad traversal smoke tests (tvOS)
   - [ ] Both apps run on real reference hardware (manual checklist recorded)
 
 **Exit criteria (= M0):** CI green on all targets; both apps browse a fixture catalog on real hardware with correct focus behavior; logs from core and shell interleave coherently in each platform's tooling.

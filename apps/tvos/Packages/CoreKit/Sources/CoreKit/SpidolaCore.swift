@@ -27,8 +27,9 @@ public enum ImportEvent: Sendable {
 public final class SpidolaCore: CatalogAccess {
   private let core: Core
 
-  public init(dbPath: String, logDirectives: String, secrets: SecretStore, logSink: LogSink) throws
-  {
+  public init(
+    dbPath: String, logDirectives: String, secrets: SecretStore, logSink: LogSink
+  ) throws {
     core = try Core(
       config: CoreConfig(dbPath: dbPath, logDirectives: logDirectives),
       secrets: secrets,
@@ -44,6 +45,10 @@ public final class SpidolaCore: CatalogAccess {
   public func addM3uUrl(name: String, url: String) async throws -> Source {
     try await core.sources().addM3uUrl(
       name: name, url: url, userAgent: nil, acceptInvalidTls: false)
+  }
+
+  public func deleteSource(id: Int64) async throws {
+    try await core.sources().delete(id: id)
   }
 
   public func page(sourceId: Int64, offset: UInt32, limit: UInt32) async throws -> ChannelPage {
@@ -94,6 +99,16 @@ extension Source {
     case .m3uFile(let id, _): id
     case .xtream(let id, _, _, _, _): id
     @unknown default: -1
+    }
+  }
+
+  /// The user-facing source name shared by every source kind.
+  public var name: String {
+    switch self {
+    case .m3uUrl(_, let common, _, _, _): common.name
+    case .m3uFile(_, let common): common.name
+    case .xtream(_, let common, _, _, _): common.name
+    @unknown default: ""
     }
   }
 }
