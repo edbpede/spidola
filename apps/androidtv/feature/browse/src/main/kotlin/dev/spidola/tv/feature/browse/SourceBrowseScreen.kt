@@ -11,10 +11,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -62,8 +66,12 @@ private fun Groups(
     navigator: BrowseNavigator,
     onSelectKind: (MediaKind) -> Unit,
 ) {
+    val firstGroup = remember { FocusRequester() }
+    LaunchedEffect(content.groups.firstOrNull()?.title) {
+        if (content.groups.isNotEmpty()) firstGroup.requestFocus()
+    }
     LazyColumn(
-        modifier = Modifier.fillMaxSize().focusRestorer(),
+        modifier = Modifier.fillMaxSize().focusRestorer(firstGroup),
         contentPadding =
             PaddingValues(
                 horizontal = SpidolaSpacing.safeHorizontal,
@@ -74,13 +82,16 @@ private fun Groups(
         if (content.kinds.size > 1) {
             item { KindSelector(content, onSelectKind) }
         }
-        items(content.groups, key = { it.title ?: "" }) { group ->
+        itemsIndexed(content.groups, key = { _, group -> group.title ?: "" }) { index, group ->
             val title = group.title ?: "Ungrouped"
             SpidolaRow(
                 title = title,
                 accessory = RowAccessory.Label(group.channelCount.toString()),
                 onClick = { navigator.openChannels(sourceId, content.kind, group.title, title) },
-                modifier = Modifier.testTag("group-$title"),
+                modifier =
+                    Modifier
+                        .testTag("group-$title")
+                        .then(if (index == 0) Modifier.focusRequester(firstGroup) else Modifier),
             )
         }
     }

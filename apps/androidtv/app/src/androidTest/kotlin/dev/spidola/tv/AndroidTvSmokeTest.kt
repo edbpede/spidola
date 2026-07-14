@@ -13,7 +13,6 @@ import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -37,13 +36,15 @@ class AndroidTvSmokeTest {
         composeRule.waitUntil(timeoutMillis = STARTUP_TIMEOUT_MS) {
             composeRule.onAllNodes(hasTestTag(SOURCE_TAG)).fetchSemanticsNodes().size == 1
         }
-        composeRule.onNodeWithTag(SOURCE_TAG).assertIsFocused().performClick()
+        composeRule.onNodeWithTag(SOURCE_TAG).assertIsFocused()
+        composeRule.onRoot().performKeyInput { pressKey(Key.DirectionCenter) }
 
         // Categories: the fixture playlist has one group.
         composeRule.waitUntil(timeoutMillis = NAV_TIMEOUT_MS) {
             composeRule.onAllNodes(hasTestTag(GROUP_TAG)).fetchSemanticsNodes().size == 1
         }
-        composeRule.onNodeWithTag(GROUP_TAG).performClick()
+        composeRule.onNodeWithTag(GROUP_TAG).assertIsFocused()
+        composeRule.onRoot().performKeyInput { pressKey(Key.DirectionCenter) }
 
         // Channels: the first channel is focused; D-pad down moves to the second.
         composeRule.waitUntil(timeoutMillis = NAV_TIMEOUT_MS) {
