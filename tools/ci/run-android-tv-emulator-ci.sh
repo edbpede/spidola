@@ -62,7 +62,8 @@ trap on_exit EXIT
 wait_for_adb_stable() {
     local deadline=$((SECONDS + 120))
     local healthy_count=0
-    local state boot_completed dev_bootcomplete bootanim
+    local state boot_completed dev_bootcomplete bootanim snapshot
+    local last_snapshot=""
 
     while [ "$SECONDS" -lt "$deadline" ]; do
         if ! kill -0 "$emulator_pid" 2>/dev/null; then
@@ -75,7 +76,16 @@ wait_for_adb_stable() {
         dev_bootcomplete="$(adb -s "$serial" shell getprop dev.bootcomplete 2>/dev/null || echo unknown)"
         bootanim="$(adb -s "$serial" shell getprop init.svc.bootanim 2>/dev/null || echo unknown)"
 
-        if [ "$state" = "device" ] && [ "$boot_completed" = "1" ] && [ "$dev_bootcomplete" = "1" ] && [ "$bootanim" = "stopped" ]; then
+        snapshot="state=$state, boot_completed=$boot_completed, dev.bootcomplete=$dev_bootcomplete, bootanim=${bootanim:-<unset>}"
+        if [ "$snapshot" != "$last_snapshot" ]; then
+            echo "adb poll: $snapshot"
+            last_snapshot="$snapshot"
+        fi
+
+        # -no-boot-anim keeps the bootanim service from ever starting, so init.svc.bootanim is
+        # empty (never ran) rather than "stopped" on this launch configuration; both are healthy.
+        if [ "$state" = "device" ] && [ "$boot_completed" = "1" ] && [ "$dev_bootcomplete" = "1" ] &&
+            { [ "$bootanim" = "stopped" ] || [ -z "$bootanim" ]; }; then
             healthy_count=$((healthy_count + 1))
             if [ "$healthy_count" -ge 5 ]; then
                 echo "adb connection stable."
@@ -83,7 +93,7 @@ wait_for_adb_stable() {
             fi
         else
             if [ "$healthy_count" -gt 0 ]; then
-                echo "adb state dropped (state=$state, boot_completed=$boot_completed, dev.bootcomplete=$dev_bootcomplete, bootanim=$bootanim); restarting stability window."
+                echo "adb state dropped ($snapshot); restarting stability window."
             fi
             healthy_count=0
         fi
@@ -91,7 +101,7 @@ wait_for_adb_stable() {
         sleep 2
     done
 
-    echo "adb connection did not stabilize within 120 seconds." >&2
+    echo "adb connection did not stabilize within 120 seconds (last poll: ${last_snapshot:-none completed})." >&2
     exit 1
 }
 
