@@ -58,20 +58,46 @@ pub(crate) mod keys {
     pub(crate) const IMAGE_CACHE_MAX_MB: &str = "cache.image_max_mb";
     /// [`LogLevel`](crate::logging::LogLevel) for the diagnostics screen.
     pub(crate) const LOG_LEVEL: &str = "diagnostics.log_level";
-    /// Per-source opaque engine-override key, formatted with the source's id.
+
+    /// Per-source opaque engine-override key — the middle tier of the PRD §6.3 selection
+    /// policy. Namespaced under `playback.` like [`DEFAULT_ENGINE`] and [`BUFFERING`], because
+    /// all three are one area's settings and only differ in scope.
     pub(crate) fn source_engine(source_id: i64) -> String {
-        format!("source.{source_id}.engine")
+        format!("playback.engine.source.{source_id}")
+    }
+
+    /// Per-channel opaque engine-override key — the **top** tier of the selection policy, and
+    /// what the playback slice's "remember for this channel" writes.
+    ///
+    /// Keyed by the channel's stable identity hash rather than its rowid, and living here in
+    /// the settings table rather than on `channels.preferred_engine`, for the same reason
+    /// favorites do: a refresh replaces every channel row wholesale (staging-and-swap,
+    /// TECH_SPEC §4.4), so an override stored on the row would be destroyed the next time the
+    /// source refreshed. Identity survives refresh; a rowid does not.
+    pub(crate) fn channel_engine(source_id: i64, identity: i64) -> String {
+        format!("playback.engine.channel.{source_id}.{identity}")
     }
 }
 
-/// How aggressively the player buffers, mapped to engine parameters by each shell (PRD §6.9).
+/// How much latency the viewer trades for resilience, mapped to engine parameters by each shell
+/// (PRD §6.9).
+///
+/// The variants mirror `PlayerContract.BufferingProfile` / `player-contract`'s
+/// `BufferingProfile` exactly, including their stored spellings. That vocabulary was settled in
+/// Phase 5 and is the engine-neutral one both shells already speak — its own docs say "the
+/// settings screen speaks this vocabulary" — so the core adopts it rather than inventing a
+/// second, lossy one. PRD §6.9's "low-latency vs. stable" is a summary of the axis, not a
+/// statement that it has two positions; `Balanced` is the middle the shells default to, and a
+/// two-variant core enum would have had no honest value to map it onto.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, uniffi::Enum)]
 pub enum BufferingProfile {
-    /// Smaller buffers: quicker to start and closer to live, less tolerant of a lossy link.
-    LowLatency,
-    /// Larger buffers: rides out jitter, at the cost of a slightly later start.
+    /// Smallest buffer: fastest zap, least tolerant of a jittery source.
+    Low,
+    /// The default trade-off.
     #[default]
-    Stable,
+    Balanced,
+    /// Largest buffer: slowest to start, rides out a bad connection.
+    Generous,
 }
 
 /// Subtitle glyph size, resolved to platform points by each shell (PRD §6.9).
@@ -181,17 +207,22 @@ pub(crate) trait StoredValue: Sized + Default {
 }
 
 impl StoredValue for BufferingProfile {
+    /// Deliberately the shells' `BufferingProfile` raw values: the same setting must round-trip
+    /// whether it was written by the settings screen through this vocabulary or by the playback
+    /// slice through its own contract type.
     fn as_stored(&self) -> &'static str {
         match self {
-            Self::LowLatency => "low-latency",
-            Self::Stable => "stable",
+            Self::Low => "low",
+            Self::Balanced => "balanced",
+            Self::Generous => "generous",
         }
     }
 
     fn parse_stored(raw: &str) -> Option<Self> {
         match raw {
-            "low-latency" => Some(Self::LowLatency),
-            "stable" => Some(Self::Stable),
+            "low" => Some(Self::Low),
+            "balanced" => Some(Self::Balanced),
+            "generous" => Some(Self::Generous),
             _ => None,
         }
     }
@@ -309,7 +340,11 @@ mod tests {
                 );
             }
         }
-        round_trip(&[BufferingProfile::LowLatency, BufferingProfile::Stable]);
+        round_trip(&[
+            BufferingProfile::Low,
+            BufferingProfile::Balanced,
+            BufferingProfile::Generous,
+        ]);
         round_trip(&[
             SubtitleSize::Small,
             SubtitleSize::Medium,
@@ -336,11 +371,11 @@ mod tests {
     fn absent_and_unrecognized_values_fall_back_to_the_default() {
         assert_eq!(
             BufferingProfile::from_stored(None),
-            BufferingProfile::Stable
+            BufferingProfile::Balanced
         );
         assert_eq!(
             BufferingProfile::from_stored(Some("from-a-newer-app")),
-            BufferingProfile::Stable
+            BufferingProfile::Balanced
         );
         assert_eq!(SubtitleSize::from_stored(Some("")), SubtitleSize::Medium);
         assert_eq!(LogLevel::from_stored(Some("verbose")), LogLevel::Info);
@@ -378,6 +413,21 @@ mod tests {
         assert_eq!(resolved, AppSettings::default());
     }
 
+    /// The buffering spellings are a **contract with the shells**, not this module's private
+    /// business: `PlayerContract.BufferingProfile` (Swift) and `player-contract`'s
+    /// `BufferingProfile` (Kotlin) use these exact raw values, and the playback slice writes the
+    /// same setting through its own contract type. Changing one side alone silently splits the
+    /// setting in two — a user's choice made on the settings screen would stop reaching the
+    /// player. Pinned here so that edit fails loudly instead.
+    #[test]
+    fn buffering_spellings_match_the_shells_vocabulary() {
+        assert_eq!(BufferingProfile::Low.as_stored(), "low");
+        assert_eq!(BufferingProfile::Balanced.as_stored(), "balanced");
+        assert_eq!(BufferingProfile::Generous.as_stored(), "generous");
+        // And the default must be the same middle the shells default to.
+        assert_eq!(BufferingProfile::default(), BufferingProfile::Balanced);
+    }
+
     /// The EPG window defaults are PRD §6.6's stated numbers, not arbitrary ones.
     #[test]
     fn epg_window_defaults_match_the_prd() {
@@ -389,7 +439,33 @@ mod tests {
     /// Per-source engine keys are namespaced by id, so two sources never collide.
     #[test]
     fn per_source_engine_keys_are_distinct() {
-        assert_eq!(keys::source_engine(1), "source.1.engine");
+        assert_eq!(keys::source_engine(1), "playback.engine.source.1");
         assert_ne!(keys::source_engine(1), keys::source_engine(2));
+    }
+
+    /// The three engine tiers (PRD §6.3: channel → source → platform default) must occupy three
+    /// distinct keys, or setting one would silently clobber another.
+    #[test]
+    fn the_three_engine_tiers_never_collide() {
+        let channel = keys::channel_engine(1, 42);
+        let source = keys::source_engine(1);
+        assert_eq!(channel, "playback.engine.channel.1.42");
+        assert_ne!(channel, source);
+        assert_ne!(channel, keys::DEFAULT_ENGINE);
+        assert_ne!(source, keys::DEFAULT_ENGINE);
+        // Two channels of one source, and one identity across two sources, all stay distinct.
+        assert_ne!(keys::channel_engine(1, 42), keys::channel_engine(1, 43));
+        assert_ne!(keys::channel_engine(1, 42), keys::channel_engine(2, 42));
+    }
+
+    /// A negative identity (the hash is a `u64` stored as `i64`, so half of them are negative)
+    /// must still produce a usable, unambiguous key.
+    #[test]
+    fn negative_channel_identities_key_cleanly() {
+        assert_eq!(
+            keys::channel_engine(3, -8_000_000_000),
+            "playback.engine.channel.3.-8000000000"
+        );
+        assert_ne!(keys::channel_engine(3, -1), keys::channel_engine(3, 1));
     }
 }

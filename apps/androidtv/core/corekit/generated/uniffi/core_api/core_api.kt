@@ -856,6 +856,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_core_api_checksum_method_searchservice_search(
     ): Int
+    external fun uniffi_core_api_checksum_method_settingsservice_engine_for_channel(
+    ): Int
     external fun uniffi_core_api_checksum_method_settingsservice_engine_for_source(
     ): Int
     external fun uniffi_core_api_checksum_method_settingsservice_set_buffering(
@@ -863,6 +865,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_core_api_checksum_method_settingsservice_set_default_engine(
     ): Int
     external fun uniffi_core_api_checksum_method_settingsservice_set_density(
+    ): Int
+    external fun uniffi_core_api_checksum_method_settingsservice_set_engine_for_channel(
     ): Int
     external fun uniffi_core_api_checksum_method_settingsservice_set_engine_for_source(
     ): Int
@@ -1042,6 +1046,8 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_core_api_fn_free_settingsservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    external fun uniffi_core_api_fn_method_settingsservice_engine_for_channel(`ptr`: Long,`sourceId`: Long,`identity`: Long,
+    ): Long
     external fun uniffi_core_api_fn_method_settingsservice_engine_for_source(`ptr`: Long,`sourceId`: Long,
     ): Long
     external fun uniffi_core_api_fn_method_settingsservice_set_buffering(`ptr`: Long,`profile`: RustBuffer.ByValue,
@@ -1049,6 +1055,8 @@ internal object UniffiLib {
     external fun uniffi_core_api_fn_method_settingsservice_set_default_engine(`ptr`: Long,`engine`: RustBuffer.ByValue,
     ): Long
     external fun uniffi_core_api_fn_method_settingsservice_set_density(`ptr`: Long,`density`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_core_api_fn_method_settingsservice_set_engine_for_channel(`ptr`: Long,`sourceId`: Long,`identity`: Long,`engine`: RustBuffer.ByValue,
     ): Long
     external fun uniffi_core_api_fn_method_settingsservice_set_engine_for_source(`ptr`: Long,`sourceId`: Long,`engine`: RustBuffer.ByValue,
     ): Long
@@ -1317,6 +1325,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_searchservice_search() != 39379) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_core_api_checksum_method_settingsservice_engine_for_channel() != 18934) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_core_api_checksum_method_settingsservice_engine_for_source() != 6804) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1327,6 +1338,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_settingsservice_set_density() != 5515) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_settingsservice_set_engine_for_channel() != 32167) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_settingsservice_set_engine_for_source() != 51543) {
@@ -4490,6 +4504,18 @@ public object FfiConverterTypeSearchService: FfiConverter<SearchService, Long> {
 public interface SettingsServiceInterface {
     
     /**
+     * The per-channel engine override, if the user chose "remember for this channel" after a
+     * loud fallback (PRD §6.3) — the **top** tier of the selection policy.
+     *
+     * `identity` is the channel's stable identity hash, not its rowid: the override has to
+     * outlive a refresh, and refresh replaces every row (TECH_SPEC §4.4).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    suspend fun `engineForChannel`(`sourceId`: kotlin.Long, `identity`: kotlin.Long): kotlin.String?
+    
+    /**
      * The per-source engine override, if the user set one for this source.
      *
      * # Errors
@@ -4522,6 +4548,18 @@ public interface SettingsServiceInterface {
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
      */
     suspend fun `setDensity`(`density`: InterfaceDensity)
+    
+    /**
+     * Sets a per-channel engine override, or clears it with `None`.
+     *
+     * This is what the loud fallback's "remember for this channel" toggle writes: only
+     * `UnsupportedFormat`/`DecoderFailed` offer it, and only the user's press stores it —
+     * automatic switching is never silent (TECH_SPEC §14).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    suspend fun `setEngineForChannel`(`sourceId`: kotlin.Long, `identity`: kotlin.Long, `engine`: kotlin.String?)
     
     /**
      * Sets a per-source engine override, or clears it with `None` (the PRD §6.3 selection
@@ -4713,6 +4751,39 @@ open class SettingsService: Disposable, AutoCloseable, SettingsServiceInterface
 
     
     /**
+     * The per-channel engine override, if the user chose "remember for this channel" after a
+     * loud fallback (PRD §6.3) — the **top** tier of the selection policy.
+     *
+     * `identity` is the channel's stable identity hash, not its rowid: the override has to
+     * outlive a refresh, and refresh replaces every row (TECH_SPEC §4.4).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `engineForChannel`(`sourceId`: kotlin.Long, `identity`: kotlin.Long) : kotlin.String? {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_engine_for_channel(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterLong.lower(`identity`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterOptionalString.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
      * The per-source engine override, if the user set one for this source.
      *
      * # Errors
@@ -4815,6 +4886,41 @@ open class SettingsService: Disposable, AutoCloseable, SettingsServiceInterface
                 uniffiHandle,
                 
         FfiConverterTypeInterfaceDensity.lower(`density`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Sets a per-channel engine override, or clears it with `None`.
+     *
+     * This is what the loud fallback's "remember for this channel" toggle writes: only
+     * `UnsupportedFormat`/`DecoderFailed` offer it, and only the user's press stores it —
+     * automatic switching is never silent (TECH_SPEC §14).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `setEngineForChannel`(`sourceId`: kotlin.Long, `identity`: kotlin.Long, `engine`: kotlin.String?) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_set_engine_for_channel(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterLong.lower(`identity`),
+        FfiConverterOptionalString.lower(`engine`),
             )
         },
         { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
@@ -7463,19 +7569,32 @@ public object FfiConverterTypeApiError : FfiConverterRustBuffer<ApiException> {
 
 
 /**
- * How aggressively the player buffers, mapped to engine parameters by each shell (PRD §6.9).
+ * How much latency the viewer trades for resilience, mapped to engine parameters by each shell
+ * (PRD §6.9).
+ *
+ * The variants mirror `PlayerContract.BufferingProfile` / `player-contract`'s
+ * `BufferingProfile` exactly, including their stored spellings. That vocabulary was settled in
+ * Phase 5 and is the engine-neutral one both shells already speak — its own docs say "the
+ * settings screen speaks this vocabulary" — so the core adopts it rather than inventing a
+ * second, lossy one. PRD §6.9's "low-latency vs. stable" is a summary of the axis, not a
+ * statement that it has two positions; `Balanced` is the middle the shells default to, and a
+ * two-variant core enum would have had no honest value to map it onto.
  */
 
 enum class BufferingProfile {
     
     /**
-     * Smaller buffers: quicker to start and closer to live, less tolerant of a lossy link.
+     * Smallest buffer: fastest zap, least tolerant of a jittery source.
      */
-    LOW_LATENCY,
+    LOW,
     /**
-     * Larger buffers: rides out jitter, at the cost of a slightly later start.
+     * The default trade-off.
      */
-    STABLE;
+    BALANCED,
+    /**
+     * Largest buffer: slowest to start, rides out a bad connection.
+     */
+    GENEROUS;
 
     
 

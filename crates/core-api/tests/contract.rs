@@ -510,7 +510,7 @@ fn settings_persist_across_a_restart_because_the_core_owns_them() {
         let settings = core.settings();
         rt.block_on(settings.set_subtitle_size(SubtitleSize::Large))
             .unwrap();
-        rt.block_on(settings.set_buffering(BufferingProfile::LowLatency))
+        rt.block_on(settings.set_buffering(BufferingProfile::Low))
             .unwrap();
         rt.block_on(settings.set_log_level(LogLevel::Error))
             .unwrap();
@@ -526,7 +526,7 @@ fn settings_persist_across_a_restart_because_the_core_owns_them() {
     );
     let settings = rt.block_on(core.settings().snapshot()).unwrap();
     assert_eq!(settings.subtitle_size, SubtitleSize::Large);
-    assert_eq!(settings.buffering, BufferingProfile::LowLatency);
+    assert_eq!(settings.buffering, BufferingProfile::Low);
     assert_eq!(
         settings.log_level,
         LogLevel::Error,
@@ -542,6 +542,74 @@ fn settings_persist_across_a_restart_because_the_core_owns_them() {
         rt.block_on(core.settings().engine_for_source(8)).unwrap(),
         None,
         "one source's engine override must not leak onto another"
+    );
+}
+
+#[test]
+fn all_three_engine_tiers_are_storable_and_independent() {
+    // PRD §6.3's selection policy is channel → source → platform default. All three tiers must
+    // exist at the boundary and must not clobber each other. This test exists because Phase 6's
+    // typed-settings rewrite briefly shipped without the channel tier: the Rust suite stayed
+    // green the whole time, because the only thing that noticed was the shells' playback slice
+    // on the far side of the FFI.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let settings = harness.core.settings();
+
+    rt.block_on(settings.set_default_engine(Some("mpv".to_owned())))
+        .unwrap();
+    rt.block_on(settings.set_engine_for_source(1, Some("avplayer".to_owned())))
+        .unwrap();
+    rt.block_on(settings.set_engine_for_channel(1, 42, Some("mpv".to_owned())))
+        .unwrap();
+
+    assert_eq!(
+        rt.block_on(settings.snapshot())
+            .unwrap()
+            .default_engine
+            .as_deref(),
+        Some("mpv")
+    );
+    assert_eq!(
+        rt.block_on(settings.engine_for_source(1))
+            .unwrap()
+            .as_deref(),
+        Some("avplayer"),
+        "the source tier must not be clobbered by the global one"
+    );
+    assert_eq!(
+        rt.block_on(settings.engine_for_channel(1, 42))
+            .unwrap()
+            .as_deref(),
+        Some("mpv"),
+        "the channel tier must not be clobbered by the source one"
+    );
+
+    // Scoping: another channel of the same source, and the same identity under another source,
+    // are both untouched.
+    assert_eq!(
+        rt.block_on(settings.engine_for_channel(1, 43)).unwrap(),
+        None
+    );
+    assert_eq!(
+        rt.block_on(settings.engine_for_channel(2, 42)).unwrap(),
+        None
+    );
+
+    // Clearing the channel tier falls back to the source tier rather than to nothing.
+    rt.block_on(settings.set_engine_for_channel(1, 42, None))
+        .unwrap();
+    assert_eq!(
+        rt.block_on(settings.engine_for_channel(1, 42)).unwrap(),
+        None
+    );
+    assert_eq!(
+        rt.block_on(settings.engine_for_source(1))
+            .unwrap()
+            .as_deref(),
+        Some("avplayer"),
+        "clearing a channel override must leave the source override standing"
     );
 }
 

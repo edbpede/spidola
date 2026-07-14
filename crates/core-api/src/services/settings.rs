@@ -190,6 +190,49 @@ impl SettingsService {
             .await
     }
 
+    /// The per-channel engine override, if the user chose "remember for this channel" after a
+    /// loud fallback (PRD §6.3) — the **top** tier of the selection policy.
+    ///
+    /// `identity` is the channel's stable identity hash, not its rowid: the override has to
+    /// outlive a refresh, and refresh replaces every row (TECH_SPEC §4.4).
+    ///
+    /// # Errors
+    /// Returns [`ApiError::StorageCorrupt`] on a query failure.
+    pub async fn engine_for_channel(
+        &self,
+        source_id: i64,
+        identity: i64,
+    ) -> Result<Option<String>, ApiError> {
+        let db = Arc::clone(&self.db);
+        self.rt
+            .run_blocking(move || {
+                let conn = db.reader()?;
+                Ok(repo::settings::get(
+                    &conn,
+                    &keys::channel_engine(source_id, identity),
+                )?)
+            })
+            .await
+    }
+
+    /// Sets a per-channel engine override, or clears it with `None`.
+    ///
+    /// This is what the loud fallback's "remember for this channel" toggle writes: only
+    /// `UnsupportedFormat`/`DecoderFailed` offer it, and only the user's press stores it —
+    /// automatic switching is never silent (TECH_SPEC §14).
+    ///
+    /// # Errors
+    /// Returns [`ApiError::StorageCorrupt`] on a write failure.
+    pub async fn set_engine_for_channel(
+        &self,
+        source_id: i64,
+        identity: i64,
+        engine: Option<String>,
+    ) -> Result<(), ApiError> {
+        self.put_optional(keys::channel_engine(source_id, identity), engine)
+            .await
+    }
+
     /// Sets the buffering profile.
     ///
     /// # Errors

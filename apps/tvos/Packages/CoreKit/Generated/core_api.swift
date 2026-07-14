@@ -2181,6 +2181,18 @@ public func FfiConverterTypeSearchService_lower(_ value: SearchService) -> UInt6
 public protocol SettingsServiceProtocol: AnyObject, Sendable {
     
     /**
+     * The per-channel engine override, if the user chose "remember for this channel" after a
+     * loud fallback (PRD §6.3) — the **top** tier of the selection policy.
+     *
+     * `identity` is the channel's stable identity hash, not its rowid: the override has to
+     * outlive a refresh, and refresh replaces every row (TECH_SPEC §4.4).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    func engineForChannel(sourceId: Int64, identity: Int64) async throws  -> String?
+    
+    /**
      * The per-source engine override, if the user set one for this source.
      *
      * # Errors
@@ -2213,6 +2225,18 @@ public protocol SettingsServiceProtocol: AnyObject, Sendable {
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
      */
     func setDensity(density: InterfaceDensity) async throws 
+    
+    /**
+     * Sets a per-channel engine override, or clears it with `None`.
+     *
+     * This is what the loud fallback's "remember for this channel" toggle writes: only
+     * `UnsupportedFormat`/`DecoderFailed` offer it, and only the user's press stores it —
+     * automatic switching is never silent (TECH_SPEC §14).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    func setEngineForChannel(sourceId: Int64, identity: Int64, engine: String?) async throws 
     
     /**
      * Sets a per-source engine override, or clears it with `None` (the PRD §6.3 selection
@@ -2353,6 +2377,32 @@ open class SettingsService: SettingsServiceProtocol, @unchecked Sendable {
 
     
     /**
+     * The per-channel engine override, if the user chose "remember for this channel" after a
+     * loud fallback (PRD §6.3) — the **top** tier of the selection policy.
+     *
+     * `identity` is the channel's stable identity hash, not its rowid: the override has to
+     * outlive a refresh, and refresh replaces every row (TECH_SPEC §4.4).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+open func engineForChannel(sourceId: Int64, identity: Int64)async throws  -> String?  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_settingsservice_engine_for_channel(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterInt64.lower(identity)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionString.lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
      * The per-source engine override, if the user set one for this source.
      *
      * # Errors
@@ -2432,6 +2482,32 @@ open func setDensity(density: InterfaceDensity)async throws   {
             rustFutureFunc: {
                 uniffi_core_api_fn_method_settingsservice_set_density(
                         self.uniffiCloneHandle(),FfiConverterTypeInterfaceDensity_lower(density)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Sets a per-channel engine override, or clears it with `None`.
+     *
+     * This is what the loud fallback's "remember for this channel" toggle writes: only
+     * `UnsupportedFormat`/`DecoderFailed` offer it, and only the user's press stores it —
+     * automatic switching is never silent (TECH_SPEC §14).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+open func setEngineForChannel(sourceId: Int64, identity: Int64, engine: String?)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_settingsservice_set_engine_for_channel(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterInt64.lower(identity),FfiConverterOptionString.lower(engine)
                 )
             },
             pollFunc: ffi_core_api_rust_future_poll_void,
@@ -5061,19 +5137,32 @@ public func FfiConverterTypeApiError_lower(_ value: ApiError) -> RustBuffer {
 
 
 /**
- * How aggressively the player buffers, mapped to engine parameters by each shell (PRD §6.9).
+ * How much latency the viewer trades for resilience, mapped to engine parameters by each shell
+ * (PRD §6.9).
+ *
+ * The variants mirror `PlayerContract.BufferingProfile` / `player-contract`'s
+ * `BufferingProfile` exactly, including their stored spellings. That vocabulary was settled in
+ * Phase 5 and is the engine-neutral one both shells already speak — its own docs say "the
+ * settings screen speaks this vocabulary" — so the core adopts it rather than inventing a
+ * second, lossy one. PRD §6.9's "low-latency vs. stable" is a summary of the axis, not a
+ * statement that it has two positions; `Balanced` is the middle the shells default to, and a
+ * two-variant core enum would have had no honest value to map it onto.
  */
 
 public enum BufferingProfile: Equatable, Hashable {
     
     /**
-     * Smaller buffers: quicker to start and closer to live, less tolerant of a lossy link.
+     * Smallest buffer: fastest zap, least tolerant of a jittery source.
      */
-    case lowLatency
+    case low
     /**
-     * Larger buffers: rides out jitter, at the cost of a slightly later start.
+     * The default trade-off.
      */
-    case stable
+    case balanced
+    /**
+     * Largest buffer: slowest to start, rides out a bad connection.
+     */
+    case generous
 
 
 
@@ -5095,9 +5184,11 @@ public struct FfiConverterTypeBufferingProfile: FfiConverterRustBuffer {
         let variant: Int32 = try readInt(&buf)
         switch variant {
         
-        case 1: return .lowLatency
+        case 1: return .low
         
-        case 2: return .stable
+        case 2: return .balanced
+        
+        case 3: return .generous
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -5107,12 +5198,16 @@ public struct FfiConverterTypeBufferingProfile: FfiConverterRustBuffer {
         switch value {
         
         
-        case .lowLatency:
+        case .low:
             writeInt(&buf, Int32(1))
         
         
-        case .stable:
+        case .balanced:
             writeInt(&buf, Int32(2))
+        
+        
+        case .generous:
+            writeInt(&buf, Int32(3))
         
         }
     }
@@ -7174,6 +7269,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_searchservice_search() != 39379) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_core_api_checksum_method_settingsservice_engine_for_channel() != 18934) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_core_api_checksum_method_settingsservice_engine_for_source() != 6804) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7184,6 +7282,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_settingsservice_set_density() != 5515) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_settingsservice_set_engine_for_channel() != 32167) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_settingsservice_set_engine_for_source() != 51543) {
