@@ -11,7 +11,8 @@ let package = Package(
     .library(name: "PlayerContract", targets: ["PlayerContract"])
   ],
   targets: [
-    .target(name: "PlayerContract")
+    .target(name: "PlayerContract"),
+    .testTarget(name: "PlayerContractTests", dependencies: ["PlayerContract"]),
   ],
   swiftLanguageModes: [.v6]
 )

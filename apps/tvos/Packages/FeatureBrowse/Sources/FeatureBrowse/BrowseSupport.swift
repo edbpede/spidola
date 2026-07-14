@@ -14,14 +14,21 @@ public struct BrowseNavigator {
   public var openSource: (_ id: Int64, _ name: String) -> Void
   public var openChannels:
     (_ sourceId: Int64, _ kind: MediaKind, _ group: String?, _ title: String) -> Void
-  public var openChannel: (PlayableChannel) -> Void
+  /// Opens a channel *along with the ring it was chosen from* — the list and the channel's position
+  /// in it, which is what D-pad up/down zaps through (PRD §8.4). Each caller names its own ring, so
+  /// a channel opened from favourites zaps favourites and one opened from a category zaps that
+  /// category. `offset` is the channel's absolute position in the ring, not its index within a
+  /// loaded page: zapping resolves it against the core, so a page-relative value would land the
+  /// viewer on a different channel.
+  public var openChannel:
+    (_ channel: PlayableChannel, _ context: ZapContext, _ offset: UInt32) -> Void
   public var openSearch: () -> Void
   public var manageSources: () -> Void
 
   public init(
     openSource: @escaping (Int64, String) -> Void,
     openChannels: @escaping (Int64, MediaKind, String?, String) -> Void,
-    openChannel: @escaping (PlayableChannel) -> Void,
+    openChannel: @escaping (PlayableChannel, ZapContext, UInt32) -> Void,
     openSearch: @escaping () -> Void,
     manageSources: @escaping () -> Void
   ) {

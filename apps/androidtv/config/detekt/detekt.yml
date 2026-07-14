@@ -32,6 +32,17 @@ style:
   MagicNumber:
     ignorePropertyDeclaration: true
     ignoreCompanionObjectPropertyDeclaration: true
+  # Guard clauses are the house style (an early return beats a nested else) and the rules file
+  # asks for them. A return counter punishes exactly that shape: the engine selection policy is
+  # three guards because the policy has three levels, and folding it into one exit to satisfy a
+  # count would obscure the spec it mirrors. Same posture as the disabled complexity rules above
+  # (doctrine §3.1: these are advisory, answered in review with "is this one concept?").
+  ReturnCount:
+    active: false
+  # An event loop that breaks on shutdown and continues on an uninteresting event is two jumps by
+  # nature; flattening it would cost the clarity the rule is meant to protect.
+  LoopWithTooManyJumpStatements:
+    active: false
 
 Compose:
   active: true

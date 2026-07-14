@@ -25,7 +25,7 @@ public enum ImportEvent: Sendable {
 /// core's task handle. UniFFI async methods arrive back on the caller's continuation; callback
 /// events are trampolined to the caller's isolation by the stream.
 public final class SpidolaCore: CatalogAccess, SourcesAccess, BrowseAccess, SearchAccess,
-  HomeAccess
+  HomeAccess, PlaybackAccess
 {
   private let core: Core
 
@@ -190,6 +190,74 @@ public final class SpidolaCore: CatalogAccess, SourcesAccess, BrowseAccess, Sear
   ) async throws -> SearchPage {
     try await core.search().search(
       query: query, sourceId: sourceId, kind: kind, offset: offset, limit: limit)
+  }
+
+  // MARK: - Playback
+
+  /// Fetches the three-row window centred on `offset` from whichever paged query `context` names.
+  /// One page, regardless of ring size — this is what keeps zap O(1) at 50k channels (PRD §9).
+  public func zapWindow(context: ZapContext, offset: UInt32) async throws -> ZapWindow? {
+    // A window at offset 0 starts at 0 and has no previous row; elsewhere it starts one back, so
+    // `current` sits in the middle.
+    let start = offset == 0 ? 0 : offset - 1
+    let limit: UInt32 = offset == 0 ? 2 : 3
+    let (channels, total) = try await ring(context, offset: start, limit: limit)
+
+    // `current` is the first row when the window could not step back, the second otherwise.
+    let currentIndex = Int(offset - start)
+    guard currentIndex < channels.count else { return nil }
+    return ZapWindow(
+      previous: currentIndex > 0 ? channels[currentIndex - 1] : nil,
+      current: channels[currentIndex],
+      next: currentIndex + 1 < channels.count ? channels[currentIndex + 1] : nil,
+      offset: offset,
+      total: total)
+  }
+
+  private func ring(_ context: ZapContext, offset: UInt32, limit: UInt32) async throws -> (
+    [PlayableChannel], UInt64?
+  ) {
+    switch context {
+    case .single:
+      return ([], nil)
+    case .group(let sourceId, let kind, let group):
+      let page = try await core.catalog().channelsInGroup(
+        sourceId: sourceId, kind: kind, group: group, offset: offset, limit: limit)
+      return (page.channels.map(PlayableChannel.init), page.total)
+    case .favorites:
+      let page = try await core.favorites().favoriteChannels(offset: offset, limit: limit)
+      return (page.channels.map(PlayableChannel.init), page.total)
+    case .search(let query, let sourceId, let kind):
+      let page = try await core.search().search(
+        query: query, sourceId: sourceId, kind: kind, offset: offset, limit: limit)
+      return (page.channels.map(PlayableChannel.init), nil)
+    }
+  }
+
+  public func channelEngine(sourceId: Int64, identity: Int64) async throws -> String? {
+    try await core.settings().get(
+      key: PlaybackSettingKey.channelEngine(sourceId: sourceId, identity: identity))
+  }
+
+  public func setChannelEngine(sourceId: Int64, identity: Int64, engine: String?) async throws {
+    let key = PlaybackSettingKey.channelEngine(sourceId: sourceId, identity: identity)
+    if let engine {
+      try await core.settings().set(key: key, value: engine)
+    } else {
+      try await core.settings().remove(key: key)
+    }
+  }
+
+  public func sourceEngine(sourceId: Int64) async throws -> String? {
+    try await core.settings().get(key: PlaybackSettingKey.sourceEngine(sourceId: sourceId))
+  }
+
+  public func bufferingProfile() async throws -> String? {
+    try await core.settings().get(key: PlaybackSettingKey.bufferingProfile)
+  }
+
+  public func setBufferingProfile(_ profile: String) async throws {
+    try await core.settings().set(key: PlaybackSettingKey.bufferingProfile, value: profile)
   }
 }
 

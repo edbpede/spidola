@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
             app.bootstrap.await()
             setContent {
                 SpidolaTheme {
-                    SpidolaNavHost(core = app.container.core)
+                    SpidolaNavHost(core = app.container.core, registry = app.container.registry)
                 }
             }
         }

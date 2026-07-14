@@ -4,14 +4,29 @@
 import PackageDescription
 
 // FeaturePlayback — The playback vertical slice: playback UI, the zap path, and channel-strip behaviour.
+//
+// It depends on PlayerContract but on no engine: engines are peers injected by the composition
+// root (doctrine §3.1), so this slice holds engine identities and never links a decoder.
 let package = Package(
   name: "FeaturePlayback",
   platforms: [.tvOS(.v18)],
   products: [
     .library(name: "FeaturePlayback", targets: ["FeaturePlayback"])
   ],
+  dependencies: [
+    .package(path: "../CoreKit"),
+    .package(path: "../DesignSystem"),
+    .package(path: "../PlayerContract"),
+  ],
   targets: [
-    .target(name: "FeaturePlayback")
+    .target(
+      name: "FeaturePlayback",
+      dependencies: ["CoreKit", "DesignSystem", "PlayerContract"]
+    ),
+    .testTarget(
+      name: "FeaturePlaybackTests",
+      dependencies: ["FeaturePlayback", "CoreKit", "PlayerContract"]
+    ),
   ],
   swiftLanguageModes: [.v6]
 )

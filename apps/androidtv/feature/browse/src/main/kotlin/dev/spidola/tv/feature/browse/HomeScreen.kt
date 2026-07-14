@@ -27,6 +27,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.spidola.tv.core.corekit.HomeAccess
 import dev.spidola.tv.core.corekit.LoadState
+import dev.spidola.tv.core.corekit.ZapContext
 import dev.spidola.tv.core.corekit.common
 import dev.spidola.tv.core.corekit.id
 import dev.spidola.tv.core.corekit.kindLabel
@@ -106,7 +107,12 @@ private fun HomeReady(
                     title = "Favorites",
                     items = content.favorites.map { it.toPoster() }.toImmutableList(),
                     onSelect = { item ->
-                        content.favorites.firstOrNull { it.key == item.id }?.let(navigator.openChannel)
+                        // The row is loaded from offset 0 in ring order, so a poster's index in it is
+                        // its offset in the favourites ring.
+                        val offset = content.favorites.indexOfFirst { it.key == item.id }
+                        if (offset >= 0) {
+                            navigator.openChannel(content.favorites[offset], ZapContext.Favorites, offset.toUInt())
+                        }
                     },
                 )
             }
@@ -117,7 +123,12 @@ private fun HomeReady(
                     title = "Recently watched",
                     items = content.recents.map { it.toPoster() }.toImmutableList(),
                     onSelect = { item ->
-                        content.recents.firstOrNull { it.key == item.id }?.let(navigator.openChannel)
+                        content.recents.firstOrNull { it.key == item.id }?.let { channel ->
+                            // Recents are a history, not a ring: they are ordered by when they were
+                            // watched, and a core query cannot resolve neighbours for them. Zap is
+                            // unavailable rather than faked.
+                            navigator.openChannel(channel, ZapContext.Single, 0u)
+                        }
                     },
                 )
             }

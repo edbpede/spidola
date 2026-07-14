@@ -34,13 +34,17 @@ import dev.spidola.tv.core.designsystem.SpidolaSpacing
 
 /**
  * The channel detail screen: artwork, name, group, and the actions a household member reaches for —
- * Play (records a recent; the engine lands in Phase 5), favorite, and hide. This is the D-pad-first
- * equivalent of the browse context menu.
+ * Play, favorite, and hide. This is the D-pad-first equivalent of the browse context menu.
+ *
+ * Play is a navigation intent, so the slice announces it through [onPlay] and the shell decides
+ * where it goes — which keeps this screen free of the app's route types and of the playback slice
+ * (doctrine §3.1).
  */
 @Composable
 fun ChannelDetailScreen(
     channel: PlayableChannel,
     access: BrowseAccess,
+    onPlay: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ChannelDetailViewModel =
         viewModel(factory = ChannelDetailViewModel.factory(channel, access)),
@@ -77,7 +81,7 @@ fun ChannelDetailScreen(
             )
             SpidolaRow(
                 title = "Play",
-                onClick = viewModel::play,
+                onClick = onPlay,
                 modifier = Modifier.focusRequester(playFocus).testTag("detail-play"),
             )
             SpidolaRow(

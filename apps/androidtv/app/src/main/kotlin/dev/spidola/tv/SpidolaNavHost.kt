@@ -10,11 +10,13 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import dev.spidola.tv.core.corekit.SpidolaCore
+import dev.spidola.tv.core.playercontract.EngineRegistry
 import dev.spidola.tv.feature.browse.BrowseNavigator
 import dev.spidola.tv.feature.browse.ChannelDetailScreen
 import dev.spidola.tv.feature.browse.ChannelsScreen
 import dev.spidola.tv.feature.browse.HomeScreen
 import dev.spidola.tv.feature.browse.SourceBrowseScreen
+import dev.spidola.tv.feature.playback.PlaybackScreen
 import dev.spidola.tv.feature.search.SearchScreen
 import dev.spidola.tv.feature.sources.AddSourceScreen
 import dev.spidola.tv.feature.sources.SourcesScreen
@@ -30,6 +32,7 @@ import uniffi.core_api.MediaKind
 @Composable
 fun SpidolaNavHost(
     core: SpidolaCore,
+    registry: EngineRegistry,
     modifier: Modifier = Modifier,
 ) {
     val backStack = rememberNavBackStack(HomeRoute)
@@ -40,7 +43,9 @@ fun SpidolaNavHost(
                 openChannels = { sourceId, kind, group, title ->
                     backStack.add(ChannelsRoute(sourceId, kind.name, group, title))
                 },
-                openChannel = { channel -> backStack.add(ChannelRoute.of(channel)) },
+                openChannel = { channel, context, offset ->
+                    backStack.add(ChannelRoute.of(channel, context, offset))
+                },
                 openSearch = { backStack.add(SearchRoute) },
                 manageSources = { backStack.add(ManageSourcesRoute) },
             )
@@ -67,12 +72,28 @@ fun SpidolaNavHost(
                     )
                 }
                 entry<ChannelRoute> { route ->
-                    ChannelDetailScreen(channel = route.toPlayable(), access = core)
+                    ChannelDetailScreen(
+                        channel = route.channel.toPlayable(),
+                        access = core,
+                        onPlay = { backStack.add(PlaybackRoute.of(route)) },
+                    )
+                }
+                entry<PlaybackRoute> { route ->
+                    PlaybackScreen(
+                        channel = route.channel.toPlayable(),
+                        context = route.context.toContext(),
+                        offset = route.offset,
+                        access = core,
+                        registry = registry,
+                        onExit = { backStack.removeLastOrNull() },
+                    )
                 }
                 entry<SearchRoute> {
                     SearchScreen(
                         access = core,
-                        onOpenChannel = { channel -> backStack.add(ChannelRoute.of(channel)) },
+                        onOpenChannel = { channel, context, offset ->
+                            backStack.add(ChannelRoute.of(channel, context, offset))
+                        },
                     )
                 }
                 entry<ManageSourcesRoute> {

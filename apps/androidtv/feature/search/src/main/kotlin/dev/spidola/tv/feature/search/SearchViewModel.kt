@@ -10,6 +10,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.spidola.tv.core.corekit.ActionableError
 import dev.spidola.tv.core.corekit.SearchAccess
+import dev.spidola.tv.core.corekit.ZapContext
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -31,6 +32,13 @@ import uniffi.core_api.Source
 data class SearchResults(
     val channels: ImmutableList<Channel>,
     val fuzzy: Boolean,
+    /**
+     * The ring these results zap through — the query and filters that actually produced them
+     * (PRD §8.4). Held with the results rather than read back from the live fields, which the next
+     * keystroke has already changed: zapping the ring of a query the viewer never ran would move
+     * them to a channel they never saw.
+     */
+    val context: ZapContext,
 )
 
 /** The search screen's phase. `Idle` is the empty-query resting state; the rest mirror a load. */
@@ -114,7 +122,13 @@ class SearchViewModel(
                 if (page.channels.isEmpty()) {
                     SearchState.Empty
                 } else {
-                    SearchState.Results(SearchResults(page.channels.toImmutableList(), page.fuzzy))
+                    SearchState.Results(
+                        SearchResults(
+                            channels = page.channels.toImmutableList(),
+                            fuzzy = page.fuzzy,
+                            context = ZapContext.Search(query, sourceId, kind),
+                        ),
+                    )
                 }
             } catch (e: CancellationException) {
                 throw e

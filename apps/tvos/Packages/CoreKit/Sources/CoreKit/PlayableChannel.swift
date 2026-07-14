@@ -16,12 +16,17 @@ public struct PlayableChannel: Hashable, Sendable, Identifiable {
   public let group: String?
   public let logo: String?
   public let locator: String
+  /// What the channel plays. `nil` when the entry point could not know — a `Recent` snapshots only
+  /// what it needs to replay, so a channel reached from the recents row reports an honest "unknown"
+  /// rather than being assumed live.
+  public let kind: MediaKind?
 
   /// Stable across a refresh, so it doubles as the SwiftUI list/focus identity.
   public var id: String { "\(sourceId)-\(identity)" }
 
   public init(
-    sourceId: Int64, identity: Int64, name: String, group: String?, logo: String?, locator: String
+    sourceId: Int64, identity: Int64, name: String, group: String?, logo: String?,
+    locator: String, kind: MediaKind? = nil
   ) {
     self.sourceId = sourceId
     self.identity = identity
@@ -29,6 +34,7 @@ public struct PlayableChannel: Hashable, Sendable, Identifiable {
     self.group = group
     self.logo = logo
     self.locator = locator
+    self.kind = kind
   }
 
   public init(_ channel: Channel) {
@@ -38,7 +44,8 @@ public struct PlayableChannel: Hashable, Sendable, Identifiable {
       name: channel.name,
       group: channel.groupTitle,
       logo: channel.logo,
-      locator: channel.locator)
+      locator: channel.locator,
+      kind: channel.kind)
   }
 
   /// A recently-watched entry snapshots name + locator at play time, so it stays replayable even

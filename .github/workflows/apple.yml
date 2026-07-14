@@ -32,6 +32,12 @@ jobs:
       - name: Assert toolchains
         run: tools/ci/assert-toolchains.sh
 
+      # License engineering (TECH_SPEC §12, PRD §10): the tvOS media stack must stay on the
+      # pinned LGPL MPVKit build. Runs before the build because linking the GPL product would
+      # produce a working app that cannot be shipped.
+      - name: Verify MPVKit pin (LGPL)
+        run: tools/build-mpvkit/verify-mpvkit-pin.sh
+
       - name: swift-format lint (strict)
         run: |
           find apps/tvos -name '*.swift' \

@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
@@ -33,6 +33,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.spidola.tv.core.corekit.PlayableChannel
 import dev.spidola.tv.core.corekit.SearchAccess
+import dev.spidola.tv.core.corekit.ZapContext
 import dev.spidola.tv.core.corekit.id
 import dev.spidola.tv.core.corekit.label
 import dev.spidola.tv.core.corekit.name
@@ -50,7 +51,7 @@ import uniffi.core_api.MediaKind
 @Composable
 fun SearchScreen(
     access: SearchAccess,
-    onOpenChannel: (PlayableChannel) -> Unit,
+    onOpenChannel: (channel: PlayableChannel, context: ZapContext, offset: UInt) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SearchViewModel = viewModel(factory = SearchViewModel.factory(access)),
 ) {
@@ -143,7 +144,7 @@ private fun FilterChip(
 private fun Results(
     state: SearchState,
     query: String,
-    onOpenChannel: (PlayableChannel) -> Unit,
+    onOpenChannel: (channel: PlayableChannel, context: ZapContext, offset: UInt) -> Unit,
 ) {
     when (state) {
         SearchState.Idle -> Hint("Type to search across your channels.")
@@ -166,11 +167,15 @@ private fun Results(
                         )
                     }
                 }
-                items(state.results.channels, key = { it.identity }) { channel ->
+                // The set is fetched from offset 0 in score order, so a row's index in it is its
+                // offset in the search ring.
+                itemsIndexed(state.results.channels, key = { _, channel -> channel.identity }) { offset, channel ->
                     SpidolaRow(
                         title = channel.name,
                         subtitle = channel.groupTitle,
-                        onClick = { onOpenChannel(PlayableChannel.of(channel)) },
+                        onClick = {
+                            onOpenChannel(PlayableChannel.of(channel), state.results.context, offset.toUInt())
+                        },
                         modifier = Modifier.testTag("search-result-${channel.name}"),
                     )
                 }

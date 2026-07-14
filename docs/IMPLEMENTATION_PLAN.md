@@ -167,30 +167,39 @@ coherently in each platform's tooling. Physical-device validation is deferred an
 
 ## Phase 5 — Playback (Milestone M1 lands here)
 
-- [ ] **Player contract (both platforms, before any engine)**
-  - [ ] Contract interface + state machine + EngineError taxonomy exactly per TECH_SPEC §8, in PlayerContract / player-contract
-  - [ ] Engine selection policy (channel → source → platform default) with unit tests
-  - [ ] Contract-level fake engine for feature-code tests
-- [ ] **Android: Media3/ExoPlayer engine (default)**
-  - [ ] Compose player surface (media3-ui-compose); HLS/DASH/TS coverage; hardware decode verification matrix
-  - [ ] Media session integration (system remote + voice transport)
-  - [ ] Track selection, buffering profiles, error mapping into EngineError
-- [ ] **tvOS: MPVKit engine (default)**
-  - [ ] Metal-backed hosting view; mpv property/command mapping; event stream → contract state machine
-  - [ ] Audio session for long-form playback; interruption handling (Siri, handoff); suspension teardown/rebuild acceptance test
-  - [ ] Now-playing info reporting
-- [ ] **tvOS: AVPlayer engine (alternate)** — contract wrapper for HLS-native streams
-- [ ] **Android: libmpv engine (fallback)**
-  - [ ] Pinned LGPL libmpv per-ABI build in `tools/build-libmpv-android/`, checksummed
-  - [ ] SurfaceView rendering; JNI lifecycle hardening; error mapping
-- [ ] **Playback UX**
-  - [ ] Click-to-first-frame instrumented against the 2 s budget (both platforms, default engines)
-  - [ ] Info overlay; audio/subtitle selection; aspect cycling; subtitle appearance settings
-  - [ ] **Zap path**: D-pad up/down channel flip; engine teardown/rebuild profiled as the sacred path
-  - [ ] **Channel strip** (the PRD §8.5 signature): lower-third with adjacent-channel peek, SMPTE ribbon, one-frame appearance, timeout/back dismissal
-  - [ ] Loud fallback: UnsupportedFormat/DecoderFailed → "Try other player" + remember-for-channel toggle; engine transitions logged per §4.8
+- [x] **Player contract (both platforms, before any engine)**
+  - [x] Contract interface + state machine + EngineError taxonomy exactly per TECH_SPEC §8, in PlayerContract / player-contract
+  - [x] Engine selection policy (channel → source → platform default) with unit tests
+  - [x] Contract-level fake engine for feature-code tests
+- [x] **Android: Media3/ExoPlayer engine (default)**
+  - [x] Compose player surface (media3-ui-compose); HLS/DASH/TS coverage; hardware decode verification matrix
+    - The decode matrix is specified and committed (`docs/engine-acceptance.md` §2.1); **running it needs
+      reference hardware and the test headend** and is deferred with the other hardware validation
+  - [x] Media session integration (system remote + voice transport)
+  - [x] Track selection, buffering profiles, error mapping into EngineError
+- [x] **tvOS: MPVKit engine (default)**
+  - [x] Metal-backed hosting view; mpv property/command mapping; event stream → contract state machine
+  - [x] Audio session for long-form playback; interruption handling (Siri, handoff); suspension teardown/rebuild acceptance test
+  - [x] Now-playing info reporting
+- [x] **tvOS: AVPlayer engine (alternate)** — contract wrapper for HLS-native streams
+- [x] **Android: libmpv engine (fallback)**
+  - [x] Pinned LGPL libmpv per-ABI build in `tools/build-libmpv-android/`, checksummed
+  - [x] SurfaceView rendering; JNI lifecycle hardening; error mapping
+- [x] **Playback UX**
+  - [x] Click-to-first-frame instrumented against the 2 s budget (both platforms, default engines)
+    - Instrumented and logged against the budget on every load; **measuring it on reference hardware**
+      is deferred with the other hardware validation
+  - [x] Info overlay; audio/subtitle selection; aspect cycling; subtitle appearance settings
+  - [x] **Zap path**: D-pad up/down channel flip; engine teardown/rebuild profiled as the sacred path
+    - Teardown/rebuild is unit-tested (previous engine disposed, ring resolved in one paged query);
+      **profiling on reference hardware** is deferred with the other hardware validation
+  - [x] **Channel strip** (the PRD §8.5 signature): lower-third with adjacent-channel peek, SMPTE ribbon, one-frame appearance, timeout/back dismissal
+  - [x] Loud fallback: UnsupportedFormat/DecoderFailed → "Try other player" + remember-for-channel toggle; engine transitions logged per §4.8
 - [ ] **Engine acceptance suite**
   - [ ] Maintainer test headend serving self-produced streams per EngineError class; per-release manual checklist committed
+    - [x] Per-release manual checklist committed (`docs/engine-acceptance.md`), including the headend
+          stream/route specification
+    - [ ] Headend stood up and the checklist run on hardware — **maintainer action**, blocks the M1 exit
 
 **Exit criteria (= M1):** a household member watches a channel unaided on both platforms; zap and channel strip meet budgets on reference hardware; forcing each EngineError class produces the correct loud-fallback or actionable error on all four engines.
 

@@ -4,8 +4,10 @@
 import CoreKit
 import DesignSystem
 import FeatureBrowse
+import FeaturePlayback
 import FeatureSearch
 import FeatureSources
+import PlayerContract
 import SwiftUI
 import core_api
 
@@ -16,7 +18,10 @@ import core_api
 enum Route: Hashable {
   case source(id: Int64, name: String)
   case channels(sourceId: Int64, kind: MediaKind, group: String?, title: String)
-  case channel(PlayableChannel)
+  /// A channel plus the ring it was chosen from, carried so that pressing Play hands playback the
+  /// zap context the viewer's own path implies (PRD §8.4).
+  case channel(PlayableChannel, ZapContext, UInt32)
+  case playback(PlayableChannel, ZapContext, UInt32)
   case search
   case manageSources
   case addSource
@@ -28,6 +33,7 @@ enum Route: Hashable {
 /// `BrowseNavigator` that pushes routes (TECH_SPEC §3.1: composition only at the shell).
 struct RootView: View {
   let core: SpidolaCore
+  let registry: EngineRegistry
 
   @State private var path: [Route] = []
 
@@ -45,7 +51,9 @@ struct RootView: View {
       openChannels: { sourceId, kind, group, title in
         path.append(.channels(sourceId: sourceId, kind: kind, group: group, title: title))
       },
-      openChannel: { path.append(.channel($0)) },
+      openChannel: { channel, context, offset in
+        path.append(.channel(channel, context, offset))
+      },
       openSearch: { path.append(.search) },
       manageSources: { path.append(.manageSources) })
   }
@@ -58,10 +66,20 @@ struct RootView: View {
       ChannelsView(
         sourceId: sourceId, kind: kind, group: group, title: title,
         access: core, navigator: navigator)
-    case .channel(let channel):
-      ChannelDetailView(channel: channel, access: core)
+    case .channel(let channel, let context, let offset):
+      ChannelDetailView(
+        channel: channel, access: core,
+        onPlay: { path.append(.playback(channel, context, offset)) })
+    case .playback(let channel, let context, let offset):
+      PlaybackView(
+        channel: channel, context: context, offset: offset, access: core, registry: registry,
+        onExit: popPlayback)
     case .search:
-      SearchView(access: core, onOpenChannel: { path.append(.channel($0)) })
+      SearchView(
+        access: core,
+        onOpenChannel: { channel, context, offset in
+          path.append(.channel(channel, context, offset))
+        })
     case .manageSources:
       SourcesView(access: core, onAddSource: { path.append(.addSource) })
     case .addSource:
@@ -72,5 +90,10 @@ struct RootView: View {
   /// Returns from the add-source screen to the sources list, which reloads on reappear.
   private func popToManageSources() {
     if path.last == .addSource { path.removeLast() }
+  }
+
+  /// Leaves playback for the screen it was opened from.
+  private func popPlayback() {
+    if let last = path.last, case .playback = last { path.removeLast() }
   }
 }

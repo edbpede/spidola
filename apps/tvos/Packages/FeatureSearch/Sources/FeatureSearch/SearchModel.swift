@@ -9,6 +9,11 @@ import core_api
 public struct SearchResults: Sendable {
   public let channels: [Channel]
   public let fuzzy: Bool
+  /// The ring these results zap through — the query and filters that actually produced them
+  /// (PRD §8.4). Held with the results rather than read back from the live fields, which the next
+  /// keystroke has already changed: zapping the ring of a query the viewer never ran would move
+  /// them to a channel they never saw.
+  public let context: ZapContext
 }
 
 /// The search screen's phase. `idle` is the empty-query resting state; the rest mirror a load.
@@ -81,7 +86,10 @@ public final class SearchModel {
       state =
         page.channels.isEmpty
         ? .empty
-        : .results(SearchResults(channels: page.channels, fuzzy: page.fuzzy))
+        : .results(
+          SearchResults(
+            channels: page.channels, fuzzy: page.fuzzy,
+            context: .search(query: query, sourceId: sourceId, kind: kind)))
     } catch is CancellationError {
     } catch let error as ApiError {
       state = .failed(ActionableError(error))

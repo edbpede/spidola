@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import dev.spidola.tv.core.corekit.ActionableError
 import dev.spidola.tv.core.corekit.ErrorAction
 import dev.spidola.tv.core.corekit.PlayableChannel
+import dev.spidola.tv.core.corekit.ZapContext
 import dev.spidola.tv.core.designsystem.ActionableErrorView
 import dev.spidola.tv.core.designsystem.SpidolaErrorButton
 import uniffi.core_api.MediaKind
@@ -22,7 +23,12 @@ import uniffi.core_api.MediaKind
 data class BrowseNavigator(
     val openSource: (id: Long, name: String) -> Unit,
     val openChannels: (sourceId: Long, kind: MediaKind, group: String?, title: String) -> Unit,
-    val openChannel: (PlayableChannel) -> Unit,
+    /**
+     * Opens a channel together with the ring it was chosen from, so pressing Play hands playback the
+     * zap context the viewer's own path implies (PRD §8.4). [offset] is the channel's position in
+     * that ring.
+     */
+    val openChannel: (channel: PlayableChannel, context: ZapContext, offset: UInt) -> Unit,
     val openSearch: () -> Unit,
     val manageSources: () -> Unit,
 )

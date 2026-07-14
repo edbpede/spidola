@@ -5,6 +5,9 @@ import CoreKit
 import Darwin
 import Foundation
 import OSLog
+import PlayerAV
+import PlayerContract
+import PlayerMPV
 
 /// The composition root's single wiring point for the core (TECH_SPEC §3.1: composition happens
 /// only at the app shell). Manual constructor wiring: the core is the one durable source of truth,
@@ -14,10 +17,26 @@ import OSLog
 @MainActor
 final class AppContainer {
   let core: SpidolaCore
+  let registry: EngineRegistry
 
   private let logger = Logger(subsystem: "dev.spidola.tv", category: "spidola::boot")
 
+  /// The engines this build can construct (TECH_SPEC §8): MPVKit the default for its codec breadth,
+  /// AVPlayer the alternate for HLS-native content. Engines are peers wired here, never children of
+  /// the playback slice (doctrine §3.1) — which is what keeps `FeaturePlayback` free of any decoder
+  /// dependency. Each factory builds a fresh engine, because zapping disposes and rebuilds one per
+  /// channel flip.
+  private static func makeRegistry() -> EngineRegistry {
+    EngineRegistry(
+      platformDefault: .mpv,
+      factories: [
+        .mpv: { MPVEngine() },
+        .avPlayer: { AVPlayerEngine() },
+      ])
+  }
+
   init() {
+    self.registry = Self.makeRegistry()
     let dbPath = URL.documentsDirectory.appending(path: "spidola.sqlite").path()
     do {
       let core = try SpidolaCore(

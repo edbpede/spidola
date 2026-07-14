@@ -111,7 +111,8 @@ class SpidolaCore private constructor(
     SourcesAccess,
     BrowseAccess,
     SearchAccess,
-    HomeAccess {
+    HomeAccess,
+    PlaybackAccess {
     /** The startup handshake (core / schema / boundary versions), checked before first use. */
     fun handshake(): Handshake = core.handshake()
 
@@ -271,6 +272,86 @@ class SpidolaCore private constructor(
         offset: UInt,
         limit: UInt,
     ): SearchPage = core.search().search(query, sourceId, kind, offset, limit)
+
+    // ---- Playback ----
+
+    /**
+     * Fetches the three-row window centred on [offset] from whichever paged query [context] names.
+     * One page, regardless of ring size — this is what keeps zap O(1) at 50k channels (PRD §9).
+     */
+    override suspend fun zapWindow(
+        context: ZapContext,
+        offset: UInt,
+    ): ZapWindow? {
+        // A window at offset 0 starts at 0 and has no previous row; elsewhere it starts one back, so
+        // `current` sits in the middle.
+        val start = if (offset == 0u) 0u else offset - 1u
+        val limit = if (offset == 0u) 2u else 3u
+        val (channels, total) = ring(context, offset = start, limit = limit)
+
+        // `current` is the first row when the window could not step back, the second otherwise.
+        val currentIndex = (offset - start).toInt()
+        if (currentIndex >= channels.size) return null
+        return ZapWindow(
+            previous = if (currentIndex > 0) channels[currentIndex - 1] else null,
+            current = channels[currentIndex],
+            next = channels.getOrNull(currentIndex + 1),
+            offset = offset,
+            total = total,
+        )
+    }
+
+    private suspend fun ring(
+        context: ZapContext,
+        offset: UInt,
+        limit: UInt,
+    ): Pair<List<PlayableChannel>, ULong?> =
+        when (context) {
+            ZapContext.Single -> emptyList<PlayableChannel>() to null
+            is ZapContext.Group -> {
+                val page =
+                    core.catalog().channelsInGroup(context.sourceId, context.kind, context.group, offset, limit)
+                page.channels.map(PlayableChannel::of) to page.total
+            }
+
+            ZapContext.Favorites -> {
+                val page = core.favorites().favoriteChannels(offset, limit)
+                page.channels.map(PlayableChannel::of) to page.total
+            }
+
+            is ZapContext.Search -> {
+                val page = core.search().search(context.query, context.sourceId, context.kind, offset, limit)
+                page.channels.map(PlayableChannel::of) to null
+            }
+        }
+
+    override suspend fun channelEngine(
+        sourceId: Long,
+        identity: Long,
+    ): String? = setting(PlaybackSettingKey.channelEngine(sourceId, identity))
+
+    override suspend fun setChannelEngine(
+        sourceId: Long,
+        identity: Long,
+        engine: String?,
+    ) {
+        val key = PlaybackSettingKey.channelEngine(sourceId, identity)
+        if (engine != null) {
+            core.settings().set(key, engine)
+        } else {
+            core.settings().remove(key)
+        }
+    }
+
+    override suspend fun sourceEngine(sourceId: Long): String? = setting(PlaybackSettingKey.sourceEngine(sourceId))
+
+    override suspend fun bufferingProfile(): String? = setting(PlaybackSettingKey.BUFFERING_PROFILE)
+
+    override suspend fun setBufferingProfile(profile: String) {
+        core.settings().set(PlaybackSettingKey.BUFFERING_PROFILE, profile)
+    }
+
+    private suspend fun setting(key: String): String? = core.settings().get(key)
 
     companion object {
         /** Opens the core against [dbPath], installing the host secrets store and log sink. */

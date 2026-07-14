@@ -4,6 +4,7 @@
 package dev.spidola.tv.core.corekit
 
 import uniffi.core_api.Channel
+import uniffi.core_api.MediaKind
 import uniffi.core_api.Recent
 
 /**
@@ -20,6 +21,11 @@ data class PlayableChannel(
     val group: String?,
     val logo: String?,
     val locator: String,
+    /**
+     * What the source says this is. `null` when the entry point could not say — a recent snapshots
+     * no kind, so nothing downstream may claim "LIVE" without evidence (PRD §8.5).
+     */
+    val kind: MediaKind? = null,
 ) {
     companion object {
         fun of(channel: Channel): PlayableChannel =
@@ -30,11 +36,12 @@ data class PlayableChannel(
                 group = channel.groupTitle,
                 logo = channel.logo,
                 locator = channel.locator,
+                kind = channel.kind,
             )
 
         /**
          * A recently-watched entry snapshots name + locator at play time, so it stays replayable
-         * even if the channel later left the catalog; it carries no group or logo.
+         * even if the channel later left the catalog; it carries no group, logo, or kind.
          */
         fun of(recent: Recent): PlayableChannel =
             PlayableChannel(
