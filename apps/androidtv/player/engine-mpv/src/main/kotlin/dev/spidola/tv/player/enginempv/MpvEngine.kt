@@ -213,7 +213,8 @@ class MpvEngine : PlaybackEngine {
             }
         }
 
-        // Joins the pump, then destroys the handle.
+        // Joins the pump, then destroys the handle — or, if the pump outlives that join, hands
+        // the destroy to a thread that waits for it.
         mpv.release()
         client = null
     }

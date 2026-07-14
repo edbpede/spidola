@@ -76,12 +76,15 @@ internal object MpvLog {
 
     /**
      * The event pump was still running when [MpvClient.release] gave up waiting for it, so the
-     * handle was leaked rather than destroyed under a live thread. Nothing here is recoverable;
-     * it is logged because it means mpv did not return from `mpv_wait_event` after a wakeup,
-     * and a support thread seeing this alongside rising memory has the whole explanation.
+     * destroy moved to a thread that waits for the pump to die rather than running under one
+     * that may still be inside `mpv_wait_event`. Teardown is late, not lost: however the pump
+     * ends, that wait ends with it. It is logged because it means mpv did not return from
+     * `mpv_wait_event` after a wakeup, and a pump that never ends at all never frees its
+     * handle — so a support thread seeing this alongside rising memory has the whole
+     * explanation.
      */
     fun pumpOutlivedJoin(timeoutMs: Long) {
-        Log.w(TAG, "release: event pump still running after ${timeoutMs}ms — leaking the mpv handle")
+        Log.w(TAG, "release: event pump still running after ${timeoutMs}ms — deferring mpv handle teardown")
     }
 
     fun nativeLibraryMissing(error: UnsatisfiedLinkError) {

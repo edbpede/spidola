@@ -14,10 +14,12 @@ import java.util.concurrent.atomic.AtomicBoolean
  * rules about *this handle's lifetime* and splitting them across the engine would mean the
  * engine could get them wrong per call site:
  *
- *  - **Destroy happens once, and only if the pump has stopped.** [release] flips [closed]
- *    first, wakes the event thread, **joins** it, and calls `mpv_terminate_destroy` only
- *    once that join has actually ended the thread — the join is bounded, so it can return
- *    with the pump still running. Destroying while `mpv_wait_event` is blocked in that
+ *  - **Destroy happens once, and only once the pump is dead.** [release] flips [closed]
+ *    first, wakes the event thread, **joins** it, and calls `mpv_terminate_destroy` only once
+ *    that join has actually ended the thread — the join is bounded, so it can return with the
+ *    pump still running. A pump that outlives its join keeps the handle alive rather than
+ *    losing it: the wait is handed to [destroyWhenPumpDies], which has no deadline and frees
+ *    the handle once the thread is gone. Destroying while `mpv_wait_event` is blocked in that
  *    thread is a use-after-free, and it is the single most likely way this engine crashes —
  *    the zap path releases and rebuilds an engine per channel flip, so a one-in-a-hundred
  *    race is a nightly crash.
@@ -65,8 +67,8 @@ internal class MpvClient private constructor() {
      *
      * `mpv_wait_event` blocks, so it cannot share a dispatcher thread with anything else —
      * a coroutine on `Dispatchers.IO` would hold an IO thread hostage for the engine's whole
-     * life. A plain thread we own is both cheaper and the only way to *join* it, which
-     * [release] depends on.
+     * life. A plain thread we own is both cheaper and the only way to *join* it, which is how
+     * [release] keeps teardown synchronous in the ordinary case.
      *
      * [onEvent] is invoked on that thread; the caller is responsible for hopping to wherever
      * its state lives.
@@ -142,7 +144,11 @@ internal class MpvClient private constructor() {
     }
 
     /**
-     * Tears down mpv. Idempotent; safe from any thread except the event pump itself.
+     * Tears down mpv. Idempotent.
+     *
+     * Safe from any thread, but do not call it from the event pump: the join below would then
+     * wait on the caller's own thread, burning [PUMP_JOIN_TIMEOUT_MS] before handing that same
+     * thread's death to [destroyWhenPumpDies] to wait for all over again.
      *
      * The ordering below is the whole reason this method is not three lines at the call site.
      */
@@ -155,33 +161,56 @@ internal class MpvClient private constructor() {
         // one mpv call documented as such.
         nativeWakeup(handle)
 
-        // Join before destroy. Everything else here is ordinary cleanup; this and the check
+        // Join before destroy. Everything else here is ordinary cleanup; this and the branch
         // below are the lines that prevent the crash.
-        val pumpStopped =
-            pump?.let { thread ->
-                try {
-                    thread.join(PUMP_JOIN_TIMEOUT_MS)
-                } catch (interrupted: InterruptedException) {
-                    // Restore the flag rather than swallow it: this runs on a caller's thread,
-                    // and eating an interrupt would break that thread's own cancellation.
-                    Thread.currentThread().interrupt()
-                }
-                // join(timeout) returns the same way whether the thread ended or the timeout
-                // did, and an interrupt cuts it short earlier still; isAlive is the only thing
-                // that tells those apart.
-                !thread.isAlive
-            } ?: true
+        val thread = pump
         pump = null
-
-        // Destroying under a live pump is precisely the use-after-free this class is shaped to
-        // prevent, so a pump that outlived its join keeps its handle. The context leaks for the
-        // life of the process, which is the trade PUMP_JOIN_TIMEOUT_MS already chose.
-        if (!pumpStopped) {
-            MpvLog.pumpOutlivedJoin(PUMP_JOIN_TIMEOUT_MS)
-            return
+        if (thread != null) {
+            try {
+                thread.join(PUMP_JOIN_TIMEOUT_MS)
+            } catch (interrupted: InterruptedException) {
+                // Restore the flag rather than swallow it: this runs on a caller's thread,
+                // and eating an interrupt would break that thread's own cancellation.
+                Thread.currentThread().interrupt()
+            }
+            // join(timeout) returns the same way whether the thread ended or the timeout
+            // did, and an interrupt cuts it short earlier still; isAlive is the only thing
+            // that tells those apart.
+            if (thread.isAlive) {
+                // Destroying under a live pump is precisely the use-after-free this class is
+                // shaped to prevent, so this thread does not destroy. It hands the wait to one
+                // that can afford to block instead of dropping the handle on the floor.
+                MpvLog.pumpOutlivedJoin(PUMP_JOIN_TIMEOUT_MS)
+                destroyWhenPumpDies(thread)
+                return
+            }
         }
 
         nativeDestroy(handle)
+    }
+
+    /**
+     * Waits for a pump that outlived [PUMP_JOIN_TIMEOUT_MS] — this time with no deadline — and
+     * destroys the handle it was still holding.
+     *
+     * The join is the whole mechanism: it returns when the thread is *dead*, however it died —
+     * a normal exit, an uncaught exception out of `onEvent`, anything. Death is the property
+     * that matters, because what makes the destroy safe is that no thread is inside
+     * `mpv_wait_event` any more, and a dead thread is not inside anything.
+     *
+     * A daemon, because the wait is unbounded: if mpv never returns from that wait the thread
+     * parks forever and the handle stays leaked — no worse than not deferring at all — but a
+     * non-daemon thread would additionally hold the process open waiting for it.
+     */
+    private fun destroyWhenPumpDies(thread: Thread) {
+        Thread {
+            thread.join()
+            nativeDestroy(handle)
+        }.apply {
+            name = "spidola-mpv-teardown"
+            isDaemon = true
+            start()
+        }
     }
 
     private inline fun ifOpen(block: () -> Int): Int = if (closed.get()) MpvErrorMapping.Code.GENERIC else block()
@@ -245,11 +274,13 @@ internal class MpvClient private constructor() {
         private const val EVENT_TIMEOUT_SECONDS = 1.0
 
         /**
-         * How long [release] waits for the pump. Bounded rather than indefinite: if mpv ever
-         * wedges inside `mpv_wait_event`, a permanent block here would freeze the UI thread
-         * that called `release()` and take the whole app down. When it expires the handle is
-         * leaked instead of destroyed — a leaked handle is bad, an ANR on every zap is worse,
-         * and destroying it out from under the still-blocked pump is worse than both.
+         * How long [release] waits for the pump *on the caller's thread*. Bounded rather than
+         * indefinite: if mpv ever wedges inside `mpv_wait_event`, a permanent block here would
+         * freeze the UI thread that called `release()` and take the whole app down. An ANR on
+         * every zap is worse than a late teardown, and destroying the handle out from under the
+         * still-blocked pump is worse than both — so when this expires the wait moves to
+         * [destroyWhenPumpDies] rather than the handle being dropped. Only a pump that never
+         * dies at all — still blocked in that wait, forever — costs a handle.
          */
         private const val PUMP_JOIN_TIMEOUT_MS = 2_000L
 
