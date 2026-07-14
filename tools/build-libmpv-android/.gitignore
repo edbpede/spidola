@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Everything this build touches is a reproducible product of sources.lock + the NDK pin, so
+# none of it is committed. What IS committed is the recipe: sources.lock, the scripts, and
+# the README.
+#
+# In particular the built libmpv.so is NOT committed. Per ABI it is tens of megabytes of
+# third-party LGPL binary; committing it would bloat every clone, put binaries under REUSE
+# annotations that inline SPDX headers cannot reach, and — worst — decouple the shipped
+# binary from the pins that are supposed to describe it. Gradle consumes dist/ (or a
+# release artifact) instead; see README "Where the output goes".
+
+downloads/
+src/
+dist/
+# The repository-root .gitignore already ignores build/ everywhere; repeated here so this
+# directory is self-describing.
+build/

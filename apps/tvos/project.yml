@@ -55,13 +55,27 @@ targets:
     type: bundle.ui-testing
     platform: tvOS
     deploymentTarget: "18.0"
+    # The package test suites are compiled into this bundle because `swift test` cannot run a
+    # tvOS-triple package: the Apple lane runs them here or not at all.
     sources:
       - UITests
       - Packages/FeatureBrowse/Tests/FeatureBrowseTests
+      - Packages/FeatureSearch/Tests/FeatureSearchTests
+      - Packages/FeatureSources/Tests/FeatureSourcesTests
+      - Packages/PlayerContract/Tests/PlayerContractTests
+      - Packages/FeaturePlayback/Tests/FeaturePlaybackTests
+      - Packages/PlayerAV/Tests/PlayerAVTests
+      - Packages/PlayerMPV/Tests/PlayerMPVTests
     dependencies:
       - target: Spidola
       - package: CoreKit
       - package: FeatureBrowse
+      - package: FeatureSearch
+      - package: FeatureSources
+      - package: PlayerContract
+      - package: FeaturePlayback
+      - package: PlayerAV
+      - package: PlayerMPV
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.spidola.tv.uitests

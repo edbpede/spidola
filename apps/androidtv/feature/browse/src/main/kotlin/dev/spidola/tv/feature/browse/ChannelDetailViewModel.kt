@@ -27,9 +27,10 @@ data class ChannelDetailUiState(
 )
 
 /**
- * Backs the channel detail screen: the favorite/hidden flags for the toggles, and the play action
- * that records a recent (Phase 5 wires the actual engine). Toggle failures surface as a short
- * notice with the diagnostic detail kept in the log stream (PRD §6.3, §8.6), never swallowed.
+ * Backs the channel detail screen: the favorite/hidden flags behind the toggles. Play is not here —
+ * it is a navigation intent the shell owns, and the recent is recorded by the playback slice once
+ * the stream actually starts. Toggle failures surface as a short notice with the diagnostic detail
+ * kept in the log stream (PRD §6.3, §8.6), never swallowed.
  */
 class ChannelDetailViewModel(
     val channel: PlayableChannel,
@@ -78,24 +79,6 @@ class ChannelDetailViewModel(
             try {
                 access.setHidden(channel.sourceId, channel.identity, makeHidden)
                 _state.value = _state.value.copy(isHidden = makeHidden)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: ApiException) {
-                present(e)
-            }
-        }
-    }
-
-    /** Records the channel to recently-watched. Playback itself lands with the engine contract in
-     * Phase 5; recording here means the recents row is exercised end-to-end now. */
-    fun play() {
-        viewModelScope.launch {
-            try {
-                access.recordRecent(channel)
-                _state.value =
-                    _state.value.copy(
-                        notice = "Saved to Recently watched. Full playback arrives in a later update.",
-                    )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: ApiException) {

@@ -85,6 +85,32 @@ final class BrowseModelTests: XCTestCase {
     }
   }
 
+  func testChannelsZapContextNamesItsOwnQuery() {
+    let model = ChannelsModel(
+      sourceId: 7, kind: .live, group: "News", access: FakeAccess(sources: []))
+    XCTAssertEqual(model.zapContext, .group(sourceId: 7, kind: .live, group: "News"))
+  }
+
+  /// A row's offset is its position in the whole ring, not in the page it arrived on: the core
+  /// resolves the zap against that number, so a page-relative one would flip to the wrong channel.
+  func testChannelsOffsetIsAbsoluteAcrossPages() async {
+    let channels = (0..<250).map { Self.channel(identity: Int64($0), name: "Channel \($0)") }
+    let access = FakeAccess(
+      sources: [Self.source(id: 1, name: "Home")], groupChannels: channels)
+    let model = ChannelsModel(sourceId: 1, kind: .live, group: "Fixture", access: access)
+
+    await model.load()
+    guard case .ready(let firstPage) = model.state else { return XCTFail("expected ready") }
+    XCTAssertEqual(firstPage.count, 200)
+    XCTAssertEqual(model.offset(of: firstPage[199]), 199)
+
+    await model.loadMoreIfNeeded(after: firstPage[199])
+    guard case .ready(let rows) = model.state else { return XCTFail("expected ready") }
+    XCTAssertEqual(rows.count, 250)
+    XCTAssertEqual(rows[249].channel.name, "Channel 249")
+    XCTAssertEqual(model.offset(of: rows[249]), 249)
+  }
+
   // MARK: - Fixtures
 
   private static func source(id: Int64, name: String) -> Source {
@@ -178,12 +204,17 @@ private final class FakeAccess: HomeAccess, BrowseAccess, @unchecked Sendable {
     return BrowseGroupPage(groups: groupsValue, offset: offset, total: UInt64(groupsValue.count))
   }
 
+  /// Pages the way the core does, so a test can tell an absolute ring offset from a page-relative
+  /// one.
   func channelsInGroup(
     sourceId: Int64, kind: MediaKind, group: String?, offset: UInt32, limit: UInt32
   ) async throws -> ChannelPage {
     try check()
     let visible = groupChannelsValue.filter { !hiddenIds.contains($0.identity) }
-    return ChannelPage(channels: visible, offset: offset, total: UInt64(visible.count))
+    let start = min(Int(offset), visible.count)
+    let end = min(start + Int(limit), visible.count)
+    return ChannelPage(
+      channels: Array(visible[start..<end]), offset: offset, total: UInt64(visible.count))
   }
 
   func isFavorite(sourceId: Int64, identity: Int64) async throws -> Bool {

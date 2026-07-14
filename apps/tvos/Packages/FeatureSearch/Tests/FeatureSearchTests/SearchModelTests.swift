@@ -26,6 +26,21 @@ final class SearchModelTests: XCTestCase {
     XCTAssertEqual(results.channels.map(\.name), ["BBC News"])
   }
 
+  /// The ring must name the query the core actually ran, not whatever is in the field by the time
+  /// the viewer picks a row — otherwise a result opened after one more keystroke zaps a ring the
+  /// viewer never saw.
+  func testResultsCarryTheQueryThatProducedThem() async {
+    let access = FakeSearchAccess(results: [Self.channel(identity: 1, name: "BBC News")])
+    let model = SearchModel(access: access)
+    model.query = "bbc "
+    model.sourceFilter = 3
+    model.scheduleSearch()
+    await model.waitForSearch()
+    guard case .results(let results) = model.state else { return XCTFail("expected results") }
+    model.query = "bbc one"
+    XCTAssertEqual(results.context, .search(query: "bbc", sourceId: 3, kind: nil))
+  }
+
   func testNoMatchesIsEmpty() async {
     let model = SearchModel(access: FakeSearchAccess(results: []))
     model.query = "zzz"

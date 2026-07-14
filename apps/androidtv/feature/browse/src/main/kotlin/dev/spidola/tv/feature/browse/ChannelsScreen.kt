@@ -70,6 +70,13 @@ private fun ChannelList(
     LaunchedEffect(rows.firstOrNull()?.key) {
         if (rows.isNotEmpty()) firstRow.requestFocus()
     }
+
+    // A row whose offset the list can no longer resolve has left the ring, so opening it would zap
+    // from a position it no longer occupies.
+    fun open(row: ChannelRow) {
+        val offset = viewModel.offsetOf(row) ?: return
+        navigator.openChannel(PlayableChannel.of(row.channel), viewModel.zapContext, offset)
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize().focusRestorer(firstRow),
         contentPadding =
@@ -85,7 +92,7 @@ private fun ChannelList(
                 title = row.channel.name,
                 subtitle = row.channel.groupTitle,
                 accessory = if (row.isFavorite) RowAccessory.Star else RowAccessory.None,
-                onClick = { navigator.openChannel(PlayableChannel.of(row.channel)) },
+                onClick = { open(row) },
                 modifier =
                     Modifier
                         .testTag("channel-${row.channel.name}")

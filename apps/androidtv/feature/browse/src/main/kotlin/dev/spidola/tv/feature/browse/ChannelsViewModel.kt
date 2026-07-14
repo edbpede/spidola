@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.spidola.tv.core.corekit.ActionableError
 import dev.spidola.tv.core.corekit.BrowseAccess
 import dev.spidola.tv.core.corekit.LoadState
+import dev.spidola.tv.core.corekit.ZapContext
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CancellationException
@@ -53,6 +54,18 @@ class ChannelsViewModel(
     init {
         load()
     }
+
+    /** The ring a channel opened from this list zaps through: this list's own query (PRD §8.4). */
+    val zapContext: ZapContext get() = ZapContext.Group(sourceId, kind, group)
+
+    /**
+     * [row]'s absolute position in the ring, or `null` once it has left the list.
+     *
+     * Pages are appended in order from offset 0 and a hidden row leaves both this list and the
+     * core's, so a row's index here is its offset in the core's — the value the zap ring is keyed
+     * on. Callers resolve this on selection, never per render.
+     */
+    fun offsetOf(row: ChannelRow): UInt? = rows.indexOfFirst { it.key == row.key }.takeIf { it >= 0 }?.toUInt()
 
     fun load() {
         viewModelScope.launch {

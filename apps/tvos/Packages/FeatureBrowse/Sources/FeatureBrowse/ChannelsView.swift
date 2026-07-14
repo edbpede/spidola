@@ -67,12 +67,12 @@ public struct ChannelsView: View {
       accessory: row.isFavorite ? .symbol("star.fill") : .none,
       isFocused: focused == row.id
     ) {
-      navigator.openChannel(PlayableChannel(row.channel))
+      open(row)
     }
     .focused($focused, equals: row.id)
     .accessibilityIdentifier("channel-\(row.channel.name)")
     .contextMenu {
-      Button("Open") { navigator.openChannel(PlayableChannel(row.channel)) }
+      Button("Open") { open(row) }
       Button(row.isFavorite ? "Remove favorite" : "Add favorite") {
         Task { await model.toggleFavorite(row) }
       }
@@ -82,5 +82,10 @@ public struct ChannelsView: View {
         .disabled(true)
     }
     .onAppear { Task { await model.loadMoreIfNeeded(after: row) } }
+  }
+
+  private func open(_ row: ChannelRow) {
+    guard let offset = model.offset(of: row) else { return }
+    navigator.openChannel(PlayableChannel(row.channel), model.zapContext, offset)
   }
 }

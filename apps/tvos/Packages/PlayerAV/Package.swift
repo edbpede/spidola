@@ -10,8 +10,12 @@ let package = Package(
   products: [
     .library(name: "PlayerAV", targets: ["PlayerAV"])
   ],
+  dependencies: [
+    .package(path: "../PlayerContract")
+  ],
   targets: [
-    .target(name: "PlayerAV")
+    .target(name: "PlayerAV", dependencies: ["PlayerContract"]),
+    .testTarget(name: "PlayerAVTests", dependencies: ["PlayerAV"]),
   ],
   swiftLanguageModes: [.v6]
 )

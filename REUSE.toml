@@ -6,8 +6,10 @@
 # else declares its license inline. Verified by `reuse lint` in the core CI lane.
 version = 1
 
+# Generated lockfiles are committed for reproducibility (Phase 0) but are JSON/TOML the
+# generator rewrites, so they cannot carry an inline header.
 [[annotations]]
-path = ["LICENSE", "Cargo.lock"]
+path = ["LICENSE", "Cargo.lock", "apps/tvos/Packages/*/Package.resolved"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Spidola contributors"
 SPDX-License-Identifier = "AGPL-3.0-or-later"

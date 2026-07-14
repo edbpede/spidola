@@ -71,13 +71,17 @@ public struct HomeView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: SpidolaSpacing.xl) {
         PosterRail(title: "Favorites", items: home.favorites.map(Self.poster)) { item in
-          if let channel = home.favorites.first(where: { $0.id == item.id }) {
-            navigator.openChannel(channel)
+          // The row is loaded from offset 0 in ring order, so a poster's index in it is its offset
+          // in the favourites ring.
+          if let offset = home.favorites.firstIndex(where: { $0.id == item.id }) {
+            navigator.openChannel(home.favorites[offset], .favorites, UInt32(offset))
           }
         }
         PosterRail(title: "Recently watched", items: home.recents.map(Self.poster)) { item in
           if let channel = home.recents.first(where: { $0.id == item.id }) {
-            navigator.openChannel(channel)
+            // Recents are a history, not a ring: they are ordered by when they were watched, and a
+            // core query cannot resolve neighbours for them. Zap is unavailable rather than faked.
+            navigator.openChannel(channel, .single, 0)
           }
         }
         sourcesSection(home.sources)

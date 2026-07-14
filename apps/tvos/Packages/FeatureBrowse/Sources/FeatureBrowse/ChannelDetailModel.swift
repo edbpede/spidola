@@ -6,9 +6,10 @@ import OSLog
 import Observation
 import core_api
 
-/// Backs the channel detail screen: the favorite/hidden flags for the toggles, and the play action
-/// that records a recent (Phase 5 wires the actual engine). Toggle failures surface as a short
-/// notice with the diagnostic detail kept in the log stream (PRD §6.3, §8.6), never swallowed.
+/// Backs the channel detail screen: the favorite/hidden flags behind the toggles. Play is not here
+/// — it is a navigation intent the shell owns, and the recent is recorded by the playback slice once
+/// the stream actually starts. Toggle failures surface as a short notice with the diagnostic detail
+/// kept in the log stream (PRD §6.3, §8.6), never swallowed.
 @MainActor
 @Observable
 public final class ChannelDetailModel {
@@ -53,17 +54,6 @@ public final class ChannelDetailModel {
       try await access.setHidden(
         sourceId: channel.sourceId, identity: channel.identity, hidden: makeHidden)
       isHidden = makeHidden
-    } catch {
-      present(error)
-    }
-  }
-
-  /// Records the channel to recently-watched. Playback itself lands with the engine contract in
-  /// Phase 5; recording here means the recents row is exercised end-to-end now.
-  public func play() async {
-    do {
-      try await access.recordRecent(channel)
-      notice = "Saved to Recently watched. Full playback arrives in a later update."
     } catch {
       present(error)
     }

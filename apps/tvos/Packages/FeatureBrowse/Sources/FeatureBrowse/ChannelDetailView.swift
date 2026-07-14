@@ -7,14 +7,20 @@ import SwiftUI
 import core_api
 
 /// The channel detail screen: artwork, name, group, and the actions a household member reaches for
-/// — Play (records a recent; the engine lands in Phase 5), favorite, and hide.
+/// — Play, favorite, and hide.
 public struct ChannelDetailView: View {
   @State private var model: ChannelDetailModel
+  /// Play is a navigation intent, so the slice announces it and the shell decides where it goes —
+  /// which keeps this screen free of the app's route enum and of the playback slice (doctrine §3.1).
+  private let onPlay: @MainActor () -> Void
 
   @FocusState private var focused: Action?
 
-  public init(channel: PlayableChannel, access: any BrowseAccess) {
+  public init(
+    channel: PlayableChannel, access: any BrowseAccess, onPlay: @escaping @MainActor () -> Void
+  ) {
     _model = State(initialValue: ChannelDetailModel(channel: channel, access: access))
+    self.onPlay = onPlay
   }
 
   public var body: some View {
@@ -53,7 +59,7 @@ public struct ChannelDetailView: View {
 
   private var actions: some View {
     HStack(spacing: SpidolaSpacing.m) {
-      actionButton(.play, title: "Play", isPrimary: true) { Task { await model.play() } }
+      actionButton(.play, title: "Play", isPrimary: true, perform: onPlay)
       actionButton(
         .favorite, title: model.isFavorite ? "Remove favorite" : "Add favorite"
       ) { Task { await model.toggleFavorite() } }

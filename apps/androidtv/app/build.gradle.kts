@@ -50,12 +50,24 @@ kotlin {
     jvmToolchain(21)
 }
 
+tasks.withType<Test> {
+    useJUnitPlatform()
+}
+
 dependencies {
     implementation(project(":core:corekit"))
     implementation(project(":core:designsystem"))
+    implementation(project(":core:player-contract"))
     implementation(project(":feature:browse"))
+    implementation(project(":feature:playback"))
     implementation(project(":feature:search"))
     implementation(project(":feature:sources"))
+
+    // The composition root is the only module that may name engines (TECH_SPEC §3.1): it builds the
+    // EngineRegistry the playback slice resolves against, which is what keeps that slice — and every
+    // other feature — free of a decoder dependency.
+    implementation(project(":player:engine-exo"))
+    implementation(project(":player:engine-mpv"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.foundation)
@@ -70,6 +82,10 @@ dependencies {
 
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines)
+
+    testImplementation(kotlin("test"))
+    testImplementation(libs.junit5.api)
+    testRuntimeOnly(libs.junit5.engine)
 
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")

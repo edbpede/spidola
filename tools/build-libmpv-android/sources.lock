@@ -1,0 +1,67 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# The pinned source graph for the LGPL libmpv Android build (TECH_SPEC §7, §12).
+#
+# Nothing is fetched that is not named here, and nothing named here is used without its
+# digest matching. `verify-pins.sh` re-derives every digest below and fails on drift;
+# `fetch.sh` refuses to unpack a source whose digest does not match.
+#
+# Columns: NAME  KIND  VERSION  DIGEST  URL   (whitespace-separated; no field contains a space)
+#
+# KIND semantics:
+#   tarball         DIGEST is the sha256 of the archive at URL. Used wherever upstream
+#                   publishes a stable, uploaded release artifact — those are byte-stable.
+#   git             DIGEST is the git commit SHA the tag resolves to. Used where upstream
+#                   publishes no source tarball (mpv) or where the tree needs submodules
+#                   (libplacebo). A commit SHA is itself a content hash over the whole tree,
+#                   so it is a stronger pin than a sha256 of an archive — and unlike
+#                   GitHub's auto-generated tarballs (whose bytes have changed under
+#                   upstream's feet before), it cannot drift.
+#   git-submodule   DIGEST is the gitlink SHA recorded by the parent repo at its pinned
+#                   commit. NAME is the submodule path under its parent.
+#
+# VERSION is the human-readable upstream tag; DIGEST is what is actually enforced.
+
+# ── TLS ─────────────────────────────────────────────────────────────────────
+# Mbed-TLS, not OpenSSL: FFmpeg's configure refuses OpenSSL <3 under a GPL build and
+# demands --enable-version3 for OpenSSL >=3 (configure:7126). Mbed-TLS is Apache-2.0,
+# carries no such coupling, and cross-compiles to Android without a host quirk.
+# Pinned to the 3.6 LTS line: Mbed-TLS 4.x is a deliberate API break that FFmpeg 7.1
+# does not target.
+mbedtls  tarball  mbedtls-3.6.7  a7e8bcbec0e6f761b4af24f25677626b35f762f68eef79c08677a363212d11f6  https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.7/mbedtls-3.6.7.tar.bz2
+
+# ── Text shaping stack (libass' dependencies) ───────────────────────────────
+freetype  tarball  2.14.3   36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f  https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz
+harfbuzz  tarball  14.2.1   a54a5d8e9380a41fbb762ce367bcbf7704792dfca0d93f1bbca86c5a57902e0e  https://github.com/harfbuzz/harfbuzz/releases/download/14.2.1/harfbuzz-14.2.1.tar.xz
+fribidi   tarball  1.0.16   1b1cde5b235d40479e91be2f0e88a309e3214c8ab470ec8a2744d82a5a9ea05c  https://github.com/fribidi/fribidi/releases/download/v1.0.16/fribidi-1.0.16.tar.xz
+libass    tarball  0.17.5   2dca25c0e0c837ddf00b52011b3f82cac1e4ddd3ad018227806b0c2288864acc  https://github.com/libass/libass/releases/download/0.17.5/libass-0.17.5.tar.xz
+
+# ── FFmpeg ──────────────────────────────────────────────────────────────────
+# 7.1.5 (the 7.1 maintenance branch), not 8.x: mpv 0.41.0 requires libavcodec >= 60.31.102
+# (mpv meson.build:22), which 7.1 satisfies with margin, and 7.1 is the branch with the
+# longest real-world soak against this mpv release.
+# Built LGPL — see ffmpeg.sh and README "Why LGPL, and how it is enforced".
+ffmpeg  tarball  7.1.5  de668509caf9e35e3cd162473441fdb29538c6d96ed080292b3cf9e6fc5d558f  https://ffmpeg.org/releases/ffmpeg-7.1.5.tar.xz
+
+# ── libplacebo ──────────────────────────────────────────────────────────────
+# Not optional: mpv 0.41.0 declares libplacebo a hard dependency, >= 6.338.2
+# (mpv meson.build:29, and features['libplacebo'] is unconditionally true at line 51).
+# LGPL-2.1-or-later. Fetched over git because it needs its submodules.
+libplacebo  git  v7.360.1  cee9b076f2c63104ccfd497fa79c39a867293ec4  https://github.com/haasn/libplacebo.git
+
+# libplacebo submodules. Only the four the OpenGL-ES build actually reads are pinned and
+# fetched: glad generates the GL loader at build time and does it by rendering jinja
+# templates (hence jinja and its markupsafe dependency), and fast_float is used by the
+# core. 3rdparty/Vulkan-Headers is skipped because we build with -Dvulkan=disabled, and
+# demos/3rdparty/nuklear because we build with -Ddemos=false.
+libplacebo/3rdparty/glad        git-submodule  -  73db193f853e2ee079bf3ca8a64aa2eaf6459043  https://github.com/Dav1dde/glad
+libplacebo/3rdparty/jinja       git-submodule  -  15206881c006c79667fe5154fe80c01c65410679  https://github.com/pallets/jinja
+libplacebo/3rdparty/markupsafe  git-submodule  -  297fc8e356e6836a62087949245d09a28e9f1b13  https://github.com/pallets/markupsafe
+libplacebo/3rdparty/fast_float  git-submodule  -  97b54ca9e75f5303507699d27c6b4f4efe4641a1  https://github.com/fastfloat/fast_float.git
+
+# ── mpv ─────────────────────────────────────────────────────────────────────
+# Fetched over git because upstream publishes no source tarball for v0.41.0 — the release
+# assets are Windows/macOS binaries only.
+# Built LGPL via -Dgpl=false — see mpv.sh and the README.
+mpv  git  v0.41.0  41f6a645068483470267271e1d09966ca3b9f413  https://github.com/mpv-player/mpv.git

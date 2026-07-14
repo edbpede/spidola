@@ -41,6 +41,18 @@ public final class ChannelsModel {
     self.access = access
   }
 
+  /// The ring a channel opened from this list zaps through: this list's own query (PRD §8.4).
+  public var zapContext: ZapContext { .group(sourceId: sourceId, kind: kind, group: group) }
+
+  /// `row`'s absolute position in the ring, or `nil` once it has left the list.
+  ///
+  /// Pages are appended in order from offset 0 and a hidden row leaves both this list and the
+  /// core's, so a row's index here is its offset in the core's — the value the zap ring is keyed
+  /// on. Callers resolve this on selection, never per render.
+  public func offset(of row: ChannelRow) -> UInt32? {
+    rows.firstIndex(where: { $0.id == row.id }).map(UInt32.init)
+  }
+
   public func load() async {
     state = .loading
     favorites = []

@@ -10,11 +10,16 @@ import core_api
 /// filters, and a focusable result list (PRD §9). Selecting a result opens its detail.
 public struct SearchView: View {
   @State private var model: SearchModel
-  private let onOpenChannel: (PlayableChannel) -> Void
+  /// Carries the ring alongside the channel: a result opened from here zaps through the result set
+  /// (PRD §8.4). `offset` is the row's position in that set.
+  private let onOpenChannel: (PlayableChannel, ZapContext, UInt32) -> Void
 
   @FocusState private var focused: Focus?
 
-  public init(access: any SearchAccess, onOpenChannel: @escaping (PlayableChannel) -> Void) {
+  public init(
+    access: any SearchAccess,
+    onOpenChannel: @escaping (PlayableChannel, ZapContext, UInt32) -> Void
+  ) {
     _model = State(initialValue: SearchModel(access: access))
     self.onOpenChannel = onOpenChannel
   }
@@ -103,13 +108,15 @@ public struct SearchView: View {
             .font(SpidolaType.caption)
             .foregroundStyle(SpidolaPalette.staticGray)
         }
-        ForEach(results.channels, id: \.identity) { channel in
+        // The set is fetched from offset 0 in score order, so a row's index in it is its offset in
+        // the ring.
+        ForEach(Array(results.channels.enumerated()), id: \.element.identity) { offset, channel in
           SpidolaRow(
             title: channel.name,
             subtitle: channel.groupTitle,
             isFocused: focused == .result(channel.identity)
           ) {
-            onOpenChannel(PlayableChannel(channel))
+            onOpenChannel(PlayableChannel(channel), results.context, UInt32(offset))
           }
           .focused($focused, equals: .result(channel.identity))
           .accessibilityIdentifier("search-result-\(channel.name)")
