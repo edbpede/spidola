@@ -190,6 +190,37 @@ final class PlaybackModelTests: XCTestCase {
     XCTAssertNil(model.engine)
   }
 
+  /// Back stops the model without cancelling the view's `.task` (`PlaybackView.exit`), so a load
+  /// suspended in a core lookup has to notice the stop itself. Building an engine after it would
+  /// leave playback running with no screen and no owner left to stop it.
+  func testStopDuringLoadNeverStartsAnEngine() async {
+    let harness = Harness()
+    harness.access.holdsChannelEngineLookup = true
+    let model = harness.model()
+    let start = Task { await model.start() }
+    await settle()
+    model.stop()
+    harness.access.releaseChannelEngineLookup()
+    await start.value
+    XCTAssertTrue(harness.built.isEmpty)
+    XCTAssertNil(model.engine)
+  }
+
+  /// The disappear path, where `.task` cancellation can land before `onDisappear` calls `stop` and
+  /// so leaves the generation untouched.
+  func testCancelledLoadNeverStartsAnEngine() async {
+    let harness = Harness()
+    harness.access.holdsChannelEngineLookup = true
+    let model = harness.model()
+    let start = Task { await model.start() }
+    await settle()
+    start.cancel()
+    harness.access.releaseChannelEngineLookup()
+    await start.value
+    XCTAssertTrue(harness.built.isEmpty)
+    XCTAssertNil(model.engine)
+  }
+
   func testRecordsARecentOnPlay() async {
     let harness = Harness()
     let model = harness.model()
@@ -256,6 +287,10 @@ private final class FakePlaybackAccess: PlaybackAccess {
   var buffering: String?
   /// Forces the window's current row to a different identity, as a refresh would.
   var windowIdentityOverride: Int64?
+  /// Holds `channelEngine` mid-flight. The other lookups return without ever suspending, so this is
+  /// the only way a test can stand where the core does and drive an exit into a load in flight.
+  var holdsChannelEngineLookup = false
+  private var heldChannelEngine: CheckedContinuation<Void, Never>?
 
   func zapWindow(context: ZapContext, offset: UInt32) async throws -> ZapWindow? {
     let identity = windowIdentityOverride ?? Int64(10 + offset)
@@ -268,7 +303,20 @@ private final class FakePlaybackAccess: PlaybackAccess {
   }
 
   func channelEngine(sourceId: Int64, identity: Int64) async throws -> String? {
-    channelEngines["\(sourceId)-\(identity)"]
+    if holdsChannelEngineLookup {
+      await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+        heldChannelEngine = continuation
+      }
+    }
+    return channelEngines["\(sourceId)-\(identity)"]
+  }
+
+  /// Clears the hold as well as resuming, so a lookup that has not arrived yet cannot strand the
+  /// test at the gate.
+  func releaseChannelEngineLookup() {
+    holdsChannelEngineLookup = false
+    heldChannelEngine?.resume()
+    heldChannelEngine = nil
   }
 
   func setChannelEngine(sourceId: Int64, identity: Int64, engine: String?) async throws {

@@ -72,6 +72,14 @@ class RoutesTest {
         assertEquals(channel, ChannelPayload.of(channel).toPlayable())
     }
 
+    @Test
+    fun `a channel with no kind keeps it absent through the route payload`() {
+        // A channel opened from a recent carries no kind, and the payload must not invent one.
+        val channel = channel().copy(kind = null)
+
+        assertEquals(channel, ChannelPayload.of(channel).toPlayable())
+    }
+
     private fun channel(): PlayableChannel =
         PlayableChannel(
             sourceId = 7,
@@ -80,5 +88,6 @@ class RoutesTest {
             group = "News",
             logo = "http://host.example/logo.png",
             locator = "http://host.example/live/1.ts",
+            kind = MediaKind.LIVE,
         )
 }

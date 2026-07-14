@@ -74,6 +74,16 @@ internal object MpvLog {
         Log.w(TAG, "$what failed: mpv error $code")
     }
 
+    /**
+     * The event pump was still running when [MpvClient.release] gave up waiting for it, so the
+     * handle was leaked rather than destroyed under a live thread. Nothing here is recoverable;
+     * it is logged because it means mpv did not return from `mpv_wait_event` after a wakeup,
+     * and a support thread seeing this alongside rising memory has the whole explanation.
+     */
+    fun pumpOutlivedJoin(timeoutMs: Long) {
+        Log.w(TAG, "release: event pump still running after ${timeoutMs}ms — leaking the mpv handle")
+    }
+
     fun nativeLibraryMissing(error: UnsatisfiedLinkError) {
         Log.e(
             TAG,

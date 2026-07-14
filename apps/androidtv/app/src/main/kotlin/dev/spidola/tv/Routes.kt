@@ -36,8 +36,9 @@ data class ChannelsRoute(
  * A [PlayableChannel] flattened into primitives for the back stack. Its own type because both the
  * detail and the playback route carry a channel, and a second copy of this mapping could drift.
  *
- * The kind is dropped rather than carried: it is `null` for a channel opened from a recent, and
- * nothing downstream may claim one without evidence (PRD §8.5).
+ * The kind travels as its enum name, like every other kind in this file, and stays nullable: a
+ * channel opened from a recent never had one to carry, so the absence restores as an absence rather
+ * than as a claim about what the channel plays.
  */
 @Serializable
 data class ChannelPayload(
@@ -47,6 +48,7 @@ data class ChannelPayload(
     val group: String?,
     val logo: String?,
     val locator: String,
+    val kindName: String?,
 ) {
     fun toPlayable(): PlayableChannel =
         PlayableChannel(
@@ -56,6 +58,7 @@ data class ChannelPayload(
             group = group,
             logo = logo,
             locator = locator,
+            kind = kindName?.let(MediaKind::valueOf),
         )
 
     companion object {
@@ -67,6 +70,7 @@ data class ChannelPayload(
                 group = channel.group,
                 logo = channel.logo,
                 locator = channel.locator,
+                kindName = channel.kind?.name,
             )
     }
 }

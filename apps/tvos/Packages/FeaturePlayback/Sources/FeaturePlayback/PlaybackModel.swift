@@ -45,6 +45,9 @@ public final class PlaybackModel {
   private let context: ZapContext
   private var offset: UInt32
   private var stateTask: Task<Void, Never>?
+  /// Bumped by every `stop` and every load. A load suspended in a core lookup compares it on resume
+  /// to find out whether it still owns the model — see `isCurrent(_:)`.
+  private var loadGeneration: UInt64 = 0
   private var loadStartedAt: ContinuousClock.Instant?
   private let clock = ContinuousClock()
   private let logger = Logger(subsystem: "dev.spidola.tv", category: "spidola::playback")
@@ -131,9 +134,14 @@ public final class PlaybackModel {
     engine?.setAspect(aspect)
   }
 
-  /// Disposes the engine. The view calls this on disappear; `stop` is idempotent by contract, so
-  /// it is safe alongside the terminal-state path.
+  /// Disposes the engine and abandons any load still in flight. The view calls this on disappear
+  /// and on Back; `stop` is idempotent by contract, so it is safe alongside the terminal-state
+  /// path.
   public func stop() {
+    // Bumping the generation is the only thing a load suspended in `play` can see. Clearing
+    // `engine` cannot reach it: that load has not built its engine yet, so there is nothing here
+    // to dispose and nothing it would otherwise notice on resume.
+    loadGeneration &+= 1
     stateTask?.cancel()
     stateTask = nil
     engine?.stop()
@@ -147,8 +155,18 @@ public final class PlaybackModel {
     fallbackOffer = nil
     engineUnavailable = false
     state = .loading
+    let generation = loadGeneration
 
+    // Both lookups reach the core, and the viewer can leave while they are in flight. Every
+    // suspension is therefore followed by a guard, and the engine is not built until the last one
+    // has passed: an engine built before a guard could be orphaned by a `stop` landing mid-load,
+    // and no engine has a `deinit` to catch it.
     let resolved = await resolveEngine(target, override: engineOverride)
+    guard isCurrent(generation) else { return }
+
+    let streamRequest = await request(for: target)
+    guard isCurrent(generation) else { return }
+
     guard let built = registry.make(resolved) else {
       // Only reachable when the platform default itself is not registered — a wiring bug. Report
       // it as one honest failure rather than substituting an engine the policy did not choose.
@@ -158,14 +176,28 @@ public final class PlaybackModel {
       return
     }
 
+    // Nothing from here down suspends, so the engine reaches `engine` — where `stop` can find it —
+    // in the same main-actor run that builds it.
     engine = built
     built.setAspect(aspect)
     observe(built, id: resolved)
     loadStartedAt = clock.now
     logger.info(
       "load channel \(target.identity) on \(resolved.rawValue, privacy: .public)")
-    built.load(await request(for: target))
+    built.load(streamRequest)
     built.play()
+  }
+
+  /// Whether the load that captured `generation` still owns the model.
+  ///
+  /// The two clauses catch different exits and neither subsumes the other. Back calls `stop`
+  /// without cancelling the view's `.task` (`PlaybackView.exit`), so cancellation alone would miss
+  /// it; `.task` cancellation on disappear can land before `onDisappear` calls `stop`, so the
+  /// generation alone would miss that. A load that fails this is abandoned and leaves `state`
+  /// alone: whatever superseded it — a newer `play`, or a `stop` on the way off screen — owns the
+  /// state now.
+  private func isCurrent(_ generation: UInt64) -> Bool {
+    loadGeneration == generation && !Task.isCancelled
   }
 
   private func resolveEngine(_ target: PlayableChannel, override: EngineID?) async -> EngineID {

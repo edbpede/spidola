@@ -14,11 +14,13 @@ import java.util.concurrent.atomic.AtomicBoolean
  * rules about *this handle's lifetime* and splitting them across the engine would mean the
  * engine could get them wrong per call site:
  *
- *  - **Destroy happens once, after the pump stops.** [release] flips [closed] first, wakes
- *    the event thread, **joins** it, and only then calls `mpv_terminate_destroy`. Destroying
- *    while `mpv_wait_event` is blocked in that thread is a use-after-free, and it is the
- *    single most likely way this engine crashes — the zap path releases and rebuilds an
- *    engine per channel flip, so a one-in-a-hundred race is a nightly crash.
+ *  - **Destroy happens once, and only if the pump has stopped.** [release] flips [closed]
+ *    first, wakes the event thread, **joins** it, and calls `mpv_terminate_destroy` only
+ *    once that join has actually ended the thread — the join is bounded, so it can return
+ *    with the pump still running. Destroying while `mpv_wait_event` is blocked in that
+ *    thread is a use-after-free, and it is the single most likely way this engine crashes —
+ *    the zap path releases and rebuilds an engine per channel flip, so a one-in-a-hundred
+ *    race is a nightly crash.
  *  - **No call touches a destroyed handle.** [closed] gates every entry point, so a
  *    surface teardown or a late command arriving after release is a no-op instead of a
  *    jump through freed memory.
@@ -153,18 +155,31 @@ internal class MpvClient private constructor() {
         // one mpv call documented as such.
         nativeWakeup(handle)
 
-        // Join before destroy. Everything else here is ordinary cleanup; this line is the one
-        // that prevents the crash.
-        pump?.let { thread ->
-            try {
-                thread.join(PUMP_JOIN_TIMEOUT_MS)
-            } catch (interrupted: InterruptedException) {
-                // Restore the flag rather than swallow it: this runs on a caller's thread,
-                // and eating an interrupt would break that thread's own cancellation.
-                Thread.currentThread().interrupt()
-            }
-        }
+        // Join before destroy. Everything else here is ordinary cleanup; this and the check
+        // below are the lines that prevent the crash.
+        val pumpStopped =
+            pump?.let { thread ->
+                try {
+                    thread.join(PUMP_JOIN_TIMEOUT_MS)
+                } catch (interrupted: InterruptedException) {
+                    // Restore the flag rather than swallow it: this runs on a caller's thread,
+                    // and eating an interrupt would break that thread's own cancellation.
+                    Thread.currentThread().interrupt()
+                }
+                // join(timeout) returns the same way whether the thread ended or the timeout
+                // did, and an interrupt cuts it short earlier still; isAlive is the only thing
+                // that tells those apart.
+                !thread.isAlive
+            } ?: true
         pump = null
+
+        // Destroying under a live pump is precisely the use-after-free this class is shaped to
+        // prevent, so a pump that outlived its join keeps its handle. The context leaks for the
+        // life of the process, which is the trade PUMP_JOIN_TIMEOUT_MS already chose.
+        if (!pumpStopped) {
+            MpvLog.pumpOutlivedJoin(PUMP_JOIN_TIMEOUT_MS)
+            return
+        }
 
         nativeDestroy(handle)
     }
@@ -232,8 +247,9 @@ internal class MpvClient private constructor() {
         /**
          * How long [release] waits for the pump. Bounded rather than indefinite: if mpv ever
          * wedges inside `mpv_wait_event`, a permanent block here would freeze the UI thread
-         * that called `release()` and take the whole app down. A leaked handle is bad; an
-         * ANR on every zap is worse.
+         * that called `release()` and take the whole app down. When it expires the handle is
+         * leaked instead of destroyed — a leaked handle is bad, an ANR on every zap is worse,
+         * and destroying it out from under the still-blocked pump is worse than both.
          */
         private const val PUMP_JOIN_TIMEOUT_MS = 2_000L
 
