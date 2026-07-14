@@ -12,6 +12,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -27,15 +28,27 @@ defaults:
 jobs:
   android:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
-      # The Android TV emulator step has intermittently failed with
-      # "Not enough space to create userdata partition" (observed shortfall: needed 7.37 GB,
-      # had 3.23 GB available) and with unexplained mid-boot process kills consistent with
-      # resource exhaustion. ubuntu-latest preinstalls several multi-GB toolchains this job
-      # never touches (no .NET, Haskell, or Swift code here); reclaiming them up front gives
-      # the emulator's userdata partition and Gradle/cargo caches headroom to avoid both.
+      # The Android TV emulator step previously showed three distinct failure signatures, all
+      # root-caused and fixed:
+      #   - exit-255 / mid-boot-kill: adbd restarts once at end-of-boot, transiently dropping the
+      #     device offline right as the first unguarded adb command ran under set -euo pipefail;
+      #     the lingering qemu process then got reaped by the runner's orphan cleanup, which
+      #     mimicked an OOM kill. No OOM was ever observed. run-android-tv-emulator-ci.sh now
+      #     waits for several consecutive healthy adb/boot-property reads before proceeding, and
+      #     cleanup() gives the emulator process time to exit gracefully so nothing is left for
+      #     the reaper to kill.
+      #   - "Not enough space to create userdata partition": the AVD's default data-partition
+      #     request (7372.8 MB) exceeded available disk. Pinned to disk.dataPartition.size=4096M
+      #     in the AVD config, which comfortably covers the ~1 GB the smoke run writes.
+      #   - A Compose render timeout was fixed test-side, plus hw.ramSize=2048 (the AVD's 1024 MB
+      #     default is tight for Compose + swiftshader).
+      # This cleanup step stays in place as cache/userdata-partition headroom. ubuntu-latest
+      # preinstalls several multi-GB toolchains this job never touches (no .NET, Haskell, or
+      # Swift code here), so reclaiming them up front costs nothing.
       - name: Free disk space (drop unused preinstalled toolchains)
         run: |
           echo "Disk space before cleanup:"
@@ -79,7 +92,7 @@ jobs:
         run: ./gradlew ktlintCheck detekt
 
       - name: Assemble (debug)
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug :app:assembleDebugAndroidTest
 
       - name: Unit tests
         run: ./gradlew testDebugUnitTest
@@ -100,6 +113,7 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Android TV emulator smoke test
+        timeout-minutes: 30
         run: '"$GITHUB_WORKSPACE/tools/ci/run-android-tv-emulator-ci.sh"'
 
       - name: Retain Android M0 evidence
@@ -124,6 +138,7 @@ jobs:
   # harnesses. Isolated from the main job so a harness-tooling issue never masks a build break.
   contract:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
