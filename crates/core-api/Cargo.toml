@@ -22,8 +22,12 @@ crate-type = ["lib", "staticlib", "cdylib"]
 core-model = { path = "../core-model" }
 core-db = { path = "../core-db" }
 core-fetch = { path = "../core-fetch" }
+core-pair = { path = "../core-pair" }
 core-parse = { path = "../core-parse" }
 core-search = { path = "../core-search" }
+core-xtream = { path = "../core-xtream" }
+# Mints the opaque host-secrets keys the DB stores in place of credentials (TECH_SPEC §12).
+rand = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

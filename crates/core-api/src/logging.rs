@@ -38,16 +38,25 @@ pub mod targets {
     pub const PARSE: &str = "spidola::parse";
     /// Search.
     pub const SEARCH: &str = "spidola::search";
+    /// Xtream account handshake and catalog mapping.
+    pub const XTREAM: &str = "spidola::xtream";
+    /// The LAN pairing micro-server.
+    pub const PAIR: &str = "spidola::pair";
 }
 
 /// Severity of a forwarded log record, mapped one-to-one from `tracing::Level`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+///
+/// `Info` is the [`Default`]: it is what the diagnostics screen's log level resolves to when the
+/// user has never chosen one (PRD §6.9) — verbose enough to tell a support thread what happened,
+/// quiet enough to cost nothing on the zap path.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, uniffi::Enum)]
 pub enum LogLevel {
     /// `tracing::Level::ERROR`.
     Error,
     /// `tracing::Level::WARN`.
     Warn,
     /// `tracing::Level::INFO`.
+    #[default]
     Info,
     /// `tracing::Level::DEBUG`.
     Debug,
@@ -63,6 +72,26 @@ impl From<&tracing::Level> for LogLevel {
             tracing::Level::INFO => Self::Info,
             tracing::Level::DEBUG => Self::Debug,
             tracing::Level::TRACE => Self::Trace,
+        }
+    }
+}
+
+impl LogLevel {
+    /// The `EnvFilter` directive selecting this level globally, for
+    /// [`LogHandle::set_directives`] (the diagnostics screen's log-level control, §4.8).
+    ///
+    /// Deliberately distinct from the level's *stored* spelling in
+    /// [`crate::settings`]: one is this crate's contract with `tracing`, the other is the
+    /// settings table's on-disk format, and they are free to diverge without breaking
+    /// each other.
+    #[must_use]
+    pub(crate) fn directive(self) -> &'static str {
+        match self {
+            Self::Error => "error",
+            Self::Warn => "warn",
+            Self::Info => "info",
+            Self::Debug => "debug",
+            Self::Trace => "trace",
         }
     }
 }

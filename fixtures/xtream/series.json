@@ -1,0 +1,42 @@
+[
+  {
+    "num": 1,
+    "name": "A Drama Series",
+    "series_id": 55,
+    "cover": "http://cdn.example/covers/series-55.jpg",
+    "plot": "Someone does something, at length.",
+    "cast": "A Person, Another Person",
+    "director": "",
+    "genre": "Drama",
+    "releaseDate": "2021-03-14",
+    "last_modified": "1704067200",
+    "rating": "8.1",
+    "rating_5based": 4.05,
+    "backdrop_path": ["http://cdn.example/backdrops/series-55.jpg"],
+    "youtube_trailer": "",
+    "episode_run_time": "52",
+    "category_id": "20"
+  },
+  {
+    "num": 2,
+    "name": "A Comedy Series",
+    "series_id": "56",
+    "cover": "",
+    "plot": "",
+    "genre": "Comedy",
+    "rating": 0,
+    "category_id": 20
+  },
+  {
+    "num": 3,
+    "name": "Unusable — No Series Id",
+    "cover": "http://cdn.example/covers/none.jpg",
+    "category_id": "20"
+  },
+  {
+    "num": 4,
+    "name": "Unusable — Zero Series Id",
+    "series_id": 0,
+    "category_id": "20"
+  }
+]

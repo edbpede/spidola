@@ -207,18 +207,39 @@ coherently in each platform's tooling. Physical-device validation is deferred an
 
 ## Phase 6 — Xtream, pairing, settings, accessibility (completing P0)
 
-- [ ] **`core-xtream`**
-  - [ ] Auth handshake; live/VOD/series catalogs; series → seasons/episodes expansion; defensive wire deserialization
-  - [ ] Centralized, audited stream-URL credential embedding; scrubbed fixture corpus + stub-server tests
-  - [ ] Secrets flow: credentials via host-secrets callback only; DB stores opaque keys (verified by test inspecting the DB file)
+- [x] **`core-xtream`**
+  - [x] Auth handshake; live/VOD/series catalogs; series → seasons/episodes expansion; defensive wire deserialization
+  - [x] Centralized, audited stream-URL credential embedding; scrubbed fixture corpus + stub-server tests
+  - [x] Secrets flow: credentials via host-secrets callback only; DB stores opaque keys (verified by test inspecting the DB file)
+    - Catalogs persist a **credential-free** locator; the password is embedded only at play time,
+      in `core-xtream/src/urls.rs` (the audited point). Xtream buffers each listing whole rather
+      than streaming — the protocol returns one unpaginated JSON array per listing, so there is
+      nothing to stream; bounded by a 64 MiB cap. Revisit against the low-end baseline in Phase 7.
 - [ ] **Xtream in the apps** — add-account flow, series browsing UI, per-source refresh semantics, 401-renewal error path
+  - Core side ready: `SourceService::add_xtream` (verifies before storing) and the Xtream arm of
+    `refresh` (staging-and-swap, honest cancellation) are live behind the boundary
 - [ ] **`core-pair` + pairing UX**
-  - [ ] LAN-only server, alive only while its screen is visible; session-random token; single static form + single POST shape
-  - [ ] AGPL §13 source link on every served page
+  - [x] LAN-only server, alive only while its screen is visible; session-random token; single static form + single POST shape
+    - Locality is enforced as a **peer check** (private / link-local / loopback), not merely a bind
+  - [x] AGPL §13 source link on every served page
+    - One shared page shell ends in a quiet colophon, so a page cannot be served without the
+      offer; a test enumerates every renderable page and asserts it
   - [ ] TV screen with QR + URL + token; submission lands as a pre-filled add-source flow
+    - Core side ready: `PairingService::start/stop` + `PairingSubmission` events. **The shell must
+      supply the TV's LAN address** — the core infers it from the route out, which is wrong behind
+      a full-tunnel VPN or on a multi-homed host (`core-pair` crate docs carry the measurements);
+      tvOS has `NWInterface` and Android `WifiManager`/`NetworkInterface` for the right answer
 - [ ] **Settings (full PRD §6.9 surface)**
   - [ ] All settings wired through the core SettingsService; defaults verified ("usable without opening settings" walkthrough)
+    - Core side done: the typed vocabulary + defaults (`core-api/src/settings.rs`) replace Phase 2's
+      opaque key/value FFI surface, so a shell cannot invent an untyped setting; a contract test
+      asserts a fresh install resolves every setting with no stored row. The shell settings screens
+      and the walkthrough itself remain
   - [ ] Diagnostics screen: log level (runtime tracing filter), log export (ring buffer, redaction test on export output), versions incl. core git revision
+    - Core side done: `set_log_level` persists **and** applies the live filter (and is re-applied at
+      startup), `export_logs` snapshots the ring, and the handshake now reports the core git
+      revision. Redaction on export is asserted end-to-end against a headend that mirrors the
+      password back. The screen itself remains
 - [ ] **Accessibility + localization baseline**
   - [ ] VoiceOver / TalkBack pass over every focusable element; reduce-motion honored; contrast audit against tokens
   - [ ] String extraction complete; localization infrastructure live; English strings copy-edited per PRD §8.6 voice

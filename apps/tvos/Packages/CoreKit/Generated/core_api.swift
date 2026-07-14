@@ -471,6 +471,22 @@ private let UNIFFI_CALLBACK_UNEXPECTED_ERROR: Int32 = 2
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterUInt16: FfiConverterPrimitive {
+    typealias FfiType = UInt16
+    typealias SwiftType = UInt16
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt16 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
     typealias FfiType = UInt32
     typealias SwiftType = UInt32
@@ -982,6 +998,14 @@ public protocol CoreProtocol: AnyObject, Sendable {
     func handshake()  -> Handshake
     
     /**
+     * The pairing service (start/stop the LAN server, PRD §6.1).
+     *
+     * Returns the one shared instance, which owns the running server — a per-call instance
+     * would close the socket as soon as the caller dropped its handle.
+     */
+    func pairing()  -> PairingService
+    
+    /**
      * The recently-watched service (list, purge, off-switch).
      */
     func recents()  -> RecentsService
@@ -1000,7 +1024,7 @@ public protocol CoreProtocol: AnyObject, Sendable {
     func setLogLevel(directives: String) throws 
     
     /**
-     * The settings service.
+     * The settings service (typed surface with defaults, PRD §6.9).
      */
     func settings()  -> SettingsService
     
@@ -1140,6 +1164,21 @@ open func handshake() -> Handshake  {
 }
     
     /**
+     * The pairing service (start/stop the LAN server, PRD §6.1).
+     *
+     * Returns the one shared instance, which owns the running server — a per-call instance
+     * would close the socket as soon as the caller dropped its handle.
+     */
+open func pairing() -> PairingService  {
+    return try!  FfiConverterTypePairingService_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_core_api_fn_method_core_pairing(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * The recently-watched service (list, purge, off-switch).
      */
 open func recents() -> RecentsService  {
@@ -1179,7 +1218,7 @@ open func setLogLevel(directives: String)throws   {try rustCallWithError(FfiConv
 }
     
     /**
-     * The settings service.
+     * The settings service (typed surface with defaults, PRD §6.9).
      */
 open func settings() -> SettingsService  {
     return try!  FfiConverterTypeSettingsService_lift(try! rustCall() {
@@ -1516,6 +1555,209 @@ public func FfiConverterTypeFavoritesService_lift(_ handle: UInt64) throws -> Fa
 #endif
 public func FfiConverterTypeFavoritesService_lower(_ value: FavoritesService) -> UInt64 {
     return FfiConverterTypeFavoritesService.lower(value)
+}
+
+
+
+
+
+
+/**
+ * Starts and stops the LAN pairing server.
+ */
+public protocol PairingServiceProtocol: AnyObject, Sendable {
+    
+    /**
+     * Starts the server and returns what the pairing screen should render.
+     *
+     * `host` is the TV's LAN address to advertise. **A shell should supply it**: it can
+     * enumerate its own interfaces (`NWInterface` on tvOS, `WifiManager` / `NetworkInterface`
+     * on Android) and the core cannot — `core-pair` infers the address from the route out of
+     * the host, which is right on a plain LAN and wrong behind a full-tunnel VPN or on any
+     * multi-homed device (its docs carry the measurements). `None` asks for that inference as
+     * the convenience path, and fails loudly rather than advertising an address that will not
+     * answer.
+     *
+     * Starting while one already runs stops the old server first, so a re-entered screen gets a
+     * fresh token rather than silently reusing the last one — a token's whole meaning is
+     * "someone is looking at this screen right now", and a stale one outlives that claim.
+     *
+     * # Errors
+     * Returns [`ApiError::InvalidInput`] if `host` is not a usable LAN address (either supplied
+     * as one, or inferred as one — see the note on that variant's message), or
+     * [`ApiError::Internal`] if the socket cannot be opened.
+     */
+    func start(host: String?, listener: PairingListener) async throws  -> PairingSession
+    
+    /**
+     * Stops the server, if one is running. Idempotent.
+     *
+     * The shell calls this when the pairing screen goes away. Dropping the server does the same
+     * thing, so a shell that forgets to call this still cannot leave a listener on the LAN —
+     * this exists so the stop is *prompt* and awaited, not so it is possible.
+     */
+    func stop() async 
+    
+}
+/**
+ * Starts and stops the LAN pairing server.
+ */
+open class PairingService: PairingServiceProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_core_api_fn_clone_pairingservice(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_core_api_fn_free_pairingservice(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Starts the server and returns what the pairing screen should render.
+     *
+     * `host` is the TV's LAN address to advertise. **A shell should supply it**: it can
+     * enumerate its own interfaces (`NWInterface` on tvOS, `WifiManager` / `NetworkInterface`
+     * on Android) and the core cannot — `core-pair` infers the address from the route out of
+     * the host, which is right on a plain LAN and wrong behind a full-tunnel VPN or on any
+     * multi-homed device (its docs carry the measurements). `None` asks for that inference as
+     * the convenience path, and fails loudly rather than advertising an address that will not
+     * answer.
+     *
+     * Starting while one already runs stops the old server first, so a re-entered screen gets a
+     * fresh token rather than silently reusing the last one — a token's whole meaning is
+     * "someone is looking at this screen right now", and a stale one outlives that claim.
+     *
+     * # Errors
+     * Returns [`ApiError::InvalidInput`] if `host` is not a usable LAN address (either supplied
+     * as one, or inferred as one — see the note on that variant's message), or
+     * [`ApiError::Internal`] if the socket cannot be opened.
+     */
+open func start(host: String?, listener: PairingListener)async throws  -> PairingSession  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_pairingservice_start(
+                        self.uniffiCloneHandle(),FfiConverterOptionString.lower(host),FfiConverterCallbackInterfacePairingListener_lower(listener)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypePairingSession_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Stops the server, if one is running. Idempotent.
+     *
+     * The shell calls this when the pairing screen goes away. Dropping the server does the same
+     * thing, so a shell that forgets to call this still cannot leave a listener on the LAN —
+     * this exists so the stop is *prompt* and awaited, not so it is possible.
+     */
+open func stop()async   {
+    return
+        try!  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_pairingservice_stop(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: nil
+            
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePairingService: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = PairingService
+
+    public static func lift(_ handle: UInt64) throws -> PairingService {
+        return PairingService(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: PairingService) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PairingService {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: PairingService, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePairingService_lift(_ handle: UInt64) throws -> PairingService {
+    return try FfiConverterTypePairingService.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePairingService_lower(_ value: PairingService) -> UInt64 {
+    return FfiConverterTypePairingService.lower(value)
 }
 
 
@@ -1934,45 +2176,128 @@ public func FfiConverterTypeSearchService_lower(_ value: SearchService) -> UInt6
 
 
 /**
- * Reads and writes persisted settings.
+ * Reads and writes persisted settings, resolved through their defaults.
  */
 public protocol SettingsServiceProtocol: AnyObject, Sendable {
     
     /**
-     * Returns every stored setting as key/value pairs.
+     * The per-source engine override, if the user set one for this source.
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a query failure.
      */
-    func all() async throws  -> [SettingEntry]
+    func engineForSource(sourceId: Int64) async throws  -> String?
     
     /**
-     * Reads a setting value, if present.
+     * Sets the buffering profile.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    func setBuffering(profile: BufferingProfile) async throws 
+    
+    /**
+     * Sets the global default engine, or clears it with `None` to fall back to the platform
+     * default. The key is opaque to the core — the shell's selection policy resolves it
+     * (TECH_SPEC §8), so the core stores the choice without holding an opinion on it.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    func setDefaultEngine(engine: String?) async throws 
+    
+    /**
+     * Sets the interface density.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    func setDensity(density: InterfaceDensity) async throws 
+    
+    /**
+     * Sets a per-source engine override, or clears it with `None` (the PRD §6.3 selection
+     * policy's middle tier: channel → source → platform default).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    func setEngineForSource(sourceId: Int64, engine: String?) async throws 
+    
+    /**
+     * Sets the EPG rolling window (PRD §6.6). Both bounds move together because they describe
+     * one window; separate setters would invite a half-applied intermediate state.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    func setEpgWindow(aheadHours: UInt32, behindHours: UInt32) async throws 
+    
+    /**
+     * Sets the image disk-cache ceiling in megabytes. The core persists it; each shell's
+     * artwork pipeline reads it and sizes its own cache — images are the one thing a shell
+     * may cache durably (TECH_SPEC §4.5).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    func setImageCacheMaxMb(megabytes: UInt32) async throws 
+    
+    /**
+     * Sets the UI language to a BCP-47 tag, or clears it with `None` to follow the system.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    func setLanguage(tag: String?) async throws 
+    
+    /**
+     * Sets the diagnostics log level: persists the choice **and** applies it to the live
+     * `tracing` filter, so it survives a restart and takes effect without one (PRD §6.9,
+     * TECH_SPEC §4.8). Disabled levels cost nothing once the filter reloads.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure, or [`ApiError::Internal`] if
+     * the filter reload fails — which for a [`LogLevel`] means an internal inconsistency, not
+     * bad input, since the directive comes from a closed set rather than user text.
+     */
+    func setLogLevel(level: LogLevel) async throws 
+    
+    /**
+     * Sets how many days of recently-watched history to keep.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    func setRecentsRetentionDays(days: UInt32) async throws 
+    
+    /**
+     * Sets the subtitle backing treatment.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    func setSubtitleBackground(background: SubtitleBackground) async throws 
+    
+    /**
+     * Sets the subtitle glyph size.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    func setSubtitleSize(size: SubtitleSize) async throws 
+    
+    /**
+     * Every setting resolved to a value: stored where the user set one, code default
+     * otherwise. One call, because the settings screen wants all of them at once.
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a query failure.
      */
-    func get(key: String) async throws  -> String?
-    
-    /**
-     * Removes a setting, reverting it to its code default.
-     *
-     * # Errors
-     * Returns [`ApiError::StorageCorrupt`] on a write failure.
-     */
-    func remove(key: String) async throws 
-    
-    /**
-     * Writes (upserts) a setting value.
-     *
-     * # Errors
-     * Returns [`ApiError::StorageCorrupt`] on a write failure.
-     */
-    func set(key: String, value: String) async throws 
+    func snapshot() async throws  -> AppSettings
     
 }
 /**
- * Reads and writes persisted settings.
+ * Reads and writes persisted settings, resolved through their defaults.
  */
 open class SettingsService: SettingsServiceProtocol, @unchecked Sendable {
     fileprivate let handle: UInt64
@@ -2028,39 +2353,17 @@ open class SettingsService: SettingsServiceProtocol, @unchecked Sendable {
 
     
     /**
-     * Returns every stored setting as key/value pairs.
+     * The per-source engine override, if the user set one for this source.
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a query failure.
      */
-open func all()async throws  -> [SettingEntry]  {
+open func engineForSource(sourceId: Int64)async throws  -> String?  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_core_api_fn_method_settingsservice_all(
-                        self.uniffiCloneHandle()
-                )
-            },
-            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
-            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
-            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterSequenceTypeSettingEntry.lift,
-            errorHandler: FfiConverterTypeApiError_lift
-        )
-}
-    
-    /**
-     * Reads a setting value, if present.
-     *
-     * # Errors
-     * Returns [`ApiError::StorageCorrupt`] on a query failure.
-     */
-open func get(key: String)async throws  -> String?  {
-    return
-        try  await uniffiRustCallAsync(
-            rustFutureFunc: {
-                uniffi_core_api_fn_method_settingsservice_get(
-                        self.uniffiCloneHandle(),FfiConverterString.lower(key)
+                uniffi_core_api_fn_method_settingsservice_engine_for_source(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId)
                 )
             },
             pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
@@ -2072,17 +2375,17 @@ open func get(key: String)async throws  -> String?  {
 }
     
     /**
-     * Removes a setting, reverting it to its code default.
+     * Sets the buffering profile.
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
      */
-open func remove(key: String)async throws   {
+open func setBuffering(profile: BufferingProfile)async throws   {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_core_api_fn_method_settingsservice_remove(
-                        self.uniffiCloneHandle(),FfiConverterString.lower(key)
+                uniffi_core_api_fn_method_settingsservice_set_buffering(
+                        self.uniffiCloneHandle(),FfiConverterTypeBufferingProfile_lower(profile)
                 )
             },
             pollFunc: ffi_core_api_rust_future_poll_void,
@@ -2094,23 +2397,254 @@ open func remove(key: String)async throws   {
 }
     
     /**
-     * Writes (upserts) a setting value.
+     * Sets the global default engine, or clears it with `None` to fall back to the platform
+     * default. The key is opaque to the core — the shell's selection policy resolves it
+     * (TECH_SPEC §8), so the core stores the choice without holding an opinion on it.
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
      */
-open func set(key: String, value: String)async throws   {
+open func setDefaultEngine(engine: String?)async throws   {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
-                uniffi_core_api_fn_method_settingsservice_set(
-                        self.uniffiCloneHandle(),FfiConverterString.lower(key),FfiConverterString.lower(value)
+                uniffi_core_api_fn_method_settingsservice_set_default_engine(
+                        self.uniffiCloneHandle(),FfiConverterOptionString.lower(engine)
                 )
             },
             pollFunc: ffi_core_api_rust_future_poll_void,
             completeFunc: ffi_core_api_rust_future_complete_void,
             freeFunc: ffi_core_api_rust_future_free_void,
             liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Sets the interface density.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+open func setDensity(density: InterfaceDensity)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_settingsservice_set_density(
+                        self.uniffiCloneHandle(),FfiConverterTypeInterfaceDensity_lower(density)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Sets a per-source engine override, or clears it with `None` (the PRD §6.3 selection
+     * policy's middle tier: channel → source → platform default).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+open func setEngineForSource(sourceId: Int64, engine: String?)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_settingsservice_set_engine_for_source(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterOptionString.lower(engine)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Sets the EPG rolling window (PRD §6.6). Both bounds move together because they describe
+     * one window; separate setters would invite a half-applied intermediate state.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+open func setEpgWindow(aheadHours: UInt32, behindHours: UInt32)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_settingsservice_set_epg_window(
+                        self.uniffiCloneHandle(),FfiConverterUInt32.lower(aheadHours),FfiConverterUInt32.lower(behindHours)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Sets the image disk-cache ceiling in megabytes. The core persists it; each shell's
+     * artwork pipeline reads it and sizes its own cache — images are the one thing a shell
+     * may cache durably (TECH_SPEC §4.5).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+open func setImageCacheMaxMb(megabytes: UInt32)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_settingsservice_set_image_cache_max_mb(
+                        self.uniffiCloneHandle(),FfiConverterUInt32.lower(megabytes)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Sets the UI language to a BCP-47 tag, or clears it with `None` to follow the system.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+open func setLanguage(tag: String?)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_settingsservice_set_language(
+                        self.uniffiCloneHandle(),FfiConverterOptionString.lower(tag)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Sets the diagnostics log level: persists the choice **and** applies it to the live
+     * `tracing` filter, so it survives a restart and takes effect without one (PRD §6.9,
+     * TECH_SPEC §4.8). Disabled levels cost nothing once the filter reloads.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure, or [`ApiError::Internal`] if
+     * the filter reload fails — which for a [`LogLevel`] means an internal inconsistency, not
+     * bad input, since the directive comes from a closed set rather than user text.
+     */
+open func setLogLevel(level: LogLevel)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_settingsservice_set_log_level(
+                        self.uniffiCloneHandle(),FfiConverterTypeLogLevel_lower(level)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Sets how many days of recently-watched history to keep.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+open func setRecentsRetentionDays(days: UInt32)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_settingsservice_set_recents_retention_days(
+                        self.uniffiCloneHandle(),FfiConverterUInt32.lower(days)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Sets the subtitle backing treatment.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+open func setSubtitleBackground(background: SubtitleBackground)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_settingsservice_set_subtitle_background(
+                        self.uniffiCloneHandle(),FfiConverterTypeSubtitleBackground_lower(background)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Sets the subtitle glyph size.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+open func setSubtitleSize(size: SubtitleSize)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_settingsservice_set_subtitle_size(
+                        self.uniffiCloneHandle(),FfiConverterTypeSubtitleSize_lower(size)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Every setting resolved to a value: stored where the user set one, code default
+     * otherwise. One call, because the settings screen wants all of them at once.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+open func snapshot()async throws  -> AppSettings  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_settingsservice_snapshot(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeAppSettings_lift,
             errorHandler: FfiConverterTypeApiError_lift
         )
 }
@@ -2191,7 +2725,30 @@ public protocol SourceServiceProtocol: AnyObject, Sendable {
     func addM3uUrl(name: String, url: String, userAgent: String?, acceptInvalidTls: Bool) async throws  -> Source
     
     /**
-     * Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history.
+     * Adds an Xtream Codes account (no import yet — call [`Self::refresh`] to fetch its
+     * catalog).
+     *
+     * The account is **verified before it is stored**: a wrong password should be a sentence
+     * on the add screen, not a mystery on the next refresh. The password is then written to the
+     * host secure store under a freshly minted opaque key and dropped; what reaches SQLite is
+     * the key, never the credential (TECH_SPEC §12).
+     *
+     * # Errors
+     * Returns [`ApiError::InvalidInput`] if `server` is not a valid absolute URL,
+     * [`ApiError::Unauthorized`] if the headend rejects the account,
+     * [`ApiError::NetworkUnreachable`] / [`ApiError::Timeout`] if it cannot be reached, and
+     * [`ApiError::StorageCorrupt`] if the source cannot be persisted.
+     */
+    func addXtream(name: String, server: String, username: String, password: String) async throws  -> Source
+    
+    /**
+     * Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history —
+     * and, for an Xtream account, its password in the host secure store.
+     *
+     * Deleting the credential is part of deleting the source, not a nicety: the DB row is the
+     * only record of which opaque key belongs to this account, so a delete that skipped it
+     * would strand the password in the platform keychain with nothing left able to name it
+     * (TECH_SPEC §12).
      *
      * Signals every in-flight refresh for this source to cancel first, so a still-downloading
      * import aborts at its next batch boundary and discards its staged catalog rather than
@@ -2360,7 +2917,44 @@ open func addM3uUrl(name: String, url: String, userAgent: String?, acceptInvalid
 }
     
     /**
-     * Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history.
+     * Adds an Xtream Codes account (no import yet — call [`Self::refresh`] to fetch its
+     * catalog).
+     *
+     * The account is **verified before it is stored**: a wrong password should be a sentence
+     * on the add screen, not a mystery on the next refresh. The password is then written to the
+     * host secure store under a freshly minted opaque key and dropped; what reaches SQLite is
+     * the key, never the credential (TECH_SPEC §12).
+     *
+     * # Errors
+     * Returns [`ApiError::InvalidInput`] if `server` is not a valid absolute URL,
+     * [`ApiError::Unauthorized`] if the headend rejects the account,
+     * [`ApiError::NetworkUnreachable`] / [`ApiError::Timeout`] if it cannot be reached, and
+     * [`ApiError::StorageCorrupt`] if the source cannot be persisted.
+     */
+open func addXtream(name: String, server: String, username: String, password: String)async throws  -> Source  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_sourceservice_add_xtream(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(name),FfiConverterString.lower(server),FfiConverterString.lower(username),FfiConverterString.lower(password)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeSource_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history —
+     * and, for an Xtream account, its password in the host secure store.
+     *
+     * Deleting the credential is part of deleting the source, not a nicety: the DB row is the
+     * only record of which opaque key belongs to this account, so a delete that skipped it
+     * would strand the password in the platform keychain with nothing left able to name it
+     * (TECH_SPEC §12).
      *
      * Signals every in-flight refresh for this source to cancel first, so a still-downloading
      * import aborts at its next batch boundary and discards its staged catalog rather than
@@ -2690,6 +3284,178 @@ public func FfiConverterTypeTaskHandle_lower(_ value: TaskHandle) -> UInt64 {
 }
 
 
+
+
+/**
+ * Every setting resolved to a value: stored where the user set one, code default otherwise.
+ *
+ * Flat and owned, per the boundary rules (TECH_SPEC §5). The shells render this directly;
+ * there is no "unset" state to represent because [`Default`] has already resolved it.
+ */
+public struct AppSettings: Equatable, Hashable {
+    /**
+     * Opaque global default-engine key; `None` means the platform default (TECH_SPEC §8).
+     */
+    public var defaultEngine: String?
+    /**
+     * Buffering profile.
+     */
+    public var buffering: BufferingProfile
+    /**
+     * Subtitle glyph size.
+     */
+    public var subtitleSize: SubtitleSize
+    /**
+     * Subtitle backing treatment.
+     */
+    public var subtitleBackground: SubtitleBackground
+    /**
+     * BCP-47 UI language tag; `None` means follow the system language.
+     */
+    public var language: String?
+    /**
+     * List/row density.
+     */
+    public var density: InterfaceDensity
+    /**
+     * Whether recently-watched recording is on (PRD §6.5 off-switch).
+     */
+    public var recentsEnabled: Bool
+    /**
+     * Days of recently-watched history to keep.
+     */
+    public var recentsRetentionDays: UInt32
+    /**
+     * Hours of EPG kept ahead of now (PRD §6.6; consumed when EPG ingest lands).
+     */
+    public var epgWindowAheadHours: UInt32
+    /**
+     * Hours of EPG kept behind now (PRD §6.6; consumed when EPG ingest lands).
+     */
+    public var epgWindowBehindHours: UInt32
+    /**
+     * Image disk-cache ceiling in megabytes, read by each shell's artwork pipeline.
+     */
+    public var imageCacheMaxMb: UInt32
+    /**
+     * Diagnostics log level (PRD §6.9, TECH_SPEC §4.8).
+     */
+    public var logLevel: LogLevel
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Opaque global default-engine key; `None` means the platform default (TECH_SPEC §8).
+         */defaultEngine: String?, 
+        /**
+         * Buffering profile.
+         */buffering: BufferingProfile, 
+        /**
+         * Subtitle glyph size.
+         */subtitleSize: SubtitleSize, 
+        /**
+         * Subtitle backing treatment.
+         */subtitleBackground: SubtitleBackground, 
+        /**
+         * BCP-47 UI language tag; `None` means follow the system language.
+         */language: String?, 
+        /**
+         * List/row density.
+         */density: InterfaceDensity, 
+        /**
+         * Whether recently-watched recording is on (PRD §6.5 off-switch).
+         */recentsEnabled: Bool, 
+        /**
+         * Days of recently-watched history to keep.
+         */recentsRetentionDays: UInt32, 
+        /**
+         * Hours of EPG kept ahead of now (PRD §6.6; consumed when EPG ingest lands).
+         */epgWindowAheadHours: UInt32, 
+        /**
+         * Hours of EPG kept behind now (PRD §6.6; consumed when EPG ingest lands).
+         */epgWindowBehindHours: UInt32, 
+        /**
+         * Image disk-cache ceiling in megabytes, read by each shell's artwork pipeline.
+         */imageCacheMaxMb: UInt32, 
+        /**
+         * Diagnostics log level (PRD §6.9, TECH_SPEC §4.8).
+         */logLevel: LogLevel) {
+        self.defaultEngine = defaultEngine
+        self.buffering = buffering
+        self.subtitleSize = subtitleSize
+        self.subtitleBackground = subtitleBackground
+        self.language = language
+        self.density = density
+        self.recentsEnabled = recentsEnabled
+        self.recentsRetentionDays = recentsRetentionDays
+        self.epgWindowAheadHours = epgWindowAheadHours
+        self.epgWindowBehindHours = epgWindowBehindHours
+        self.imageCacheMaxMb = imageCacheMaxMb
+        self.logLevel = logLevel
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension AppSettings: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAppSettings: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AppSettings {
+        return
+            try AppSettings(
+                defaultEngine: FfiConverterOptionString.read(from: &buf), 
+                buffering: FfiConverterTypeBufferingProfile.read(from: &buf), 
+                subtitleSize: FfiConverterTypeSubtitleSize.read(from: &buf), 
+                subtitleBackground: FfiConverterTypeSubtitleBackground.read(from: &buf), 
+                language: FfiConverterOptionString.read(from: &buf), 
+                density: FfiConverterTypeInterfaceDensity.read(from: &buf), 
+                recentsEnabled: FfiConverterBool.read(from: &buf), 
+                recentsRetentionDays: FfiConverterUInt32.read(from: &buf), 
+                epgWindowAheadHours: FfiConverterUInt32.read(from: &buf), 
+                epgWindowBehindHours: FfiConverterUInt32.read(from: &buf), 
+                imageCacheMaxMb: FfiConverterUInt32.read(from: &buf), 
+                logLevel: FfiConverterTypeLogLevel.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AppSettings, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.defaultEngine, into: &buf)
+        FfiConverterTypeBufferingProfile.write(value.buffering, into: &buf)
+        FfiConverterTypeSubtitleSize.write(value.subtitleSize, into: &buf)
+        FfiConverterTypeSubtitleBackground.write(value.subtitleBackground, into: &buf)
+        FfiConverterOptionString.write(value.language, into: &buf)
+        FfiConverterTypeInterfaceDensity.write(value.density, into: &buf)
+        FfiConverterBool.write(value.recentsEnabled, into: &buf)
+        FfiConverterUInt32.write(value.recentsRetentionDays, into: &buf)
+        FfiConverterUInt32.write(value.epgWindowAheadHours, into: &buf)
+        FfiConverterUInt32.write(value.epgWindowBehindHours, into: &buf)
+        FfiConverterUInt32.write(value.imageCacheMaxMb, into: &buf)
+        FfiConverterTypeLogLevel.write(value.logLevel, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppSettings_lift(_ buf: RustBuffer) throws -> AppSettings {
+    return try FfiConverterTypeAppSettings.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAppSettings_lower(_ value: AppSettings) -> RustBuffer {
+    return FfiConverterTypeAppSettings.lower(value)
+}
 
 
 /**
@@ -3308,6 +4074,11 @@ public struct Handshake: Equatable, Hashable {
      */
     public var coreVersion: String
     /**
+     * The core's build-time git revision ([`GIT_REVISION`]), shown on the diagnostics screen so
+     * a support thread can name the exact core build (PRD §6.9).
+     */
+    public var coreGitRevision: String
+    /**
      * The database schema version at head.
      */
     public var schemaVersion: UInt32
@@ -3323,12 +4094,17 @@ public struct Handshake: Equatable, Hashable {
          * The core crate's semantic version.
          */coreVersion: String, 
         /**
+         * The core's build-time git revision ([`GIT_REVISION`]), shown on the diagnostics screen so
+         * a support thread can name the exact core build (PRD §6.9).
+         */coreGitRevision: String, 
+        /**
          * The database schema version at head.
          */schemaVersion: UInt32, 
         /**
          * The FFI boundary version ([`BOUNDARY_VERSION`]).
          */boundaryVersion: UInt32) {
         self.coreVersion = coreVersion
+        self.coreGitRevision = coreGitRevision
         self.schemaVersion = schemaVersion
         self.boundaryVersion = boundaryVersion
     }
@@ -3350,6 +4126,7 @@ public struct FfiConverterTypeHandshake: FfiConverterRustBuffer {
         return
             try Handshake(
                 coreVersion: FfiConverterString.read(from: &buf), 
+                coreGitRevision: FfiConverterString.read(from: &buf), 
                 schemaVersion: FfiConverterUInt32.read(from: &buf), 
                 boundaryVersion: FfiConverterUInt32.read(from: &buf)
         )
@@ -3357,6 +4134,7 @@ public struct FfiConverterTypeHandshake: FfiConverterRustBuffer {
 
     public static func write(_ value: Handshake, into buf: inout [UInt8]) {
         FfiConverterString.write(value.coreVersion, into: &buf)
+        FfiConverterString.write(value.coreGitRevision, into: &buf)
         FfiConverterUInt32.write(value.schemaVersion, into: &buf)
         FfiConverterUInt32.write(value.boundaryVersion, into: &buf)
     }
@@ -3697,6 +4475,95 @@ public func FfiConverterTypeLogRecord_lower(_ value: LogRecord) -> RustBuffer {
 
 
 /**
+ * What the pairing screen renders while the server is up.
+ */
+public struct PairingSession: Equatable, Hashable {
+    /**
+     * The address to show and encode as a QR code, e.g. `http://192.168.1.40:53219`.
+     *
+     * Guaranteed to be an address the server would answer on: `core-pair` checks the
+     * advertised host against the same predicate as its peer check, so a URL that exists is
+     * one a phone on the LAN can dial.
+     */
+    public var url: String
+    /**
+     * The bound port. Reported so a shell can recognize its own session, and because a URL is
+     * only ever host + port.
+     */
+    public var port: UInt16
+    /**
+     * This session's token, for the person reading the screen to type on their phone.
+     */
+    public var token: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The address to show and encode as a QR code, e.g. `http://192.168.1.40:53219`.
+         *
+         * Guaranteed to be an address the server would answer on: `core-pair` checks the
+         * advertised host against the same predicate as its peer check, so a URL that exists is
+         * one a phone on the LAN can dial.
+         */url: String, 
+        /**
+         * The bound port. Reported so a shell can recognize its own session, and because a URL is
+         * only ever host + port.
+         */port: UInt16, 
+        /**
+         * This session's token, for the person reading the screen to type on their phone.
+         */token: String) {
+        self.url = url
+        self.port = port
+        self.token = token
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension PairingSession: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePairingSession: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PairingSession {
+        return
+            try PairingSession(
+                url: FfiConverterString.read(from: &buf), 
+                port: FfiConverterUInt16.read(from: &buf), 
+                token: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PairingSession, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.url, into: &buf)
+        FfiConverterUInt16.write(value.port, into: &buf)
+        FfiConverterString.write(value.token, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePairingSession_lift(_ buf: RustBuffer) throws -> PairingSession {
+    return try FfiConverterTypePairingSession.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePairingSession_lower(_ value: PairingSession) -> RustBuffer {
+    return FfiConverterTypePairingSession.lower(value)
+}
+
+
+/**
  * A "recently watched" entry (PRD §6.5). Snapshots the name and locator at play time and
  * keys the channel by stable identity, so it stays replayable across refreshes even if the
  * channel later leaves the catalog. Never leaves the device.
@@ -3883,76 +4750,6 @@ public func FfiConverterTypeSearchPage_lift(_ buf: RustBuffer) throws -> SearchP
 #endif
 public func FfiConverterTypeSearchPage_lower(_ value: SearchPage) -> RustBuffer {
     return FfiConverterTypeSearchPage.lower(value)
-}
-
-
-/**
- * One stored setting as an opaque key/value pair. The typed settings surface and defaults
- * land in Phase 6; the boundary exposes the raw store today.
- */
-public struct SettingEntry: Equatable, Hashable {
-    /**
-     * Opaque setting key.
-     */
-    public var key: String
-    /**
-     * Stored value.
-     */
-    public var value: String
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(
-        /**
-         * Opaque setting key.
-         */key: String, 
-        /**
-         * Stored value.
-         */value: String) {
-        self.key = key
-        self.value = value
-    }
-
-    
-
-    
-}
-
-#if compiler(>=6)
-extension SettingEntry: Sendable {}
-#endif
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeSettingEntry: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SettingEntry {
-        return
-            try SettingEntry(
-                key: FfiConverterString.read(from: &buf), 
-                value: FfiConverterString.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: SettingEntry, into buf: inout [UInt8]) {
-        FfiConverterString.write(value.key, into: &buf)
-        FfiConverterString.write(value.value, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeSettingEntry_lift(_ buf: RustBuffer) throws -> SettingEntry {
-    return try FfiConverterTypeSettingEntry.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeSettingEntry_lower(_ value: SettingEntry) -> RustBuffer {
-    return FfiConverterTypeSettingEntry.lower(value)
 }
 
 
@@ -4204,6 +5001,81 @@ public func FfiConverterTypeApiError_lower(_ value: ApiError) -> RustBuffer {
 
 
 /**
+ * How aggressively the player buffers, mapped to engine parameters by each shell (PRD §6.9).
+ */
+
+public enum BufferingProfile: Equatable, Hashable {
+    
+    /**
+     * Smaller buffers: quicker to start and closer to live, less tolerant of a lossy link.
+     */
+    case lowLatency
+    /**
+     * Larger buffers: rides out jitter, at the cost of a slightly later start.
+     */
+    case stable
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension BufferingProfile: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBufferingProfile: FfiConverterRustBuffer {
+    typealias SwiftType = BufferingProfile
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BufferingProfile {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .lowLatency
+        
+        case 2: return .stable
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: BufferingProfile, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .lowLatency:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .stable:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBufferingProfile_lift(_ buf: RustBuffer) throws -> BufferingProfile {
+    return try FfiConverterTypeBufferingProfile.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBufferingProfile_lower(_ value: BufferingProfile) -> RustBuffer {
+    return FfiConverterTypeBufferingProfile.lower(value)
+}
+
+
+
+/**
  * Which phase of an import is currently running.
  */
 
@@ -4289,7 +5161,86 @@ public func FfiConverterTypeImportStage_lower(_ value: ImportStage) -> RustBuffe
 
 
 /**
+ * How much breathing room lists and rows get (PRD §6.9).
+ */
+
+public enum InterfaceDensity: Equatable, Hashable {
+    
+    /**
+     * Fewer, larger rows — the 10-foot default.
+     */
+    case comfortable
+    /**
+     * More rows per screen, for users who prefer density to reach.
+     */
+    case compact
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension InterfaceDensity: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInterfaceDensity: FfiConverterRustBuffer {
+    typealias SwiftType = InterfaceDensity
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InterfaceDensity {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .comfortable
+        
+        case 2: return .compact
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: InterfaceDensity, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .comfortable:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .compact:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInterfaceDensity_lift(_ buf: RustBuffer) throws -> InterfaceDensity {
+    return try FfiConverterTypeInterfaceDensity.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInterfaceDensity_lower(_ value: InterfaceDensity) -> RustBuffer {
+    return FfiConverterTypeInterfaceDensity.lower(value)
+}
+
+
+
+/**
  * Severity of a forwarded log record, mapped one-to-one from `tracing::Level`.
+ *
+ * `Info` is the [`Default`]: it is what the diagnostics screen's log level resolves to when the
+ * user has never chosen one (PRD §6.9) — verbose enough to tell a support thread what happened,
+ * quiet enough to cost nothing on the zap path.
  */
 
 public enum LogLevel: Equatable, Hashable {
@@ -4474,6 +5425,107 @@ public func FfiConverterTypeMediaKind_lift(_ buf: RustBuffer) throws -> MediaKin
 #endif
 public func FfiConverterTypeMediaKind_lower(_ value: MediaKind) -> RustBuffer {
     return FfiConverterTypeMediaKind.lower(value)
+}
+
+
+
+/**
+ * What a phone submitted, ready to pre-fill the TV's add-source flow.
+ *
+ * Mirrors `core_pair::Submission` as flat owned data (TECH_SPEC §5). The URLs arrive parsed and
+ * are flattened back to strings because that is what `SourceService`'s add methods take — the
+ * shell passes them straight through.
+ */
+
+public enum PairingSubmission: Equatable, Hashable {
+    
+    /**
+     * An M3U/M3U8 playlist to fetch by URL.
+     */
+    case m3uUrl(
+        /**
+         * The playlist URL.
+         */url: String
+    )
+    /**
+     * An Xtream Codes account.
+     */
+    case xtream(
+        /**
+         * The Xtream server base URL.
+         */server: String, 
+        /**
+         * The account username.
+         */username: String, 
+        /**
+         * The account password, in flight to the host secure store via
+         * `SourceService::add_xtream`. The shell hands it to that call and keeps it nowhere
+         * else — not in a log, not in its own storage (TECH_SPEC §12).
+         */password: String
+    )
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension PairingSubmission: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePairingSubmission: FfiConverterRustBuffer {
+    typealias SwiftType = PairingSubmission
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PairingSubmission {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .m3uUrl(url: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 2: return .xtream(server: try FfiConverterString.read(from: &buf), username: try FfiConverterString.read(from: &buf), password: try FfiConverterString.read(from: &buf)
+        )
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: PairingSubmission, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case let .m3uUrl(url):
+            writeInt(&buf, Int32(1))
+            FfiConverterString.write(url, into: &buf)
+            
+        
+        case let .xtream(server,username,password):
+            writeInt(&buf, Int32(2))
+            FfiConverterString.write(server, into: &buf)
+            FfiConverterString.write(username, into: &buf)
+            FfiConverterString.write(password, into: &buf)
+            
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePairingSubmission_lift(_ buf: RustBuffer) throws -> PairingSubmission {
+    return try FfiConverterTypePairingSubmission.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePairingSubmission_lower(_ value: PairingSubmission) -> RustBuffer {
+    return FfiConverterTypePairingSubmission.lower(value)
 }
 
 
@@ -4699,6 +5751,176 @@ public func FfiConverterTypeSourceKind_lift(_ buf: RustBuffer) throws -> SourceK
 #endif
 public func FfiConverterTypeSourceKind_lower(_ value: SourceKind) -> RustBuffer {
     return FfiConverterTypeSourceKind.lower(value)
+}
+
+
+
+/**
+ * What sits behind subtitle text, so it stays legible over bright video (PRD §6.9).
+ */
+
+public enum SubtitleBackground: Equatable, Hashable {
+    
+    /**
+     * Glyphs only.
+     */
+    case none
+    /**
+     * A soft drop shadow — legible on most material without a visible box.
+     */
+    case shadow
+    /**
+     * An opaque plate behind the text.
+     */
+    case solid
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension SubtitleBackground: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSubtitleBackground: FfiConverterRustBuffer {
+    typealias SwiftType = SubtitleBackground
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SubtitleBackground {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .none
+        
+        case 2: return .shadow
+        
+        case 3: return .solid
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SubtitleBackground, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .none:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .shadow:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .solid:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSubtitleBackground_lift(_ buf: RustBuffer) throws -> SubtitleBackground {
+    return try FfiConverterTypeSubtitleBackground.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSubtitleBackground_lower(_ value: SubtitleBackground) -> RustBuffer {
+    return FfiConverterTypeSubtitleBackground.lower(value)
+}
+
+
+
+/**
+ * Subtitle glyph size, resolved to platform points by each shell (PRD §6.9).
+ */
+
+public enum SubtitleSize: Equatable, Hashable {
+    
+    /**
+     * Below the default.
+     */
+    case small
+    /**
+     * The default.
+     */
+    case medium
+    /**
+     * Above the default.
+     */
+    case large
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension SubtitleSize: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSubtitleSize: FfiConverterRustBuffer {
+    typealias SwiftType = SubtitleSize
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SubtitleSize {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .small
+        
+        case 2: return .medium
+        
+        case 3: return .large
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SubtitleSize, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .small:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .medium:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .large:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSubtitleSize_lift(_ buf: RustBuffer) throws -> SubtitleSize {
+    return try FfiConverterTypeSubtitleSize.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSubtitleSize_lower(_ value: SubtitleSize) -> RustBuffer {
+    return FfiConverterTypeSubtitleSize.lower(value)
 }
 
 
@@ -5050,6 +6272,151 @@ public func FfiConverterCallbackInterfaceLogSink_lift(_ handle: UInt64) throws -
 #endif
 public func FfiConverterCallbackInterfaceLogSink_lower(_ v: LogSink) -> UInt64 {
     return FfiConverterCallbackInterfaceLogSink.lower(v)
+}
+
+
+
+
+/**
+ * Receives what the phone sent.
+ *
+ * **Threading contract:** invoked from the pairing server's connection task — it may arrive on
+ * *any* core thread, and the shell must trampoline to its own main actor/dispatcher (TECH_SPEC
+ * §5). It must not block: the phone is waiting on a response behind it.
+ */
+public protocol PairingListener: AnyObject, Sendable {
+    
+    /**
+     * Called at most once per accepted submission.
+     */
+    func onSubmission(submission: PairingSubmission) 
+    
+}
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfacePairingListener {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    //
+    // Store the vtable directly.
+    static let vtable: UniffiVTableCallbackInterfacePairingListener = UniffiVTableCallbackInterfacePairingListener(
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            do {
+                try FfiConverterCallbackInterfacePairingListener.handleMap.remove(handle: uniffiHandle)
+            } catch {
+                print("Uniffi callback interface PairingListener: handle missing in uniffiFree")
+            }
+        },
+        uniffiClone: { (uniffiHandle: UInt64) -> UInt64 in
+            do {
+                return try FfiConverterCallbackInterfacePairingListener.handleMap.clone(handle: uniffiHandle)
+            } catch {
+                fatalError("Uniffi callback interface PairingListener: handle missing in uniffiClone")
+            }
+        },
+        onSubmission: { (
+            uniffiHandle: UInt64,
+            submission: RustBuffer,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterCallbackInterfacePairingListener.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.onSubmission(
+                     submission: try FfiConverterTypePairingSubmission_lift(submission)
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        }
+    )
+
+    // Rust stores this pointer for future callback invocations, so it must live
+    // for the process lifetime (not just for the init function call).
+    //
+    // `nonisolated(unsafe)` is needed under Swift 6 strict concurrency.
+    // This is safe because the pointee is initialized once during static init
+    // and never mutated by either side of the FFI.  Its fields are C function pointers.
+    nonisolated(unsafe) static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfacePairingListener> = {
+        let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfacePairingListener>.allocate(capacity: 1)
+        ptr.initialize(to: vtable)
+        return UnsafePointer(ptr)
+    }()
+}
+
+private func uniffiCallbackInitPairingListener() {
+    uniffi_core_api_fn_init_callback_vtable_pairinglistener(UniffiCallbackInterfacePairingListener.vtablePtr)
+}
+
+// FfiConverter protocol for callback interfaces
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterCallbackInterfacePairingListener {
+    fileprivate static let handleMap = UniffiHandleMap<PairingListener>()
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+extension FfiConverterCallbackInterfacePairingListener : FfiConverter {
+    typealias SwiftType = PairingListener
+    typealias FfiType = UInt64
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func lift(_ handle: UInt64) throws -> SwiftType {
+        try handleMap.get(handle: handle)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func lower(_ v: SwiftType) -> UInt64 {
+        return handleMap.insert(obj: v)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func write(_ v: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(v))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterCallbackInterfacePairingListener_lift(_ handle: UInt64) throws -> PairingListener {
+    return try FfiConverterCallbackInterfacePairingListener.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterCallbackInterfacePairingListener_lower(_ v: PairingListener) -> UInt64 {
+    return FfiConverterCallbackInterfacePairingListener.lower(v)
 }
 
 
@@ -5541,31 +6908,6 @@ fileprivate struct FfiConverterSequenceTypeRecent: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-fileprivate struct FfiConverterSequenceTypeSettingEntry: FfiConverterRustBuffer {
-    typealias SwiftType = [SettingEntry]
-
-    public static func write(_ value: [SettingEntry], into buf: inout [UInt8]) {
-        let len = Int32(value.count)
-        writeInt(&buf, len)
-        for item in value {
-            FfiConverterTypeSettingEntry.write(item, into: &buf)
-        }
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [SettingEntry] {
-        let len: Int32 = try readInt(&buf)
-        var seq = [SettingEntry]()
-        seq.reserveCapacity(Int(len))
-        for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeSettingEntry.read(from: &buf))
-        }
-        return seq
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
 fileprivate struct FfiConverterSequenceTypeMediaKind: FfiConverterRustBuffer {
     typealias SwiftType = [MediaKind]
 
@@ -5688,6 +7030,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_core_handshake() != 2257) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_core_api_checksum_method_core_pairing() != 51742) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_core_api_checksum_method_core_recents() != 27670) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -5697,7 +7042,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_core_set_log_level() != 1812) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_core_api_checksum_method_core_settings() != 17208) {
+    if (uniffi_core_api_checksum_method_core_settings() != 10175) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_core_sources() != 43952) {
@@ -5745,6 +7090,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_favoritesservice_remove() != 49667) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_core_api_checksum_method_pairingservice_start() != 5246) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_pairingservice_stop() != 19522) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_core_api_checksum_method_recentsservice_clear() != 9754) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -5763,16 +7114,43 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_searchservice_search() != 39379) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_core_api_checksum_method_settingsservice_all() != 63986) {
+    if (uniffi_core_api_checksum_method_settingsservice_engine_for_source() != 6804) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_core_api_checksum_method_settingsservice_get() != 10406) {
+    if (uniffi_core_api_checksum_method_settingsservice_set_buffering() != 51601) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_core_api_checksum_method_settingsservice_remove() != 16474) {
+    if (uniffi_core_api_checksum_method_settingsservice_set_default_engine() != 35508) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_core_api_checksum_method_settingsservice_set() != 32636) {
+    if (uniffi_core_api_checksum_method_settingsservice_set_density() != 5515) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_settingsservice_set_engine_for_source() != 51543) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_settingsservice_set_epg_window() != 26564) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_settingsservice_set_image_cache_max_mb() != 6888) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_settingsservice_set_language() != 13851) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_settingsservice_set_log_level() != 50668) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_settingsservice_set_recents_retention_days() != 12278) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_settingsservice_set_subtitle_background() != 25834) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_settingsservice_set_subtitle_size() != 25876) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_settingsservice_snapshot() != 9129) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_sourceservice_add_m3u_file() != 60508) {
@@ -5781,7 +7159,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_sourceservice_add_m3u_url() != 16147) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_core_api_checksum_method_sourceservice_delete() != 42027) {
+    if (uniffi_core_api_checksum_method_sourceservice_add_xtream() != 11873) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_sourceservice_delete() != 42781) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_sourceservice_import_m3u_content() != 7156) {
@@ -5826,9 +7207,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_secretstore_delete() != 41764) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_core_api_checksum_method_pairinglistener_on_submission() != 45457) {
+        return InitializationResult.apiChecksumMismatch
+    }
 
     uniffiCallbackInitImportListener()
     uniffiCallbackInitLogSink()
+    uniffiCallbackInitPairingListener()
     uniffiCallbackInitSecretStore()
     return InitializationResult.ok
 }()

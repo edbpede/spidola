@@ -1,0 +1,53 @@
+[
+  {
+    "num": 1,
+    "name": "A Film With A Long Title (2024)",
+    "stream_type": "movie",
+    "stream_id": 77001,
+    "stream_icon": "http://cdn.example/covers/77001.jpg",
+    "rating": "7.4",
+    "rating_5based": 3.7,
+    "added": "1704067200",
+    "category_id": "10",
+    "container_extension": "mkv",
+    "custom_sid": "",
+    "direct_source": ""
+  },
+  {
+    "num": 2,
+    "name": "Another Film (2023)",
+    "stream_type": "movie",
+    "stream_id": "77002",
+    "stream_icon": "http://cdn.example/covers/77002.jpg",
+    "rating": 0,
+    "rating_5based": 0,
+    "added": "1704067200",
+    "category_id": 10,
+    "container_extension": "MP4",
+    "direct_source": ""
+  },
+  {
+    "num": 3,
+    "name": "Film With No Container Stated",
+    "stream_type": "movie",
+    "stream_id": 77003,
+    "category_id": "10",
+    "container_extension": ""
+  },
+  {
+    "num": 4,
+    "name": "Unusable — Container Is Nonsense",
+    "stream_type": "movie",
+    "stream_id": 77004,
+    "category_id": "10",
+    "container_extension": "mp4?token=x"
+  },
+  {
+    "num": 5,
+    "name": "Film In An Unlisted Category",
+    "stream_type": "movie",
+    "stream_id": 77005,
+    "category_id": "999",
+    "container_extension": "avi"
+  }
+]

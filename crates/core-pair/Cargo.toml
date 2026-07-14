@@ -12,5 +12,21 @@ repository.workspace = true
 description = "The LAN-only pairing micro-server (on while its screen is visible)."
 publish = false
 
+# No HTTP framework on purpose. This crate speaks the sliver of HTTP/1.1 it needs (two
+# routes, one form encoding) directly over `tokio::net::TcpListener`: the served surface is
+# the one part of Spidola an unauthenticated stranger can reach, so its dependency count is
+# part of its threat model (TECH_SPEC §12) — and `core-fetch`'s tests already show the house
+# can speak HTTP by hand. `net` + `io-util` are additive on the workspace `tokio` feature
+# set; the root manifest is unchanged.
+[dependencies]
+core-model = { path = "../core-model" }
+rand = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["net", "io-util"] }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["net", "io-util", "rt-multi-thread", "macros"] }
+
 [lints]
 workspace = true

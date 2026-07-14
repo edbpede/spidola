@@ -1,0 +1,8 @@
+[
+  { "category_id": "1", "category_name": "News", "parent_id": 0 },
+  { "category_id": "2", "category_name": "Sport", "parent_id": 0 },
+  { "category_id": 3, "category_name": "Entertainment", "parent_id": 0 },
+  { "category_id": "4", "category_name": "Kids", "parent_id": "0" },
+  { "category_id": "5", "category_name": "", "parent_id": 0 },
+  { "category_name": "Missing Its Id", "parent_id": 0 }
+]

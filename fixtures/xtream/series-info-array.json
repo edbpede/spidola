@@ -1,0 +1,38 @@
+{
+  "seasons": [],
+  "info": {
+    "name": "A Comedy Series",
+    "cover": "http://cdn.example/covers/series-56.jpg",
+    "genre": "Comedy"
+  },
+  "episodes": [
+    [
+      {
+        "id": "91001",
+        "episode_num": 1,
+        "title": "First",
+        "container_extension": "mp4",
+        "season": 1,
+        "info": []
+      },
+      {
+        "id": "91002",
+        "episode_num": 2,
+        "title": "Second",
+        "container_extension": "mp4",
+        "season": 1,
+        "info": []
+      }
+    ],
+    [
+      {
+        "id": "91003",
+        "episode_num": 1,
+        "title": "Third",
+        "container_extension": "mp4",
+        "season": 2,
+        "info": []
+      }
+    ]
+  ]
+}
