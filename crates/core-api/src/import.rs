@@ -30,6 +30,10 @@ use crate::logging::targets;
 /// Bounded channel depth bridging the async fetch and the blocking staging worker.
 const CHUNK_CHANNEL_DEPTH: usize = 8;
 
+/// Chunk size for feeding an in-memory playlist (a picked/pasted file) to the parser, so the
+/// content path keeps the same bounded-memory parser behaviour as the streaming URL path.
+const CONTENT_CHUNK_SIZE: usize = 64 * 1024;
+
 /// The terminal result of a staging run.
 enum StagingResult {
     /// Committed; the new catalog is live.
@@ -68,6 +72,66 @@ pub(crate) async fn run_import(
         Ok(StagingResult::Completed(outcome)) => listener.on_complete(outcome),
         Ok(StagingResult::Cancelled) => listener.on_failed(ApiError::Cancelled),
         Err(error) => listener.on_failed(error),
+    }
+}
+
+/// Runs an import from an in-memory M3U `content` string (a pasted playlist or a picked/SAF
+/// local file the shell has already read) into `source_id`, reporting to `listener` and
+/// honouring `token`. Same staging-and-swap and bounded-memory guarantees as the URL path: the
+/// content is fed to the parser one chunk at a time, so peak parser memory stays bounded to one
+/// batch regardless of file size. Intended to be driven as a task on the core runtime; it never
+/// panics across the boundary — every failure path ends in exactly one terminal `listener` call.
+pub(crate) async fn run_import_content(
+    db: Arc<Db>,
+    source_id: SourceId,
+    content: Vec<u8>,
+    token: CancelToken,
+    listener: Arc<dyn ImportListener>,
+) {
+    listener.on_progress(ImportProgress {
+        stage: ImportStage::Downloading,
+        channels_seen: 0,
+    });
+    match import_content_inner(&db, source_id, &content, &token, &listener).await {
+        Ok(StagingResult::Completed(outcome)) => listener.on_complete(outcome),
+        Ok(StagingResult::Cancelled) => listener.on_failed(ApiError::Cancelled),
+        Err(error) => listener.on_failed(error),
+    }
+}
+
+async fn import_content_inner(
+    db: &Arc<Db>,
+    source_id: SourceId,
+    content: &[u8],
+    token: &CancelToken,
+    listener: &Arc<dyn ImportListener>,
+) -> Result<StagingResult, ApiError> {
+    if token.is_cancelled() {
+        return Ok(StagingResult::Cancelled);
+    }
+    let (tx, rx) = mpsc::channel::<Vec<u8>>(CHUNK_CHANNEL_DEPTH);
+    let worker = {
+        let db = Arc::clone(db);
+        let token = token.clone();
+        let listener = Arc::clone(listener);
+        tokio::task::spawn_blocking(move || run_staging(&db, source_id, rx, &token, &listener))
+    };
+    for chunk in content.chunks(CONTENT_CHUNK_SIZE) {
+        if token.is_cancelled() {
+            break;
+        }
+        if tx.send(chunk.to_vec()).await.is_err() {
+            break; // the worker exited early (error); its result is reported below
+        }
+    }
+    drop(tx); // close the channel so the worker finishes draining
+
+    match worker.await {
+        Ok(result) => result,
+        Err(join) => {
+            warn!(target: targets::IMPORT, cause = %join, "content import staging task failed to join");
+            Err(ApiError::Internal)
+        }
     }
 }
 

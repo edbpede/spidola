@@ -33,4 +33,12 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-text")
     implementation("androidx.compose.ui:ui-graphics")
+
+    // ImmutableList across the poster-rail composable boundary (kotlin-dev-pro Compose stability).
+    implementation(libs.kotlinx.collections.immutable)
+
+    // The lazy, disk-cached logo pipeline (TECH_SPEC §6 artwork exception). Coil's disk/memory
+    // caches are capped by the app's ImageLoader; the OkHttp fetcher pulls public logo URLs only.
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
 }

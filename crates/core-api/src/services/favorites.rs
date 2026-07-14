@@ -12,7 +12,7 @@ use core_db::{Db, repo};
 use core_model::ids::SourceId;
 
 use crate::error::ApiError;
-use crate::records::{Favorite, identity_from_storage};
+use crate::records::{Channel, ChannelPage, Favorite, identity_from_storage};
 use crate::runtime::CoreRuntime;
 
 /// Manages favorite channels.
@@ -100,6 +100,33 @@ impl FavoritesService {
                 let conn = db.reader()?;
                 let favorites = repo::favorites::list_for_source(&conn, SourceId::new(source_id))?;
                 Ok(favorites.into_iter().map(Favorite::from).collect())
+            })
+            .await
+    }
+
+    /// Returns a page of favorited channels across all enabled sources, most recently favorited
+    /// first — the home "Favorites" row (PRD §8.3). Each favorite is resolved to the channel in
+    /// the current catalog by stable identity; favorites whose channel is absent or whose source
+    /// is disabled are omitted. Paged by contract (§4.6).
+    ///
+    /// # Errors
+    /// Returns [`ApiError::StorageCorrupt`] on a query failure.
+    pub async fn favorite_channels(
+        &self,
+        offset: u32,
+        limit: u32,
+    ) -> Result<ChannelPage, ApiError> {
+        let db = Arc::clone(&self.db);
+        self.rt
+            .run_blocking(move || {
+                let conn = db.reader()?;
+                let total = repo::favorites::count_channels(&conn)?;
+                let channels = repo::favorites::list_channels(&conn, offset, limit)?;
+                Ok(ChannelPage {
+                    channels: channels.into_iter().map(Channel::from).collect(),
+                    offset,
+                    total,
+                })
             })
             .await
     }

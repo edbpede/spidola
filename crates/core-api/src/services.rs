@@ -12,12 +12,14 @@ pub mod catalog;
 pub mod epg;
 pub mod favorites;
 pub mod pairing;
+pub mod recents;
 pub mod search;
 pub mod settings;
 pub mod source;
 
 pub use catalog::CatalogService;
 pub use favorites::FavoritesService;
+pub use recents::RecentsService;
 pub use search::SearchService;
 pub use settings::SettingsService;
 pub use source::SourceService;

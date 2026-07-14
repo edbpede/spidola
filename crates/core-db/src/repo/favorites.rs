@@ -7,10 +7,12 @@
 
 use rusqlite::{Connection, params};
 
+use core_model::channel::Channel;
 use core_model::favorite::Favorite;
 use core_model::ids::{ChannelIdentity, SourceId};
 
 use crate::error::DbResult;
+use crate::repo::channels::{map_channel, prefixed_select_columns};
 
 /// Marks a channel favorite (idempotent).
 ///
@@ -80,12 +82,59 @@ pub fn list_for_source(conn: &Connection, source: SourceId) -> DbResult<Vec<Favo
     Ok(out)
 }
 
+/// Counts favorites that resolve to a channel currently in an **enabled** source's catalog
+/// (paging total for [`list_channels`]). Favorites whose channel is absent or whose source is
+/// disabled are excluded, matching what the home row can actually show.
+///
+/// # Errors
+/// Returns [`DbError`](crate::error::DbError) on a query failure.
+pub fn count_channels(conn: &Connection) -> DbResult<u64> {
+    let n: i64 = conn.query_row(
+        "SELECT count(*) FROM favorites f \
+         JOIN channels c ON c.source_id = f.source_id AND c.identity = f.identity \
+         JOIN sources s ON s.id = f.source_id \
+         WHERE s.enabled = 1",
+        [],
+        |r| r.get(0),
+    )?;
+    Ok(u64::try_from(n).unwrap_or(0))
+}
+
+/// Lists a page of favorited channels across all enabled sources, most recently favorited
+/// first (the home "Favorites" row, PRD §8.3). Resolves each favorite to the channel in the
+/// current catalog by stable identity; favorites with no matching channel are skipped (they
+/// return if the channel reappears under the same identity). Paged by contract (§4.6).
+///
+/// # Errors
+/// Returns [`DbError`](crate::error::DbError) on a query or row-mapping failure.
+pub fn list_channels(conn: &Connection, offset: u32, limit: u32) -> DbResult<Vec<Channel>> {
+    let columns = prefixed_select_columns("c");
+    let sql = format!(
+        "SELECT {columns} FROM favorites f \
+         JOIN channels c ON c.source_id = f.source_id AND c.identity = f.identity \
+         JOIN sources s ON s.id = f.source_id \
+         WHERE s.enabled = 1 \
+         ORDER BY f.created_at_unix DESC, c.id DESC \
+         LIMIT ?1 OFFSET ?2"
+    );
+    let mut stmt = conn.prepare(&sql)?;
+    let mut rows = stmt.query(params![limit, offset])?;
+    let mut out = Vec::new();
+    while let Some(row) = rows.next()? {
+        out.push(map_channel(row)?);
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
 
     use super::*;
     use crate::pool::Db;
+    use crate::repo::channels::{IMPORT_COLUMNS, NewChannel, insert_into};
+    use core_model::channel::{ChannelOverrides, MediaKind, channel_identity};
+    use core_model::locator::StreamLocator;
 
     fn seed_source(conn: &Connection) -> SourceId {
         conn.execute(
@@ -94,6 +143,49 @@ mod tests {
         )
         .unwrap();
         SourceId::new(1)
+    }
+
+    fn insert_channel(conn: &Connection, source: SourceId, name: &str) -> ChannelIdentity {
+        let url = format!("http://host/live/{name}");
+        let ch = NewChannel {
+            identity: channel_identity(None, &url, name),
+            name: name.to_owned(),
+            group_title: None,
+            logo: None,
+            locator: StreamLocator::parse(&url).unwrap(),
+            kind: MediaKind::Live,
+            category: None,
+            overrides: ChannelOverrides::default(),
+        };
+        let sql = format!(
+            "INSERT INTO channels({IMPORT_COLUMNS}) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)"
+        );
+        let mut stmt = conn.prepare(&sql).unwrap();
+        insert_into(&mut stmt, source, &ch, 0).unwrap();
+        ch.identity
+    }
+
+    #[test]
+    fn favorite_channels_resolve_and_respect_enabled() {
+        let db = Db::open_in_memory().unwrap();
+        let conn = db.writer();
+        let src = seed_source(&conn);
+        let ident = insert_channel(&conn, src, "BBC");
+        add(&conn, src, ident, 100).unwrap();
+
+        // A favorite with no matching channel row is skipped.
+        add(&conn, src, ChannelIdentity::from_raw(4242), 200).unwrap();
+
+        let resolved = list_channels(&conn, 0, 10).unwrap();
+        assert_eq!(resolved.len(), 1);
+        assert_eq!(resolved[0].name, "BBC");
+        assert_eq!(count_channels(&conn).unwrap(), 1);
+
+        // Disabling the source hides its favorites from the home row.
+        conn.execute("UPDATE sources SET enabled = 0 WHERE id = 1", [])
+            .unwrap();
+        assert!(list_channels(&conn, 0, 10).unwrap().is_empty());
+        assert_eq!(count_channels(&conn).unwrap(), 0);
     }
 
     #[test]

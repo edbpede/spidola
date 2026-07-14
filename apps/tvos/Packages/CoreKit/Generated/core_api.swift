@@ -618,6 +618,53 @@ public protocol CatalogServiceProtocol: AnyObject, Sendable {
      */
     func channels(sourceId: Int64, offset: UInt32, limit: UInt32) async throws  -> ChannelPage
     
+    /**
+     * Returns a page of the visible channels in one group of a source and media kind, in
+     * playlist order (paged by contract). `group` is the group title; `None` selects the
+     * "ungrouped" bucket. Hidden channels are excluded.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    func channelsInGroup(sourceId: Int64, kind: MediaKind, group: String?, offset: UInt32, limit: UInt32) async throws  -> ChannelPage
+    
+    /**
+     * Returns a page of a source's distinct groups (categories) for a media kind, ungrouped
+     * last (paged by contract). Hidden channels are excluded from the counts.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    func groups(sourceId: Int64, kind: MediaKind, offset: UInt32, limit: UInt32) async throws  -> BrowseGroupPage
+    
+    /**
+     * Whether a channel is hidden.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    func isHidden(sourceId: Int64, identity: Int64) async throws  -> Bool
+    
+    /**
+     * Lists the media kinds present in a source's catalog, in display order — the "type" level
+     * of the browse drill-down (source → type → category → channel). For an M3U source this is
+     * just `[Live]`, so a shell may skip the type screen when only one kind exists.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    func kinds(sourceId: Int64) async throws  -> [MediaKind]
+    
+    /**
+     * Hides or unhides a channel by its stable identity (the browse context menu). Hidden
+     * channels are excluded from [`Self::groups`] and [`Self::channels_in_group`], and the flag
+     * survives a refresh (§4.4).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    func setHidden(sourceId: Int64, identity: Int64, hidden: Bool) async throws 
+    
 }
 /**
  * Reads a source's channel catalog for browse.
@@ -741,6 +788,123 @@ open func channels(sourceId: Int64, offset: UInt32, limit: UInt32)async throws  
         )
 }
     
+    /**
+     * Returns a page of the visible channels in one group of a source and media kind, in
+     * playlist order (paged by contract). `group` is the group title; `None` selects the
+     * "ungrouped" bucket. Hidden channels are excluded.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+open func channelsInGroup(sourceId: Int64, kind: MediaKind, group: String?, offset: UInt32, limit: UInt32)async throws  -> ChannelPage  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_catalogservice_channels_in_group(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterTypeMediaKind_lower(kind),FfiConverterOptionString.lower(group),FfiConverterUInt32.lower(offset),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeChannelPage_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Returns a page of a source's distinct groups (categories) for a media kind, ungrouped
+     * last (paged by contract). Hidden channels are excluded from the counts.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+open func groups(sourceId: Int64, kind: MediaKind, offset: UInt32, limit: UInt32)async throws  -> BrowseGroupPage  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_catalogservice_groups(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterTypeMediaKind_lower(kind),FfiConverterUInt32.lower(offset),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeBrowseGroupPage_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Whether a channel is hidden.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+open func isHidden(sourceId: Int64, identity: Int64)async throws  -> Bool  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_catalogservice_is_hidden(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterInt64.lower(identity)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_i8,
+            completeFunc: ffi_core_api_rust_future_complete_i8,
+            freeFunc: ffi_core_api_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Lists the media kinds present in a source's catalog, in display order — the "type" level
+     * of the browse drill-down (source → type → category → channel). For an M3U source this is
+     * just `[Live]`, so a shell may skip the type screen when only one kind exists.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+open func kinds(sourceId: Int64)async throws  -> [MediaKind]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_catalogservice_kinds(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeMediaKind.lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Hides or unhides a channel by its stable identity (the browse context menu). Hidden
+     * channels are excluded from [`Self::groups`] and [`Self::channels_in_group`], and the flag
+     * survives a refresh (§4.4).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+open func setHidden(sourceId: Int64, identity: Int64, hidden: Bool)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_catalogservice_set_hidden(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterInt64.lower(identity),FfiConverterBool.lower(hidden)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
 
     
 }
@@ -816,6 +980,11 @@ public protocol CoreProtocol: AnyObject, Sendable {
      * The startup handshake: core, schema, and boundary versions.
      */
     func handshake()  -> Handshake
+    
+    /**
+     * The recently-watched service (list, purge, off-switch).
+     */
+    func recents()  -> RecentsService
     
     /**
      * The search service (ranked, paged results).
@@ -971,6 +1140,18 @@ open func handshake() -> Handshake  {
 }
     
     /**
+     * The recently-watched service (list, purge, off-switch).
+     */
+open func recents() -> RecentsService  {
+    return try!  FfiConverterTypeRecentsService_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_core_api_fn_method_core_recents(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
      * The search service (ranked, paged results).
      */
 open func search() -> SearchService  {
@@ -1088,6 +1269,17 @@ public protocol FavoritesServiceProtocol: AnyObject, Sendable {
     func add(sourceId: Int64, identity: Int64) async throws 
     
     /**
+     * Returns a page of favorited channels across all enabled sources, most recently favorited
+     * first — the home "Favorites" row (PRD §8.3). Each favorite is resolved to the channel in
+     * the current catalog by stable identity; favorites whose channel is absent or whose source
+     * is disabled are omitted. Paged by contract (§4.6).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    func favoriteChannels(offset: UInt32, limit: UInt32) async throws  -> ChannelPage
+    
+    /**
      * Whether a channel is favorited.
      *
      * # Errors
@@ -1186,6 +1378,31 @@ open func add(sourceId: Int64, identity: Int64)async throws   {
             completeFunc: ffi_core_api_rust_future_complete_void,
             freeFunc: ffi_core_api_rust_future_free_void,
             liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Returns a page of favorited channels across all enabled sources, most recently favorited
+     * first — the home "Favorites" row (PRD §8.3). Each favorite is resolved to the channel in
+     * the current catalog by stable identity; favorites whose channel is absent or whose source
+     * is disabled are omitted. Paged by contract (§4.6).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+open func favoriteChannels(offset: UInt32, limit: UInt32)async throws  -> ChannelPage  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_favoritesservice_favorite_channels(
+                        self.uniffiCloneHandle(),FfiConverterUInt32.lower(offset),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeChannelPage_lift,
             errorHandler: FfiConverterTypeApiError_lift
         )
 }
@@ -1299,6 +1516,274 @@ public func FfiConverterTypeFavoritesService_lift(_ handle: UInt64) throws -> Fa
 #endif
 public func FfiConverterTypeFavoritesService_lower(_ value: FavoritesService) -> UInt64 {
     return FfiConverterTypeFavoritesService.lower(value)
+}
+
+
+
+
+
+
+/**
+ * Manages the recently-watched list.
+ */
+public protocol RecentsServiceProtocol: AnyObject, Sendable {
+    
+    /**
+     * Purges the entire recently-watched list (the one-toggle purge, PRD §6.5).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    func clear() async throws 
+    
+    /**
+     * Whether recording is on (the off-switch, PRD §6.5). Defaults to on.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    func isEnabled() async throws  -> Bool
+    
+    /**
+     * Returns the most recently watched entries, newest first, capped at `limit`.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    func list(limit: UInt32) async throws  -> [Recent]
+    
+    /**
+     * Records a playback event (invoked by the shell when a channel is opened, and by the
+     * player on progress in Phase 5). A no-op when the off-switch is set, so the setting is
+     * authoritative in the core.
+     *
+     * # Errors
+     * Returns [`ApiError::InvalidInput`] if `locator` is not a valid stream address, or
+     * [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    func record(sourceId: Int64, identity: Int64, name: String, locator: String, positionSecs: UInt32?) async throws 
+    
+    /**
+     * Turns recording on or off. Existing entries are untouched — use [`Self::clear`] to purge.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    func setEnabled(enabled: Bool) async throws 
+    
+}
+/**
+ * Manages the recently-watched list.
+ */
+open class RecentsService: RecentsServiceProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_core_api_fn_clone_recentsservice(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_core_api_fn_free_recentsservice(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Purges the entire recently-watched list (the one-toggle purge, PRD §6.5).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+open func clear()async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_recentsservice_clear(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Whether recording is on (the off-switch, PRD §6.5). Defaults to on.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+open func isEnabled()async throws  -> Bool  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_recentsservice_is_enabled(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_i8,
+            completeFunc: ffi_core_api_rust_future_complete_i8,
+            freeFunc: ffi_core_api_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Returns the most recently watched entries, newest first, capped at `limit`.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+open func list(limit: UInt32)async throws  -> [Recent]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_recentsservice_list(
+                        self.uniffiCloneHandle(),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeRecent.lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Records a playback event (invoked by the shell when a channel is opened, and by the
+     * player on progress in Phase 5). A no-op when the off-switch is set, so the setting is
+     * authoritative in the core.
+     *
+     * # Errors
+     * Returns [`ApiError::InvalidInput`] if `locator` is not a valid stream address, or
+     * [`ApiError::StorageCorrupt`] on a write failure.
+     */
+open func record(sourceId: Int64, identity: Int64, name: String, locator: String, positionSecs: UInt32?)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_recentsservice_record(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterInt64.lower(identity),FfiConverterString.lower(name),FfiConverterString.lower(locator),FfiConverterOptionUInt32.lower(positionSecs)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Turns recording on or off. Existing entries are untouched — use [`Self::clear`] to purge.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+open func setEnabled(enabled: Bool)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_recentsservice_set_enabled(
+                        self.uniffiCloneHandle(),FfiConverterBool.lower(enabled)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecentsService: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = RecentsService
+
+    public static func lift(_ handle: UInt64) throws -> RecentsService {
+        return RecentsService(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: RecentsService) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RecentsService {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: RecentsService, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecentsService_lift(_ handle: UInt64) throws -> RecentsService {
+    return try FfiConverterTypeRecentsService.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecentsService_lower(_ value: RecentsService) -> UInt64 {
+    return FfiConverterTypeRecentsService.lower(value)
 }
 
 
@@ -1686,6 +2171,17 @@ public func FfiConverterTypeSettingsService_lower(_ value: SettingsService) -> U
 public protocol SourceServiceProtocol: AnyObject, Sendable {
     
     /**
+     * Adds an M3U-from-file source (no import yet — call [`Self::import_m3u_content`] with the
+     * picked/pasted playlist text to fill its catalog). File sources have no URL, so they are
+     * import-once: re-importing means calling [`Self::import_m3u_content`] again, never
+     * [`Self::refresh`].
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] if the source cannot be persisted.
+     */
+    func addM3uFile(name: String) async throws  -> Source
+    
+    /**
      * Adds an M3U-by-URL source (no import yet — call [`Self::refresh`] to fetch its catalog).
      *
      * # Errors
@@ -1707,6 +2203,15 @@ public protocol SourceServiceProtocol: AnyObject, Sendable {
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
      */
     func delete(id: Int64) async throws 
+    
+    /**
+     * Imports an M3U-from-file source's catalog from in-memory `content` (the picked/SAF/pasted
+     * playlist text). Returns immediately with a [`TaskHandle`]; progress, completion, and
+     * failure arrive on `listener`, exactly like [`Self::refresh`]. The content is staged and
+     * swapped atomically — a cancellation (via the handle or a concurrent `delete`, checked at
+     * batch boundaries) leaves any prior catalog intact.
+     */
+    func importM3uContent(id: Int64, content: String, listener: ImportListener)  -> TaskHandle
     
     /**
      * Lists all configured sources, newest first.
@@ -1807,6 +2312,31 @@ open class SourceService: SourceServiceProtocol, @unchecked Sendable {
 
     
     /**
+     * Adds an M3U-from-file source (no import yet — call [`Self::import_m3u_content`] with the
+     * picked/pasted playlist text to fill its catalog). File sources have no URL, so they are
+     * import-once: re-importing means calling [`Self::import_m3u_content`] again, never
+     * [`Self::refresh`].
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] if the source cannot be persisted.
+     */
+open func addM3uFile(name: String)async throws  -> Source  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_sourceservice_add_m3u_file(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(name)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeSource_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
      * Adds an M3U-by-URL source (no import yet — call [`Self::refresh`] to fetch its catalog).
      *
      * # Errors
@@ -1855,6 +2385,25 @@ open func delete(id: Int64)async throws   {
             liftFunc: { $0 },
             errorHandler: FfiConverterTypeApiError_lift
         )
+}
+    
+    /**
+     * Imports an M3U-from-file source's catalog from in-memory `content` (the picked/SAF/pasted
+     * playlist text). Returns immediately with a [`TaskHandle`]; progress, completion, and
+     * failure arrive on `listener`, exactly like [`Self::refresh`]. The content is staged and
+     * swapped atomically — a cancellation (via the handle or a concurrent `delete`, checked at
+     * batch boundaries) leaves any prior catalog intact.
+     */
+open func importM3uContent(id: Int64, content: String, listener: ImportListener) -> TaskHandle  {
+    return try!  FfiConverterTypeTaskHandle_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_core_api_fn_method_sourceservice_import_m3u_content(
+            self.uniffiCloneHandle(),
+        FfiConverterInt64.lower(id),
+        FfiConverterString.lower(content),
+        FfiConverterCallbackInterfaceImportListener_lower(listener),uniffiCallStatus
+    )
+})
 }
     
     /**
@@ -2141,6 +2690,155 @@ public func FfiConverterTypeTaskHandle_lower(_ value: TaskHandle) -> UInt64 {
 }
 
 
+
+
+/**
+ * One distinct group within a source's catalog — a "category" in the browse drill-down
+ * (source → type → category → channel). `None` title is the "ungrouped" bucket.
+ */
+public struct BrowseGroup: Equatable, Hashable {
+    /**
+     * The playlist group label; `None` is the ungrouped bucket.
+     */
+    public var title: String?
+    /**
+     * Visible (non-hidden) channels in this group.
+     */
+    public var channelCount: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The playlist group label; `None` is the ungrouped bucket.
+         */title: String?, 
+        /**
+         * Visible (non-hidden) channels in this group.
+         */channelCount: UInt64) {
+        self.title = title
+        self.channelCount = channelCount
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BrowseGroup: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBrowseGroup: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BrowseGroup {
+        return
+            try BrowseGroup(
+                title: FfiConverterOptionString.read(from: &buf), 
+                channelCount: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BrowseGroup, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.title, into: &buf)
+        FfiConverterUInt64.write(value.channelCount, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBrowseGroup_lift(_ buf: RustBuffer) throws -> BrowseGroup {
+    return try FfiConverterTypeBrowseGroup.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBrowseGroup_lower(_ value: BrowseGroup) -> RustBuffer {
+    return FfiConverterTypeBrowseGroup.lower(value)
+}
+
+
+/**
+ * A page of a source's browse groups (paged by contract, §4.6).
+ */
+public struct BrowseGroupPage: Equatable, Hashable {
+    /**
+     * The groups in this page.
+     */
+    public var groups: [BrowseGroup]
+    /**
+     * The offset this page started at.
+     */
+    public var offset: UInt32
+    /**
+     * Total distinct groups for the source and media kind.
+     */
+    public var total: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * The groups in this page.
+         */groups: [BrowseGroup], 
+        /**
+         * The offset this page started at.
+         */offset: UInt32, 
+        /**
+         * Total distinct groups for the source and media kind.
+         */total: UInt64) {
+        self.groups = groups
+        self.offset = offset
+        self.total = total
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension BrowseGroupPage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeBrowseGroupPage: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> BrowseGroupPage {
+        return
+            try BrowseGroupPage(
+                groups: FfiConverterSequenceTypeBrowseGroup.read(from: &buf), 
+                offset: FfiConverterUInt32.read(from: &buf), 
+                total: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: BrowseGroupPage, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeBrowseGroup.write(value.groups, into: &buf)
+        FfiConverterUInt32.write(value.offset, into: &buf)
+        FfiConverterUInt64.write(value.total, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBrowseGroupPage_lift(_ buf: RustBuffer) throws -> BrowseGroupPage {
+    return try FfiConverterTypeBrowseGroupPage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeBrowseGroupPage_lower(_ value: BrowseGroupPage) -> RustBuffer {
+    return FfiConverterTypeBrowseGroupPage.lower(value)
+}
 
 
 /**
@@ -2995,6 +3693,117 @@ public func FfiConverterTypeLogRecord_lift(_ buf: RustBuffer) throws -> LogRecor
 #endif
 public func FfiConverterTypeLogRecord_lower(_ value: LogRecord) -> RustBuffer {
     return FfiConverterTypeLogRecord.lower(value)
+}
+
+
+/**
+ * A "recently watched" entry (PRD §6.5). Snapshots the name and locator at play time and
+ * keys the channel by stable identity, so it stays replayable across refreshes even if the
+ * channel later leaves the catalog. Never leaves the device.
+ */
+public struct Recent: Equatable, Hashable {
+    /**
+     * Owning source.
+     */
+    public var sourceId: Int64
+    /**
+     * Stable identity of the played channel, as the stored `i64`.
+     */
+    public var identity: Int64
+    /**
+     * Channel name as it was at play time.
+     */
+    public var name: String
+    /**
+     * Locator as it was at play time (for replay).
+     */
+    public var locator: String
+    /**
+     * When it was played, Unix seconds.
+     */
+    public var playedAtUnix: Int64
+    /**
+     * Resume position in seconds, if recorded.
+     */
+    public var positionSecs: UInt32?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * Owning source.
+         */sourceId: Int64, 
+        /**
+         * Stable identity of the played channel, as the stored `i64`.
+         */identity: Int64, 
+        /**
+         * Channel name as it was at play time.
+         */name: String, 
+        /**
+         * Locator as it was at play time (for replay).
+         */locator: String, 
+        /**
+         * When it was played, Unix seconds.
+         */playedAtUnix: Int64, 
+        /**
+         * Resume position in seconds, if recorded.
+         */positionSecs: UInt32?) {
+        self.sourceId = sourceId
+        self.identity = identity
+        self.name = name
+        self.locator = locator
+        self.playedAtUnix = playedAtUnix
+        self.positionSecs = positionSecs
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension Recent: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRecent: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Recent {
+        return
+            try Recent(
+                sourceId: FfiConverterInt64.read(from: &buf), 
+                identity: FfiConverterInt64.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                locator: FfiConverterString.read(from: &buf), 
+                playedAtUnix: FfiConverterInt64.read(from: &buf), 
+                positionSecs: FfiConverterOptionUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: Recent, into buf: inout [UInt8]) {
+        FfiConverterInt64.write(value.sourceId, into: &buf)
+        FfiConverterInt64.write(value.identity, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.locator, into: &buf)
+        FfiConverterInt64.write(value.playedAtUnix, into: &buf)
+        FfiConverterOptionUInt32.write(value.positionSecs, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecent_lift(_ buf: RustBuffer) throws -> Recent {
+    return try FfiConverterTypeRecent.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRecent_lower(_ value: Recent) -> RustBuffer {
+    return FfiConverterTypeRecent.lower(value)
 }
 
 
@@ -4607,6 +5416,31 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeBrowseGroup: FfiConverterRustBuffer {
+    typealias SwiftType = [BrowseGroup]
+
+    public static func write(_ value: [BrowseGroup], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeBrowseGroup.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [BrowseGroup] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [BrowseGroup]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeBrowseGroup.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeChannel: FfiConverterRustBuffer {
     typealias SwiftType = [Channel]
 
@@ -4682,6 +5516,31 @@ fileprivate struct FfiConverterSequenceTypeHeaderField: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeRecent: FfiConverterRustBuffer {
+    typealias SwiftType = [Recent]
+
+    public static func write(_ value: [Recent], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeRecent.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Recent] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Recent]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeRecent.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeSettingEntry: FfiConverterRustBuffer {
     typealias SwiftType = [SettingEntry]
 
@@ -4699,6 +5558,31 @@ fileprivate struct FfiConverterSequenceTypeSettingEntry: FfiConverterRustBuffer 
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeSettingEntry.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeMediaKind: FfiConverterRustBuffer {
+    typealias SwiftType = [MediaKind]
+
+    public static func write(_ value: [MediaKind], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeMediaKind.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [MediaKind] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [MediaKind]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeMediaKind.read(from: &buf))
         }
         return seq
     }
@@ -4804,6 +5688,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_core_handshake() != 2257) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_core_api_checksum_method_core_recents() != 27670) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_core_api_checksum_method_core_search() != 31146) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -4828,7 +5715,25 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_catalogservice_channels() != 32387) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_core_api_checksum_method_catalogservice_channels_in_group() != 56166) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_catalogservice_groups() != 58024) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_catalogservice_is_hidden() != 32831) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_catalogservice_kinds() != 57868) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_catalogservice_set_hidden() != 49226) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_core_api_checksum_method_favoritesservice_add() != 53981) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_favoritesservice_favorite_channels() != 55055) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_favoritesservice_is_favorite() != 5118) {
@@ -4838,6 +5743,21 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_favoritesservice_remove() != 49667) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_recentsservice_clear() != 9754) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_recentsservice_is_enabled() != 17901) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_recentsservice_list() != 60917) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_recentsservice_record() != 23744) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_recentsservice_set_enabled() != 11145) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_searchservice_search() != 39379) {
@@ -4855,10 +5775,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_settingsservice_set() != 32636) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_core_api_checksum_method_sourceservice_add_m3u_file() != 60508) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_core_api_checksum_method_sourceservice_add_m3u_url() != 16147) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_sourceservice_delete() != 42027) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_sourceservice_import_m3u_content() != 7156) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_sourceservice_list() != 24283) {

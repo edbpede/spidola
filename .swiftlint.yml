@@ -20,6 +20,10 @@ excluded:
 # swift-format owns collection-literal comma style; avoid a contradictory SwiftLint rule.
 disabled_rules:
   - trailing_comma
+  # swift-format owns brace placement: when a declaration or signature wraps (a long
+  # inheritance clause or return type), swift-format puts the open brace on its own line,
+  # which `opening_brace` would reject. swift-format is authoritative, so disable the rule.
+  - opening_brace
 
 line_length:
   warning: 120

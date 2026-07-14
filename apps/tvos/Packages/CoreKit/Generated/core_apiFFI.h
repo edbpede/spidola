@@ -358,6 +358,11 @@ uint64_t uniffi_core_api_fn_method_core_favorites(uint64_t ptr, RustCallStatus *
 RustBuffer uniffi_core_api_fn_method_core_handshake(uint64_t ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CORE_RECENTS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CORE_RECENTS
+uint64_t uniffi_core_api_fn_method_core_recents(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CORE_SEARCH
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CORE_SEARCH
 uint64_t uniffi_core_api_fn_method_core_search(uint64_t ptr, RustCallStatus *_Nonnull out_status
@@ -418,6 +423,31 @@ uint64_t uniffi_core_api_fn_method_catalogservice_channel_count(uint64_t ptr, in
 uint64_t uniffi_core_api_fn_method_catalogservice_channels(uint64_t ptr, int64_t source_id, uint32_t offset, uint32_t limit
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CATALOGSERVICE_CHANNELS_IN_GROUP
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CATALOGSERVICE_CHANNELS_IN_GROUP
+uint64_t uniffi_core_api_fn_method_catalogservice_channels_in_group(uint64_t ptr, int64_t source_id, RustBuffer kind, RustBuffer group, uint32_t offset, uint32_t limit
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CATALOGSERVICE_GROUPS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CATALOGSERVICE_GROUPS
+uint64_t uniffi_core_api_fn_method_catalogservice_groups(uint64_t ptr, int64_t source_id, RustBuffer kind, uint32_t offset, uint32_t limit
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CATALOGSERVICE_IS_HIDDEN
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CATALOGSERVICE_IS_HIDDEN
+uint64_t uniffi_core_api_fn_method_catalogservice_is_hidden(uint64_t ptr, int64_t source_id, int64_t identity
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CATALOGSERVICE_KINDS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CATALOGSERVICE_KINDS
+uint64_t uniffi_core_api_fn_method_catalogservice_kinds(uint64_t ptr, int64_t source_id
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CATALOGSERVICE_SET_HIDDEN
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CATALOGSERVICE_SET_HIDDEN
+uint64_t uniffi_core_api_fn_method_catalogservice_set_hidden(uint64_t ptr, int64_t source_id, int64_t identity, int8_t hidden
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_FAVORITESSERVICE
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_FAVORITESSERVICE
 uint64_t uniffi_core_api_fn_clone_favoritesservice(uint64_t handle, RustCallStatus *_Nonnull out_status
@@ -433,6 +463,11 @@ void uniffi_core_api_fn_free_favoritesservice(uint64_t handle, RustCallStatus *_
 uint64_t uniffi_core_api_fn_method_favoritesservice_add(uint64_t ptr, int64_t source_id, int64_t identity
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_FAVORITESSERVICE_FAVORITE_CHANNELS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_FAVORITESSERVICE_FAVORITE_CHANNELS
+uint64_t uniffi_core_api_fn_method_favoritesservice_favorite_channels(uint64_t ptr, uint32_t offset, uint32_t limit
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_FAVORITESSERVICE_IS_FAVORITE
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_FAVORITESSERVICE_IS_FAVORITE
 uint64_t uniffi_core_api_fn_method_favoritesservice_is_favorite(uint64_t ptr, int64_t source_id, int64_t identity
@@ -446,6 +481,41 @@ uint64_t uniffi_core_api_fn_method_favoritesservice_list(uint64_t ptr, int64_t s
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_FAVORITESSERVICE_REMOVE
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_FAVORITESSERVICE_REMOVE
 uint64_t uniffi_core_api_fn_method_favoritesservice_remove(uint64_t ptr, int64_t source_id, int64_t identity
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_RECENTSSERVICE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_RECENTSSERVICE
+uint64_t uniffi_core_api_fn_clone_recentsservice(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_FREE_RECENTSSERVICE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_FREE_RECENTSSERVICE
+void uniffi_core_api_fn_free_recentsservice(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RECENTSSERVICE_CLEAR
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RECENTSSERVICE_CLEAR
+uint64_t uniffi_core_api_fn_method_recentsservice_clear(uint64_t ptr
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RECENTSSERVICE_IS_ENABLED
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RECENTSSERVICE_IS_ENABLED
+uint64_t uniffi_core_api_fn_method_recentsservice_is_enabled(uint64_t ptr
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RECENTSSERVICE_LIST
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RECENTSSERVICE_LIST
+uint64_t uniffi_core_api_fn_method_recentsservice_list(uint64_t ptr, uint32_t limit
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RECENTSSERVICE_RECORD
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RECENTSSERVICE_RECORD
+uint64_t uniffi_core_api_fn_method_recentsservice_record(uint64_t ptr, int64_t source_id, int64_t identity, RustBuffer name, RustBuffer locator, RustBuffer position_secs
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RECENTSSERVICE_SET_ENABLED
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RECENTSSERVICE_SET_ENABLED
+uint64_t uniffi_core_api_fn_method_recentsservice_set_enabled(uint64_t ptr, int8_t enabled
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_SEARCHSERVICE
@@ -503,6 +573,11 @@ uint64_t uniffi_core_api_fn_clone_sourceservice(uint64_t handle, RustCallStatus 
 void uniffi_core_api_fn_free_sourceservice(uint64_t handle, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_ADD_M3U_FILE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_ADD_M3U_FILE
+uint64_t uniffi_core_api_fn_method_sourceservice_add_m3u_file(uint64_t ptr, RustBuffer name
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_ADD_M3U_URL
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_ADD_M3U_URL
 uint64_t uniffi_core_api_fn_method_sourceservice_add_m3u_url(uint64_t ptr, RustBuffer name, RustBuffer url, RustBuffer user_agent, int8_t accept_invalid_tls
@@ -511,6 +586,11 @@ uint64_t uniffi_core_api_fn_method_sourceservice_add_m3u_url(uint64_t ptr, RustB
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_DELETE
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_DELETE
 uint64_t uniffi_core_api_fn_method_sourceservice_delete(uint64_t ptr, int64_t id
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_IMPORT_M3U_CONTENT
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_IMPORT_M3U_CONTENT
+uint64_t uniffi_core_api_fn_method_sourceservice_import_m3u_content(uint64_t ptr, int64_t id, RustBuffer content, uint64_t listener, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_LIST
@@ -837,6 +917,12 @@ uint16_t uniffi_core_api_checksum_method_core_handshake(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CORE_RECENTS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CORE_RECENTS
+uint16_t uniffi_core_api_checksum_method_core_recents(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CORE_SEARCH
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CORE_SEARCH
 uint16_t uniffi_core_api_checksum_method_core_search(void
@@ -885,9 +971,45 @@ uint16_t uniffi_core_api_checksum_method_catalogservice_channels(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CATALOGSERVICE_CHANNELS_IN_GROUP
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CATALOGSERVICE_CHANNELS_IN_GROUP
+uint16_t uniffi_core_api_checksum_method_catalogservice_channels_in_group(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CATALOGSERVICE_GROUPS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CATALOGSERVICE_GROUPS
+uint16_t uniffi_core_api_checksum_method_catalogservice_groups(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CATALOGSERVICE_IS_HIDDEN
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CATALOGSERVICE_IS_HIDDEN
+uint16_t uniffi_core_api_checksum_method_catalogservice_is_hidden(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CATALOGSERVICE_KINDS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CATALOGSERVICE_KINDS
+uint16_t uniffi_core_api_checksum_method_catalogservice_kinds(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CATALOGSERVICE_SET_HIDDEN
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CATALOGSERVICE_SET_HIDDEN
+uint16_t uniffi_core_api_checksum_method_catalogservice_set_hidden(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_FAVORITESSERVICE_ADD
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_FAVORITESSERVICE_ADD
 uint16_t uniffi_core_api_checksum_method_favoritesservice_add(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_FAVORITESSERVICE_FAVORITE_CHANNELS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_FAVORITESSERVICE_FAVORITE_CHANNELS
+uint16_t uniffi_core_api_checksum_method_favoritesservice_favorite_channels(void
     
 );
 #endif
@@ -906,6 +1028,36 @@ uint16_t uniffi_core_api_checksum_method_favoritesservice_list(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_FAVORITESSERVICE_REMOVE
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_FAVORITESSERVICE_REMOVE
 uint16_t uniffi_core_api_checksum_method_favoritesservice_remove(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RECENTSSERVICE_CLEAR
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RECENTSSERVICE_CLEAR
+uint16_t uniffi_core_api_checksum_method_recentsservice_clear(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RECENTSSERVICE_IS_ENABLED
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RECENTSSERVICE_IS_ENABLED
+uint16_t uniffi_core_api_checksum_method_recentsservice_is_enabled(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RECENTSSERVICE_LIST
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RECENTSSERVICE_LIST
+uint16_t uniffi_core_api_checksum_method_recentsservice_list(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RECENTSSERVICE_RECORD
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RECENTSSERVICE_RECORD
+uint16_t uniffi_core_api_checksum_method_recentsservice_record(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RECENTSSERVICE_SET_ENABLED
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RECENTSSERVICE_SET_ENABLED
+uint16_t uniffi_core_api_checksum_method_recentsservice_set_enabled(void
     
 );
 #endif
@@ -939,6 +1091,12 @@ uint16_t uniffi_core_api_checksum_method_settingsservice_set(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SOURCESERVICE_ADD_M3U_FILE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SOURCESERVICE_ADD_M3U_FILE
+uint16_t uniffi_core_api_checksum_method_sourceservice_add_m3u_file(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SOURCESERVICE_ADD_M3U_URL
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SOURCESERVICE_ADD_M3U_URL
 uint16_t uniffi_core_api_checksum_method_sourceservice_add_m3u_url(void
@@ -948,6 +1106,12 @@ uint16_t uniffi_core_api_checksum_method_sourceservice_add_m3u_url(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SOURCESERVICE_DELETE
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SOURCESERVICE_DELETE
 uint16_t uniffi_core_api_checksum_method_sourceservice_delete(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SOURCESERVICE_IMPORT_M3U_CONTENT
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SOURCESERVICE_IMPORT_M3U_CONTENT
+uint16_t uniffi_core_api_checksum_method_sourceservice_import_m3u_content(void
     
 );
 #endif

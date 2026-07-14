@@ -15,7 +15,7 @@ struct SpidolaApp: App {
     WindowGroup {
       Group {
         if isReady {
-          RootView(catalog: container.catalog)
+          RootView(core: container.core)
         } else {
           ProgressView("Preparing fixture catalog…")
         }

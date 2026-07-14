@@ -10,8 +10,19 @@ let package = Package(
   products: [
     .library(name: "FeatureSearch", targets: ["FeatureSearch"])
   ],
+  dependencies: [
+    .package(path: "../CoreKit"),
+    .package(path: "../DesignSystem"),
+  ],
   targets: [
-    .target(name: "FeatureSearch")
+    .target(
+      name: "FeatureSearch",
+      dependencies: ["CoreKit", "DesignSystem"]
+    ),
+    .testTarget(
+      name: "FeatureSearchTests",
+      dependencies: ["FeatureSearch", "CoreKit"]
+    ),
   ],
   swiftLanguageModes: [.v6]
 )

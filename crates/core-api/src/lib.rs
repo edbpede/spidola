@@ -33,13 +33,13 @@ pub use error::{ApiError, ErrorUx, UserAction};
 pub use events::{ImportListener, ImportOutcome, ImportProgress, ImportStage, TaskHandle};
 pub use logging::{LogConfig, LogHandle, LogLevel, LogRecord, LogSink, RingBuffer, RingLayer};
 pub use records::{
-    Channel, ChannelOverrides, ChannelPage, Favorite, HeaderField, MediaKind, SearchPage,
-    SettingEntry, Source, SourceCommon, SourceKind,
+    BrowseGroup, BrowseGroupPage, Channel, ChannelOverrides, ChannelPage, Favorite, HeaderField,
+    MediaKind, Recent, SearchPage, SettingEntry, Source, SourceCommon, SourceKind,
 };
 pub use runtime::CoreRuntime;
 pub use secrets::SecretStore;
 pub use services::{
-    CatalogService, FavoritesService, SearchService, SettingsService, SourceService,
+    CatalogService, FavoritesService, RecentsService, SearchService, SettingsService, SourceService,
 };
 
 use crate::logging::targets;
@@ -164,6 +164,12 @@ impl Core {
     #[must_use]
     pub fn favorites(&self) -> Arc<FavoritesService> {
         FavoritesService::new(Arc::clone(&self.rt), Arc::clone(&self.db))
+    }
+
+    /// The recently-watched service (list, purge, off-switch).
+    #[must_use]
+    pub fn recents(&self) -> Arc<RecentsService> {
+        RecentsService::new(Arc::clone(&self.rt), Arc::clone(&self.db))
     }
 
     /// The settings service.
