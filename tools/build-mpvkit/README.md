@@ -57,6 +57,11 @@ On licences, both are compatible with AGPL-3.0-or-later:
 All sit inside the dependency licence allow-list cargo-deny enforces for the core (permissive plus
 LGPL, copyleft-incompatible denied — TECH_SPEC §12).
 
+They also pin down the closure's effective LGPL version: Apache-2.0 TLS and LGPL-3.0 GMP mean the
+combined stack is **LGPL-3.0**, matching the Android build (`tools/build-libmpv-android`, where the
+same TLS arithmetic is worked through). That version — and the App Store consideration specific to
+LGPLv3 — is decided and accepted in PRD §10.
+
 ## What `mpvkit.lock` records, and what it does not
 
 `mpvkit.lock` pins the version and the sha256 of **every binary artifact the LGPL product links** —

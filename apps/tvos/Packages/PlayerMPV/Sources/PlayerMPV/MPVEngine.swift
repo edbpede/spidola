@@ -27,6 +27,10 @@ public final class MPVEngine: PlaybackEngine {
   /// renders) and because mpv needs its address before `mpv_initialize` — and held here, strongly,
   /// because MPVKit's MoltenVK context bridges `wid` back to a `CAMetalLayer` **unretained**. If
   /// this reference dies while the core lives, mpv renders into freed memory.
+  ///
+  /// Holding it here is necessary but not sufficient: the core outlives this engine by design, on
+  /// `MPVCoreDisposal`'s thread, so the layer is handed to that thread as well and released only
+  /// once `mpv_destroy` has returned.
   private let metalLayer = MPVMetalLayer()
 
   private let audioSession = MPVAudioSession()
@@ -101,7 +105,7 @@ public final class MPVEngine: PlaybackEngine {
       // The handle exists but nothing owns it yet: `self.core` is only assigned once this returns,
       // so an early throw here would strand the core with no path to `stop()` and leak a decoder
       // on every failed load — which on a bad source is every zap.
-      MPVCoreDisposal.dispose(core.raw)
+      MPVCoreDisposal.dispose(core.raw, keepingAlive: metalLayer)
       throw error
     }
     return core
@@ -303,6 +307,11 @@ public final class MPVEngine: PlaybackEngine {
   /// finishes uninitialising, which is why it runs on a disposal thread and not here — blocking the
   /// main actor is what the zap budget cannot afford. This engine sets `core = nil` before handing
   /// the pointer over, so the main actor's last use of it precedes the hand-off by construction.
+  ///
+  /// The render target crosses with it, retained past `mpv_destroy`. mpv still holds it —
+  /// unretained, as a bare `wid` address — for as long as it is uninitialising, while this engine's
+  /// own reference to it can die the instant this method returns: on the `deinit` path below, that
+  /// is the next thing that happens.
   public func stop() {
     guard !isStopped else { return }
     isStopped = true
@@ -319,8 +328,17 @@ public final class MPVEngine: PlaybackEngine {
     audioSession.deactivate()
 
     Logger.mpv.info("engine stopping")
-    MPVCoreDisposal.dispose(core.raw)
+    MPVCoreDisposal.dispose(core.raw, keepingAlive: metalLayer)
     statesContinuation.finish()
+  }
+
+  /// The contract's backstop for a dropped reference. Without it a live core keeps decoding with
+  /// no owner left to stop it — the event task holds its stream, mpv holds the decoder, and the
+  /// process-wide audio session and now-playing info stay claimed. `isolated deinit` runs on the
+  /// main actor, so this is the same idempotent `stop()` the shell calls, not a second teardown
+  /// path.
+  isolated deinit {
+    stop()
   }
 
   // MARK: - Events

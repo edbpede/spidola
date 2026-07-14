@@ -127,7 +127,9 @@ final class MPVHandle {
   ///
   /// mpv reads `wid` as an `int64_t` and MPVKit's MoltenVK context casts it straight back to a
   /// `CAMetalLayer *` (an unretained bridge). So the value is a raw address, and the layer must
-  /// outlive the core — `MPVEngine` holds the only strong reference for exactly that reason.
+  /// outlive the core — `MPVEngine` holds a strong reference for exactly that reason, and hands a
+  /// second one to `MPVCoreDisposal`, which is what keeps the layer up while the core is destroyed
+  /// after the engine itself is gone.
   func setWindowID(_ pointer: UnsafeMutableRawPointer) throws {
     var wid = Int64(Int(bitPattern: pointer))
     try withUnsafeMutablePointer(to: &wid) { widPointer in

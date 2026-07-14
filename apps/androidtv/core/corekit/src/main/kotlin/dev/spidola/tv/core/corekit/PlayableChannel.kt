@@ -22,8 +22,9 @@ data class PlayableChannel(
     val logo: String?,
     val locator: String,
     /**
-     * What the source says this is. `null` when the entry point could not say — a recent snapshots
-     * no kind, so nothing downstream may claim "LIVE" without evidence (PRD §8.5).
+     * What the channel plays. `null` when the entry point could not know — a recent snapshots only
+     * what it needs to replay, so a channel reached from the recents row reports an honest
+     * "unknown" rather than being assumed live.
      */
     val kind: MediaKind? = null,
 ) {

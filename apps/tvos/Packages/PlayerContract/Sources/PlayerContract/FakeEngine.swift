@@ -99,6 +99,13 @@ public final class FakeEngine: PlaybackEngine {
     continuation.finish()
   }
 
+  /// The deinit backstop the contract requires of every engine. The fake holds no decoder, but
+  /// keeping the backstop means tests exercise the same lifecycle the real engines have — a test
+  /// draining `states` ends when the engine is dropped, exactly as it would against a real one.
+  isolated deinit {
+    stop()
+  }
+
   // MARK: - Test driving
 
   /// Drives the engine to `state`, as a real engine's event stream would.

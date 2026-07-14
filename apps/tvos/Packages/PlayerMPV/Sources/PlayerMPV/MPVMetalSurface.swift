@@ -37,7 +37,10 @@ final class MPVMetalLayer: CAMetalLayer {
 /// The `UIView` hosting the render layer.
 ///
 /// The layer is created and owned by `MPVEngine`, not by this view: mpv needs its address before
-/// `mpv_initialize`, and the engine outlives any particular hosting view SwiftUI happens to build.
+/// `mpv_initialize`, and the layer must survive any particular hosting view SwiftUI happens to
+/// build or rebuild. It outlives this view at teardown too, and by design — the view goes away with
+/// the rest of the tree the moment the model drops the engine, while `MPVCoreDisposal` holds the
+/// layer up for the core it is still destroying.
 /// The view's whole job is keeping the layer's geometry in step with the frame it is given.
 final class MPVSurfaceView: UIView {
   private let metalLayer: MPVMetalLayer

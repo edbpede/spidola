@@ -75,9 +75,10 @@ lists mbedtls in `EXTERNAL_LIBRARY_VERSION3_LIST` and refuses to configure witho
 provider outside that list is GnuTLS, which needs nettle and GMP — and GMP is LGPL v3 itself,
 so that route arrives at v3 anyway after three more cross-compiled components. LGPL v3 is
 still LGPL, still not GPL, and still compatible with the project's AGPL-3.0-or-later code.
-This is Android-only; tvOS builds its own FFmpeg under `tools/build-mpvkit`, where the
-LGPLv3-versus-App-Store question that makes v2.1 attractive genuinely arises. That decision
-belongs there and is deliberately not made here.
+The tvOS stack lands in the same place — the MPVKit closure under `tools/build-mpvkit`
+carries OpenSSL 3 (Apache-2.0) and GnuTLS with GMP (LGPL v3) — and the LGPLv3-versus-App-Store
+question that makes v2.1 attractive is **decided in PRD §10**: v3 is accepted on both
+platforms, with the reasoning (and the worst-case fallback) recorded there.
 
 ### The verification is on the output, not the flags
 

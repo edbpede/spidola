@@ -80,5 +80,10 @@ public protocol PlaybackEngine: AnyObject {
 
   /// Tears the engine down and releases its decoder. Idempotent: the shell calls it on dispose
   /// and on the terminal-state path, and neither knows whether the other ran.
+  ///
+  /// Implementations must also run this from `isolated deinit`, so dropping an engine's last
+  /// reference is equivalent to stopping it. The shell disposes engines explicitly on every path
+  /// it knows about, but playback that survives a dropped engine has no owner left to stop it —
+  /// the backstop is part of the contract, not a courtesy.
   func stop()
 }
