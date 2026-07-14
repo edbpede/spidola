@@ -16,21 +16,23 @@ use core_model::source::{Source as DomainSource, SourceCommon as DomainCommon};
 
 use crate::error::ApiError;
 use crate::events::{CancelToken, ImportListener, TaskHandle};
-use crate::import::run_import;
+use crate::import::{run_import, run_import_content};
 use crate::records::Source;
 use crate::runtime::CoreRuntime;
+
+/// Cancellation tokens for in-flight long operations (refresh, content import), keyed by source
+/// id then by a unique per-operation sequence. Nesting keeps concurrent operations on the same
+/// source distinct, so [`SourceService::delete`] can abort *every* running operation for a source
+/// it is about to remove while each operation deregisters only its own token.
+type RefreshRegistry = Mutex<HashMap<i64, HashMap<u64, CancelToken>>>;
 
 /// Manages configured sources and their catalog refresh.
 #[derive(uniffi::Object)]
 pub struct SourceService {
     rt: Arc<CoreRuntime>,
     db: Arc<Db>,
-    /// Cancellation tokens for in-flight refreshes, keyed by source id then by a unique
-    /// per-refresh sequence. Nesting keeps concurrent refreshes of the same source distinct, so
-    /// [`Self::delete`] can abort *every* running refresh for a source it is about to remove and
-    /// each refresh deregisters only its own token.
-    refreshes: Arc<Mutex<HashMap<i64, HashMap<u64, CancelToken>>>>,
-    /// Monotonic source of the unique per-refresh keys used within [`Self::refreshes`].
+    refreshes: Arc<RefreshRegistry>,
+    /// Monotonic source of the unique per-operation keys used within [`Self::refreshes`].
     next_refresh_seq: AtomicU64,
 }
 
@@ -43,6 +45,33 @@ impl SourceService {
             refreshes: Arc::new(Mutex::new(HashMap::new())),
             next_refresh_seq: AtomicU64::new(0),
         })
+    }
+
+    /// Registers `token` for an in-flight operation on source `id`, returning its unique key.
+    /// A concurrent `delete(id)` cancels *every* registered operation for the source; each
+    /// operation deregisters only its own key on completion.
+    fn register(&self, id: i64, token: CancelToken) -> u64 {
+        let seq = self.next_refresh_seq.fetch_add(1, Ordering::Relaxed);
+        self.refreshes
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .entry(id)
+            .or_default()
+            .insert(seq, token);
+        seq
+    }
+
+    /// Deregisters a completed operation, pruning the id's bucket once it holds no more in-flight
+    /// operations so the registry stays bounded by the concurrently-active set.
+    fn deregister(refreshes: &RefreshRegistry, id: i64, seq: u64) {
+        let mut guard = refreshes.lock().unwrap_or_else(PoisonError::into_inner);
+        let bucket_empty = guard.get_mut(&id).is_some_and(|tokens| {
+            tokens.remove(&seq);
+            tokens.is_empty()
+        });
+        if bucket_empty {
+            guard.remove(&id);
+        }
     }
 }
 
@@ -59,6 +88,40 @@ impl SourceService {
                 let conn = db.reader()?;
                 let sources = repo::sources::list(&conn)?;
                 Ok(sources.into_iter().map(Source::from).collect())
+            })
+            .await
+    }
+
+    /// Adds an M3U-from-file source (no import yet — call [`Self::import_m3u_content`] with the
+    /// picked/pasted playlist text to fill its catalog). File sources have no URL, so they are
+    /// import-once: re-importing means calling [`Self::import_m3u_content`] again, never
+    /// [`Self::refresh`].
+    ///
+    /// # Errors
+    /// Returns [`ApiError::StorageCorrupt`] if the source cannot be persisted.
+    // UniFFI lifts the foreign string into an owned `String`.
+    #[allow(clippy::needless_pass_by_value)]
+    pub async fn add_m3u_file(&self, name: String) -> Result<Source, ApiError> {
+        let db = Arc::clone(&self.db);
+        self.rt
+            .run_blocking(move || {
+                let source = DomainSource::M3uFile {
+                    id: SourceId::new(0), // the DB mints the rowid
+                    common: DomainCommon {
+                        name,
+                        enabled: true,
+                        auto_refresh_secs: None,
+                    },
+                };
+                let id = {
+                    let conn = db.writer();
+                    repo::sources::insert(&conn, &source)?
+                };
+                let created = {
+                    let conn = db.writer();
+                    repo::sources::get(&conn, id)?.ok_or(ApiError::Internal)?
+                };
+                Ok(Source::from(created))
             })
             .await
     }
@@ -195,29 +258,43 @@ impl SourceService {
         let db = Arc::clone(&self.db);
         let listener: Arc<dyn ImportListener> = Arc::from(listener);
         let task_token = token.clone();
-        // Register under a unique per-refresh key so a concurrent `delete(id)` cancels *every*
-        // active refresh for this id, and (below) this task deregisters only its own token even
-        // when a sibling refresh for the same id registers or completes concurrently.
-        let seq = self.next_refresh_seq.fetch_add(1, Ordering::Relaxed);
-        self.refreshes
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .entry(id)
-            .or_default()
-            .insert(seq, token.clone());
+        let seq = self.register(id, token.clone());
         let refreshes = Arc::clone(&self.refreshes);
         self.rt.spawn(async move {
             run_refresh(db, SourceId::new(id), task_token, listener).await;
-            // Deregister only this refresh; prune the id's bucket once it holds no more in-flight
-            // refreshes so the map stays bounded by the concurrently-active refreshes.
-            let mut guard = refreshes.lock().unwrap_or_else(PoisonError::into_inner);
-            let bucket_empty = guard.get_mut(&id).is_some_and(|tokens| {
-                tokens.remove(&seq);
-                tokens.is_empty()
-            });
-            if bucket_empty {
-                guard.remove(&id);
-            }
+            Self::deregister(&refreshes, id, seq);
+        });
+        Arc::new(TaskHandle::new(token))
+    }
+
+    /// Imports an M3U-from-file source's catalog from in-memory `content` (the picked/SAF/pasted
+    /// playlist text). Returns immediately with a [`TaskHandle`]; progress, completion, and
+    /// failure arrive on `listener`, exactly like [`Self::refresh`]. The content is staged and
+    /// swapped atomically — a cancellation (via the handle or a concurrent `delete`, checked at
+    /// batch boundaries) leaves any prior catalog intact.
+    #[must_use]
+    pub fn import_m3u_content(
+        &self,
+        id: i64,
+        content: String,
+        listener: Box<dyn ImportListener>,
+    ) -> Arc<TaskHandle> {
+        let token = CancelToken::default();
+        let db = Arc::clone(&self.db);
+        let listener: Arc<dyn ImportListener> = Arc::from(listener);
+        let task_token = token.clone();
+        let seq = self.register(id, token.clone());
+        let refreshes = Arc::clone(&self.refreshes);
+        self.rt.spawn(async move {
+            run_import_content(
+                db,
+                SourceId::new(id),
+                content.into_bytes(),
+                task_token,
+                listener,
+            )
+            .await;
+            Self::deregister(&refreshes, id, seq);
         });
         Arc::new(TaskHandle::new(token))
     }

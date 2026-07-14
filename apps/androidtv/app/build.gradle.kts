@@ -54,6 +54,8 @@ dependencies {
     implementation(project(":core:corekit"))
     implementation(project(":core:designsystem"))
     implementation(project(":feature:browse"))
+    implementation(project(":feature:search"))
+    implementation(project(":feature:sources"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.foundation)

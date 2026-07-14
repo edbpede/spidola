@@ -14,7 +14,6 @@ import OSLog
 @MainActor
 final class AppContainer {
   let core: SpidolaCore
-  var catalog: any CatalogAccess { core }
 
   private let logger = Logger(subsystem: "dev.spidola.tv", category: "spidola::boot")
 

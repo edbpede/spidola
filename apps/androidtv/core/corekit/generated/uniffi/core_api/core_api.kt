@@ -778,6 +778,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_core_api_checksum_method_core_handshake(
     ): Int
+    external fun uniffi_core_api_checksum_method_core_recents(
+    ): Int
     external fun uniffi_core_api_checksum_method_core_search(
     ): Int
     external fun uniffi_core_api_checksum_method_core_set_log_level(
@@ -794,13 +796,35 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_core_api_checksum_method_catalogservice_channels(
     ): Int
+    external fun uniffi_core_api_checksum_method_catalogservice_channels_in_group(
+    ): Int
+    external fun uniffi_core_api_checksum_method_catalogservice_groups(
+    ): Int
+    external fun uniffi_core_api_checksum_method_catalogservice_is_hidden(
+    ): Int
+    external fun uniffi_core_api_checksum_method_catalogservice_kinds(
+    ): Int
+    external fun uniffi_core_api_checksum_method_catalogservice_set_hidden(
+    ): Int
     external fun uniffi_core_api_checksum_method_favoritesservice_add(
+    ): Int
+    external fun uniffi_core_api_checksum_method_favoritesservice_favorite_channels(
     ): Int
     external fun uniffi_core_api_checksum_method_favoritesservice_is_favorite(
     ): Int
     external fun uniffi_core_api_checksum_method_favoritesservice_list(
     ): Int
     external fun uniffi_core_api_checksum_method_favoritesservice_remove(
+    ): Int
+    external fun uniffi_core_api_checksum_method_recentsservice_clear(
+    ): Int
+    external fun uniffi_core_api_checksum_method_recentsservice_is_enabled(
+    ): Int
+    external fun uniffi_core_api_checksum_method_recentsservice_list(
+    ): Int
+    external fun uniffi_core_api_checksum_method_recentsservice_record(
+    ): Int
+    external fun uniffi_core_api_checksum_method_recentsservice_set_enabled(
     ): Int
     external fun uniffi_core_api_checksum_method_searchservice_search(
     ): Int
@@ -812,9 +836,13 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_core_api_checksum_method_settingsservice_set(
     ): Int
+    external fun uniffi_core_api_checksum_method_sourceservice_add_m3u_file(
+    ): Int
     external fun uniffi_core_api_checksum_method_sourceservice_add_m3u_url(
     ): Int
     external fun uniffi_core_api_checksum_method_sourceservice_delete(
+    ): Int
+    external fun uniffi_core_api_checksum_method_sourceservice_import_m3u_content(
     ): Int
     external fun uniffi_core_api_checksum_method_sourceservice_list(
     ): Int
@@ -877,6 +905,8 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_core_api_fn_method_core_handshake(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_core_api_fn_method_core_recents(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
     external fun uniffi_core_api_fn_method_core_search(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
     external fun uniffi_core_api_fn_method_core_set_log_level(`ptr`: Long,`directives`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -901,17 +931,43 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_core_api_fn_method_catalogservice_channels(`ptr`: Long,`sourceId`: Long,`offset`: Int,`limit`: Int,
     ): Long
+    external fun uniffi_core_api_fn_method_catalogservice_channels_in_group(`ptr`: Long,`sourceId`: Long,`kind`: RustBuffer.ByValue,`group`: RustBuffer.ByValue,`offset`: Int,`limit`: Int,
+    ): Long
+    external fun uniffi_core_api_fn_method_catalogservice_groups(`ptr`: Long,`sourceId`: Long,`kind`: RustBuffer.ByValue,`offset`: Int,`limit`: Int,
+    ): Long
+    external fun uniffi_core_api_fn_method_catalogservice_is_hidden(`ptr`: Long,`sourceId`: Long,`identity`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_catalogservice_kinds(`ptr`: Long,`sourceId`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_catalogservice_set_hidden(`ptr`: Long,`sourceId`: Long,`identity`: Long,`hidden`: Byte,
+    ): Long
     external fun uniffi_core_api_fn_clone_favoritesservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
     external fun uniffi_core_api_fn_free_favoritesservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     external fun uniffi_core_api_fn_method_favoritesservice_add(`ptr`: Long,`sourceId`: Long,`identity`: Long,
     ): Long
+    external fun uniffi_core_api_fn_method_favoritesservice_favorite_channels(`ptr`: Long,`offset`: Int,`limit`: Int,
+    ): Long
     external fun uniffi_core_api_fn_method_favoritesservice_is_favorite(`ptr`: Long,`sourceId`: Long,`identity`: Long,
     ): Long
     external fun uniffi_core_api_fn_method_favoritesservice_list(`ptr`: Long,`sourceId`: Long,
     ): Long
     external fun uniffi_core_api_fn_method_favoritesservice_remove(`ptr`: Long,`sourceId`: Long,`identity`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_clone_recentsservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_core_api_fn_free_recentsservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_core_api_fn_method_recentsservice_clear(`ptr`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_recentsservice_is_enabled(`ptr`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_recentsservice_list(`ptr`: Long,`limit`: Int,
+    ): Long
+    external fun uniffi_core_api_fn_method_recentsservice_record(`ptr`: Long,`sourceId`: Long,`identity`: Long,`name`: RustBuffer.ByValue,`locator`: RustBuffer.ByValue,`positionSecs`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_core_api_fn_method_recentsservice_set_enabled(`ptr`: Long,`enabled`: Byte,
     ): Long
     external fun uniffi_core_api_fn_clone_searchservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
@@ -935,9 +991,13 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_core_api_fn_free_sourceservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    external fun uniffi_core_api_fn_method_sourceservice_add_m3u_file(`ptr`: Long,`name`: RustBuffer.ByValue,
+    ): Long
     external fun uniffi_core_api_fn_method_sourceservice_add_m3u_url(`ptr`: Long,`name`: RustBuffer.ByValue,`url`: RustBuffer.ByValue,`userAgent`: RustBuffer.ByValue,`acceptInvalidTls`: Byte,
     ): Long
     external fun uniffi_core_api_fn_method_sourceservice_delete(`ptr`: Long,`id`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_sourceservice_import_m3u_content(`ptr`: Long,`id`: Long,`content`: RustBuffer.ByValue,`listener`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
     external fun uniffi_core_api_fn_method_sourceservice_list(`ptr`: Long,
     ): Long
@@ -1086,6 +1146,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_core_handshake() != 2257) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_core_api_checksum_method_core_recents() != 27670) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_core_api_checksum_method_core_search() != 31146) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1110,7 +1173,25 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_catalogservice_channels() != 32387) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_core_api_checksum_method_catalogservice_channels_in_group() != 56166) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_catalogservice_groups() != 58024) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_catalogservice_is_hidden() != 32831) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_catalogservice_kinds() != 57868) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_catalogservice_set_hidden() != 49226) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_core_api_checksum_method_favoritesservice_add() != 53981) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_favoritesservice_favorite_channels() != 55055) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_favoritesservice_is_favorite() != 5118) {
@@ -1120,6 +1201,21 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_favoritesservice_remove() != 49667) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_recentsservice_clear() != 9754) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_recentsservice_is_enabled() != 17901) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_recentsservice_list() != 60917) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_recentsservice_record() != 23744) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_recentsservice_set_enabled() != 11145) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_searchservice_search() != 39379) {
@@ -1137,10 +1233,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_settingsservice_set() != 32636) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_core_api_checksum_method_sourceservice_add_m3u_file() != 60508) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_core_api_checksum_method_sourceservice_add_m3u_url() != 16147) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_sourceservice_delete() != 42027) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_sourceservice_import_m3u_content() != 7156) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_sourceservice_list() != 24283) {
@@ -1684,6 +1786,53 @@ public interface CatalogServiceInterface {
      */
     suspend fun `channels`(`sourceId`: kotlin.Long, `offset`: kotlin.UInt, `limit`: kotlin.UInt): ChannelPage
     
+    /**
+     * Returns a page of the visible channels in one group of a source and media kind, in
+     * playlist order (paged by contract). `group` is the group title; `None` selects the
+     * "ungrouped" bucket. Hidden channels are excluded.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    suspend fun `channelsInGroup`(`sourceId`: kotlin.Long, `kind`: MediaKind, `group`: kotlin.String?, `offset`: kotlin.UInt, `limit`: kotlin.UInt): ChannelPage
+    
+    /**
+     * Returns a page of a source's distinct groups (categories) for a media kind, ungrouped
+     * last (paged by contract). Hidden channels are excluded from the counts.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    suspend fun `groups`(`sourceId`: kotlin.Long, `kind`: MediaKind, `offset`: kotlin.UInt, `limit`: kotlin.UInt): BrowseGroupPage
+    
+    /**
+     * Whether a channel is hidden.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    suspend fun `isHidden`(`sourceId`: kotlin.Long, `identity`: kotlin.Long): kotlin.Boolean
+    
+    /**
+     * Lists the media kinds present in a source's catalog, in display order — the "type" level
+     * of the browse drill-down (source → type → category → channel). For an M3U source this is
+     * just `[Live]`, so a shell may skip the type screen when only one kind exists.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    suspend fun `kinds`(`sourceId`: kotlin.Long): List<MediaKind>
+    
+    /**
+     * Hides or unhides a channel by its stable identity (the browse context menu). Hidden
+     * channels are excluded from [`Self::groups`] and [`Self::channels_in_group`], and the flag
+     * survives a refresh (§4.4).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    suspend fun `setHidden`(`sourceId`: kotlin.Long, `identity`: kotlin.Long, `hidden`: kotlin.Boolean)
+    
     companion object
 }
 
@@ -1878,6 +2027,164 @@ open class CatalogService: Disposable, AutoCloseable, CatalogServiceInterface
     }
 
     
+    /**
+     * Returns a page of the visible channels in one group of a source and media kind, in
+     * playlist order (paged by contract). `group` is the group title; `None` selects the
+     * "ungrouped" bucket. Hidden channels are excluded.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `channelsInGroup`(`sourceId`: kotlin.Long, `kind`: MediaKind, `group`: kotlin.String?, `offset`: kotlin.UInt, `limit`: kotlin.UInt) : ChannelPage {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_catalogservice_channels_in_group(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterTypeMediaKind.lower(`kind`),
+        FfiConverterOptionalString.lower(`group`),
+        FfiConverterUInt.lower(`offset`),
+        FfiConverterUInt.lower(`limit`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterTypeChannelPage.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Returns a page of a source's distinct groups (categories) for a media kind, ungrouped
+     * last (paged by contract). Hidden channels are excluded from the counts.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `groups`(`sourceId`: kotlin.Long, `kind`: MediaKind, `offset`: kotlin.UInt, `limit`: kotlin.UInt) : BrowseGroupPage {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_catalogservice_groups(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterTypeMediaKind.lower(`kind`),
+        FfiConverterUInt.lower(`offset`),
+        FfiConverterUInt.lower(`limit`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterTypeBrowseGroupPage.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Whether a channel is hidden.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `isHidden`(`sourceId`: kotlin.Long, `identity`: kotlin.Long) : kotlin.Boolean {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_catalogservice_is_hidden(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterLong.lower(`identity`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_i8(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_i8(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_i8(future) },
+        // lift function
+        { FfiConverterBoolean.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Lists the media kinds present in a source's catalog, in display order — the "type" level
+     * of the browse drill-down (source → type → category → channel). For an M3U source this is
+     * just `[Live]`, so a shell may skip the type screen when only one kind exists.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `kinds`(`sourceId`: kotlin.Long) : List<MediaKind> {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_catalogservice_kinds(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterSequenceTypeMediaKind.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Hides or unhides a channel by its stable identity (the browse context menu). Hidden
+     * channels are excluded from [`Self::groups`] and [`Self::channels_in_group`], and the flag
+     * survives a refresh (§4.4).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `setHidden`(`sourceId`: kotlin.Long, `identity`: kotlin.Long, `hidden`: kotlin.Boolean) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_catalogservice_set_hidden(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterLong.lower(`identity`),
+        FfiConverterBoolean.lower(`hidden`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
 
     
 
@@ -2036,6 +2343,11 @@ public interface CoreInterface {
      * The startup handshake: core, schema, and boundary versions.
      */
     fun `handshake`(): Handshake
+    
+    /**
+     * The recently-watched service (list, purge, off-switch).
+     */
+    fun `recents`(): RecentsService
     
     /**
      * The search service (ranked, paged results).
@@ -2248,6 +2560,22 @@ open class Core: Disposable, AutoCloseable, CoreInterface
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_core_api_fn_method_core_handshake(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * The recently-watched service (list, purge, off-switch).
+     */override fun `recents`(): RecentsService {
+            return FfiConverterTypeRecentsService.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_core_api_fn_method_core_recents(
         it,
         _status)
 }
@@ -2475,6 +2803,17 @@ public interface FavoritesServiceInterface {
     suspend fun `add`(`sourceId`: kotlin.Long, `identity`: kotlin.Long)
     
     /**
+     * Returns a page of favorited channels across all enabled sources, most recently favorited
+     * first — the home "Favorites" row (PRD §8.3). Each favorite is resolved to the channel in
+     * the current catalog by stable identity; favorites whose channel is absent or whose source
+     * is disabled are omitted. Paged by contract (§4.6).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    suspend fun `favoriteChannels`(`offset`: kotlin.UInt, `limit`: kotlin.UInt): ChannelPage
+    
+    /**
      * Whether a channel is favorited.
      *
      * # Errors
@@ -2637,6 +2976,38 @@ open class FavoritesService: Disposable, AutoCloseable, FavoritesServiceInterfac
 
     
     /**
+     * Returns a page of favorited channels across all enabled sources, most recently favorited
+     * first — the home "Favorites" row (PRD §8.3). Each favorite is resolved to the channel in
+     * the current catalog by stable identity; favorites whose channel is absent or whose source
+     * is disabled are omitted. Paged by contract (§4.6).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `favoriteChannels`(`offset`: kotlin.UInt, `limit`: kotlin.UInt) : ChannelPage {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_favoritesservice_favorite_channels(
+                uniffiHandle,
+                
+        FfiConverterUInt.lower(`offset`),
+        FfiConverterUInt.lower(`limit`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterTypeChannelPage.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
      * Whether a channel is favorited.
      *
      * # Errors
@@ -2756,6 +3127,443 @@ public object FfiConverterTypeFavoritesService: FfiConverter<FavoritesService, L
     override fun allocationSize(value: FavoritesService) = 8UL
 
     override fun write(value: FavoritesService, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Manages the recently-watched list.
+ */
+public interface RecentsServiceInterface {
+    
+    /**
+     * Purges the entire recently-watched list (the one-toggle purge, PRD §6.5).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    suspend fun `clear`()
+    
+    /**
+     * Whether recording is on (the off-switch, PRD §6.5). Defaults to on.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    suspend fun `isEnabled`(): kotlin.Boolean
+    
+    /**
+     * Returns the most recently watched entries, newest first, capped at `limit`.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    suspend fun `list`(`limit`: kotlin.UInt): List<Recent>
+    
+    /**
+     * Records a playback event (invoked by the shell when a channel is opened, and by the
+     * player on progress in Phase 5). A no-op when the off-switch is set, so the setting is
+     * authoritative in the core.
+     *
+     * # Errors
+     * Returns [`ApiError::InvalidInput`] if `locator` is not a valid stream address, or
+     * [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    suspend fun `record`(`sourceId`: kotlin.Long, `identity`: kotlin.Long, `name`: kotlin.String, `locator`: kotlin.String, `positionSecs`: kotlin.UInt?)
+    
+    /**
+     * Turns recording on or off. Existing entries are untouched — use [`Self::clear`] to purge.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    suspend fun `setEnabled`(`enabled`: kotlin.Boolean)
+    
+    companion object
+}
+
+/**
+ * Manages the recently-watched list.
+ */
+open class RecentsService: Disposable, AutoCloseable, RecentsServiceInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    /**
+     * Whether the current object has been destroyed and its reference is gone in the Rust side.
+     */
+    val uniffiIsDestroyed: Boolean get() = wasDestroyed.get()
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_core_api_fn_free_recentsservice(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_core_api_fn_clone_recentsservice(handle, status)
+        }
+    }
+
+    
+    /**
+     * Purges the entire recently-watched list (the one-toggle purge, PRD §6.5).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `clear`() {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_recentsservice_clear(
+                uniffiHandle,
+                
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Whether recording is on (the off-switch, PRD §6.5). Defaults to on.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `isEnabled`() : kotlin.Boolean {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_recentsservice_is_enabled(
+                uniffiHandle,
+                
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_i8(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_i8(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_i8(future) },
+        // lift function
+        { FfiConverterBoolean.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Returns the most recently watched entries, newest first, capped at `limit`.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `list`(`limit`: kotlin.UInt) : List<Recent> {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_recentsservice_list(
+                uniffiHandle,
+                
+        FfiConverterUInt.lower(`limit`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterSequenceTypeRecent.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Records a playback event (invoked by the shell when a channel is opened, and by the
+     * player on progress in Phase 5). A no-op when the off-switch is set, so the setting is
+     * authoritative in the core.
+     *
+     * # Errors
+     * Returns [`ApiError::InvalidInput`] if `locator` is not a valid stream address, or
+     * [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `record`(`sourceId`: kotlin.Long, `identity`: kotlin.Long, `name`: kotlin.String, `locator`: kotlin.String, `positionSecs`: kotlin.UInt?) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_recentsservice_record(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterLong.lower(`identity`),
+        FfiConverterString.lower(`name`),
+        FfiConverterString.lower(`locator`),
+        FfiConverterOptionalUInt.lower(`positionSecs`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Turns recording on or off. Existing entries are untouched — use [`Self::clear`] to purge.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `setEnabled`(`enabled`: kotlin.Boolean) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_recentsservice_set_enabled(
+                uniffiHandle,
+                
+        FfiConverterBoolean.lower(`enabled`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRecentsService: FfiConverter<RecentsService, Long> {
+    override fun lower(value: RecentsService): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): RecentsService {
+        return RecentsService(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): RecentsService {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: RecentsService) = 8UL
+
+    override fun write(value: RecentsService, buf: ByteBuffer) {
         buf.putLong(lower(value))
     }
 }
@@ -3540,6 +4348,17 @@ public object FfiConverterTypeSettingsService: FfiConverter<SettingsService, Lon
 public interface SourceServiceInterface {
     
     /**
+     * Adds an M3U-from-file source (no import yet — call [`Self::import_m3u_content`] with the
+     * picked/pasted playlist text to fill its catalog). File sources have no URL, so they are
+     * import-once: re-importing means calling [`Self::import_m3u_content`] again, never
+     * [`Self::refresh`].
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] if the source cannot be persisted.
+     */
+    suspend fun `addM3uFile`(`name`: kotlin.String): Source
+    
+    /**
      * Adds an M3U-by-URL source (no import yet — call [`Self::refresh`] to fetch its catalog).
      *
      * # Errors
@@ -3561,6 +4380,15 @@ public interface SourceServiceInterface {
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
      */
     suspend fun `delete`(`id`: kotlin.Long)
+    
+    /**
+     * Imports an M3U-from-file source's catalog from in-memory `content` (the picked/SAF/pasted
+     * playlist text). Returns immediately with a [`TaskHandle`]; progress, completion, and
+     * failure arrive on `listener`, exactly like [`Self::refresh`]. The content is staged and
+     * swapped atomically — a cancellation (via the handle or a concurrent `delete`, checked at
+     * batch boundaries) leaves any prior catalog intact.
+     */
+    fun `importM3uContent`(`id`: kotlin.Long, `content`: kotlin.String, `listener`: ImportListener): TaskHandle
     
     /**
      * Lists all configured sources, newest first.
@@ -3712,6 +4540,37 @@ open class SourceService: Disposable, AutoCloseable, SourceServiceInterface
 
     
     /**
+     * Adds an M3U-from-file source (no import yet — call [`Self::import_m3u_content`] with the
+     * picked/pasted playlist text to fill its catalog). File sources have no URL, so they are
+     * import-once: re-importing means calling [`Self::import_m3u_content`] again, never
+     * [`Self::refresh`].
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] if the source cannot be persisted.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `addM3uFile`(`name`: kotlin.String) : Source {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_sourceservice_add_m3u_file(
+                uniffiHandle,
+                
+        FfiConverterString.lower(`name`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterTypeSource.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
      * Adds an M3U-by-URL source (no import yet — call [`Self::refresh`] to fetch its catalog).
      *
      * # Errors
@@ -3776,6 +4635,29 @@ open class SourceService: Disposable, AutoCloseable, SourceServiceInterface
         ApiException.ErrorHandler,
     )
     }
+
+    
+    /**
+     * Imports an M3U-from-file source's catalog from in-memory `content` (the picked/SAF/pasted
+     * playlist text). Returns immediately with a [`TaskHandle`]; progress, completion, and
+     * failure arrive on `listener`, exactly like [`Self::refresh`]. The content is staged and
+     * swapped atomically — a cancellation (via the handle or a concurrent `delete`, checked at
+     * batch boundaries) leaves any prior catalog intact.
+     */override fun `importM3uContent`(`id`: kotlin.Long, `content`: kotlin.String, `listener`: ImportListener): TaskHandle {
+            return FfiConverterTypeTaskHandle.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_core_api_fn_method_sourceservice_import_m3u_content(
+        it,
+        
+        FfiConverterLong.lower(`id`),
+        FfiConverterString.lower(`content`),
+        FfiConverterTypeImportListener.lower(`listener`),_status)
+}
+    }
+    )
+    }
+    
 
     
     /**
@@ -4221,6 +5103,109 @@ public object FfiConverterTypeTaskHandle: FfiConverter<TaskHandle, Long> {
 
     override fun write(value: TaskHandle, buf: ByteBuffer) {
         buf.putLong(lower(value))
+    }
+}
+
+
+
+/**
+ * One distinct group within a source's catalog — a "category" in the browse drill-down
+ * (source → type → category → channel). `None` title is the "ungrouped" bucket.
+ */
+data class BrowseGroup (
+    /**
+     * The playlist group label; `None` is the ungrouped bucket.
+     */
+    var `title`: kotlin.String?
+    , 
+    /**
+     * Visible (non-hidden) channels in this group.
+     */
+    var `channelCount`: kotlin.ULong
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeBrowseGroup: FfiConverterRustBuffer<BrowseGroup> {
+    override fun read(buf: ByteBuffer): BrowseGroup {
+        return BrowseGroup(
+            FfiConverterOptionalString.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: BrowseGroup) = (
+            FfiConverterOptionalString.allocationSize(value.`title`) +
+            FfiConverterULong.allocationSize(value.`channelCount`)
+    )
+
+    override fun write(value: BrowseGroup, buf: ByteBuffer) {
+            FfiConverterOptionalString.write(value.`title`, buf)
+            FfiConverterULong.write(value.`channelCount`, buf)
+    }
+}
+
+
+
+/**
+ * A page of a source's browse groups (paged by contract, §4.6).
+ */
+data class BrowseGroupPage (
+    /**
+     * The groups in this page.
+     */
+    var `groups`: List<BrowseGroup>
+    , 
+    /**
+     * The offset this page started at.
+     */
+    var `offset`: kotlin.UInt
+    , 
+    /**
+     * Total distinct groups for the source and media kind.
+     */
+    var `total`: kotlin.ULong
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeBrowseGroupPage: FfiConverterRustBuffer<BrowseGroupPage> {
+    override fun read(buf: ByteBuffer): BrowseGroupPage {
+        return BrowseGroupPage(
+            FfiConverterSequenceTypeBrowseGroup.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: BrowseGroupPage) = (
+            FfiConverterSequenceTypeBrowseGroup.allocationSize(value.`groups`) +
+            FfiConverterUInt.allocationSize(value.`offset`) +
+            FfiConverterULong.allocationSize(value.`total`)
+    )
+
+    override fun write(value: BrowseGroupPage, buf: ByteBuffer) {
+            FfiConverterSequenceTypeBrowseGroup.write(value.`groups`, buf)
+            FfiConverterUInt.write(value.`offset`, buf)
+            FfiConverterULong.write(value.`total`, buf)
     }
 }
 
@@ -4824,6 +5809,87 @@ public object FfiConverterTypeLogRecord: FfiConverterRustBuffer<LogRecord> {
             FfiConverterTypeLogLevel.write(value.`level`, buf)
             FfiConverterString.write(value.`target`, buf)
             FfiConverterString.write(value.`message`, buf)
+    }
+}
+
+
+
+/**
+ * A "recently watched" entry (PRD §6.5). Snapshots the name and locator at play time and
+ * keys the channel by stable identity, so it stays replayable across refreshes even if the
+ * channel later leaves the catalog. Never leaves the device.
+ */
+data class Recent (
+    /**
+     * Owning source.
+     */
+    var `sourceId`: kotlin.Long
+    , 
+    /**
+     * Stable identity of the played channel, as the stored `i64`.
+     */
+    var `identity`: kotlin.Long
+    , 
+    /**
+     * Channel name as it was at play time.
+     */
+    var `name`: kotlin.String
+    , 
+    /**
+     * Locator as it was at play time (for replay).
+     */
+    var `locator`: kotlin.String
+    , 
+    /**
+     * When it was played, Unix seconds.
+     */
+    var `playedAtUnix`: kotlin.Long
+    , 
+    /**
+     * Resume position in seconds, if recorded.
+     */
+    var `positionSecs`: kotlin.UInt?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeRecent: FfiConverterRustBuffer<Recent> {
+    override fun read(buf: ByteBuffer): Recent {
+        return Recent(
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterOptionalUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: Recent) = (
+            FfiConverterLong.allocationSize(value.`sourceId`) +
+            FfiConverterLong.allocationSize(value.`identity`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterString.allocationSize(value.`locator`) +
+            FfiConverterLong.allocationSize(value.`playedAtUnix`) +
+            FfiConverterOptionalUInt.allocationSize(value.`positionSecs`)
+    )
+
+    override fun write(value: Recent, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`sourceId`, buf)
+            FfiConverterLong.write(value.`identity`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterString.write(value.`locator`, buf)
+            FfiConverterLong.write(value.`playedAtUnix`, buf)
+            FfiConverterOptionalUInt.write(value.`positionSecs`, buf)
     }
 }
 
@@ -6107,6 +7173,34 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeBrowseGroup: FfiConverterRustBuffer<List<BrowseGroup>> {
+    override fun read(buf: ByteBuffer): List<BrowseGroup> {
+        val len = buf.getInt()
+        return List<BrowseGroup>(len) {
+            FfiConverterTypeBrowseGroup.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<BrowseGroup>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeBrowseGroup.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<BrowseGroup>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeBrowseGroup.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeChannel: FfiConverterRustBuffer<List<Channel>> {
     override fun read(buf: ByteBuffer): List<Channel> {
         val len = buf.getInt()
@@ -6191,6 +7285,34 @@ public object FfiConverterSequenceTypeHeaderField: FfiConverterRustBuffer<List<H
 /**
  * @suppress
  */
+public object FfiConverterSequenceTypeRecent: FfiConverterRustBuffer<List<Recent>> {
+    override fun read(buf: ByteBuffer): List<Recent> {
+        val len = buf.getInt()
+        return List<Recent>(len) {
+            FfiConverterTypeRecent.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<Recent>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeRecent.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<Recent>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeRecent.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceTypeSettingEntry: FfiConverterRustBuffer<List<SettingEntry>> {
     override fun read(buf: ByteBuffer): List<SettingEntry> {
         val len = buf.getInt()
@@ -6209,6 +7331,34 @@ public object FfiConverterSequenceTypeSettingEntry: FfiConverterRustBuffer<List<
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeSettingEntry.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeMediaKind: FfiConverterRustBuffer<List<MediaKind>> {
+    override fun read(buf: ByteBuffer): List<MediaKind> {
+        val len = buf.getInt()
+        return List<MediaKind>(len) {
+            FfiConverterTypeMediaKind.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<MediaKind>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeMediaKind.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<MediaKind>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeMediaKind.write(it, buf)
         }
     }
 }

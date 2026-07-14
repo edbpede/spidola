@@ -4,7 +4,6 @@
 package dev.spidola.tv
 
 import android.content.Context
-import dev.spidola.tv.core.corekit.CatalogAccess
 import dev.spidola.tv.core.corekit.KeystoreSecretStore
 import dev.spidola.tv.core.corekit.SpidolaCore
 import dev.spidola.tv.core.corekit.SpidolaLogSink
@@ -24,8 +23,6 @@ class AppContainer(context: Context) {
             secrets = KeystoreSecretStore(context),
             logSink = SpidolaLogSink(),
         )
-
-    val catalog: CatalogAccess get() = core
 
     val fixtureSeeder: FixtureSeeder = FixtureSeeder(core)
 }

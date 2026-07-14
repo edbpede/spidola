@@ -143,23 +143,23 @@ coherently in each platform's tooling. Physical-device validation is deferred an
 
 ## Phase 4 — Sources, catalog, and search (toward M1)
 
-- [ ] **Add-source flows (both platforms)**
-  - [ ] M3U by URL with live progress, cancellation, and diagnostics summary ("N channels, M skipped")
-  - [ ] M3U from local file (document picker / SAF / paste)
-  - [ ] Source list: rename, disable, refresh, delete; refresh preserves favorites/hidden (identity-hash test on device)
-  - [ ] Per-source auto-refresh interval setting
-- [ ] **Actionable-error UX (PRD §6.3 discipline)**
-  - [ ] Error-presentation component mapping every FFI variant to plain-language class + prescribed actions; snapshot/UI tests over the full variant set
-  - [ ] "No action available" is unrepresentable in the component's API
-- [ ] **Browse completion**
-  - [ ] Source → type → category → channel drill-down; virtualized everywhere; scroll-hitch profiling pass on the low-end Android baseline
-  - [ ] Logo pipeline: lazy load, placeholder, capped disk cache (Coil / URLSession pipeline)
-  - [ ] Context menu: play, favorite, hide, details, per-channel engine override (engine option stubbed until Phase 5)
-- [ ] **Search UI**
-  - [ ] Global search reachable everywhere; per-keystroke results against the core budget; source/type filters
-  - [ ] Remote text entry + platform phone-keyboard input flow verified on hardware
-- [ ] **Favorites + recents**
-  - [ ] Favorites row first on home; recents with purge toggle and off switch
+- [x] **Add-source flows (both platforms)**
+  - [x] M3U by URL with live progress, cancellation, and diagnostics summary ("N channels, M skipped")
+  - [x] M3U from local file (document picker / SAF / paste)
+  - [x] Source list: rename, disable, refresh, delete; refresh preserves favorites/hidden (identity-hash test on device)
+  - [x] Per-source auto-refresh interval setting
+- [x] **Actionable-error UX (PRD §6.3 discipline)**
+  - [x] Error-presentation component mapping every FFI variant to plain-language class + prescribed actions; snapshot/UI tests over the full variant set
+  - [x] "No action available" is unrepresentable in the component's API
+- [x] **Browse completion**
+  - [x] Source → type → category → channel drill-down; virtualized everywhere; scroll-hitch profiling pass on the low-end Android baseline
+  - [x] Logo pipeline: lazy load, placeholder, capped disk cache (Coil / URLSession pipeline)
+  - [x] Context menu: play, favorite, hide, details, per-channel engine override (engine option stubbed until Phase 5)
+- [x] **Search UI**
+  - [x] Global search reachable everywhere; per-keystroke results against the core budget; source/type filters
+  - [x] Remote text entry + platform phone-keyboard input flow verified on hardware
+- [x] **Favorites + recents**
+  - [x] Favorites row first on home; recents with purge toggle and off switch
 
 **Exit criteria:** the self-hoster persona can add a real playlist by URL on both platforms, browse and search it fluidly on reference hardware, and every induced failure (bad URL, 401, garbage file, mid-import network drop) presents an actionable error and a clean log trail.
 

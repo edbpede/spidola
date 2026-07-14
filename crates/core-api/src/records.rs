@@ -19,6 +19,7 @@ use core_model::channel::{
     Channel as DomainChannel, ChannelOverrides as DomainOverrides, MediaKind as DomainMediaKind,
 };
 use core_model::favorite::Favorite as DomainFavorite;
+use core_model::history::PlaybackHistoryEntry as DomainHistory;
 use core_model::ids::{CategoryId, ChannelIdentity};
 use core_model::source::{
     Source as DomainSource, SourceCommon as DomainCommon, SourceKind as DomainSourceKind,
@@ -291,6 +292,59 @@ pub struct SearchPage {
     pub offset: u32,
     /// `true` when these came from the trigram fallback rather than the prefix index.
     pub fuzzy: bool,
+}
+
+/// One distinct group within a source's catalog — a "category" in the browse drill-down
+/// (source → type → category → channel). `None` title is the "ungrouped" bucket.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BrowseGroup {
+    /// The playlist group label; `None` is the ungrouped bucket.
+    pub title: Option<String>,
+    /// Visible (non-hidden) channels in this group.
+    pub channel_count: u64,
+}
+
+/// A page of a source's browse groups (paged by contract, §4.6).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BrowseGroupPage {
+    /// The groups in this page.
+    pub groups: Vec<BrowseGroup>,
+    /// The offset this page started at.
+    pub offset: u32,
+    /// Total distinct groups for the source and media kind.
+    pub total: u64,
+}
+
+/// A "recently watched" entry (PRD §6.5). Snapshots the name and locator at play time and
+/// keys the channel by stable identity, so it stays replayable across refreshes even if the
+/// channel later leaves the catalog. Never leaves the device.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Recent {
+    /// Owning source.
+    pub source_id: i64,
+    /// Stable identity of the played channel, as the stored `i64`.
+    pub identity: i64,
+    /// Channel name as it was at play time.
+    pub name: String,
+    /// Locator as it was at play time (for replay).
+    pub locator: String,
+    /// When it was played, Unix seconds.
+    pub played_at_unix: i64,
+    /// Resume position in seconds, if recorded.
+    pub position_secs: Option<u32>,
+}
+
+impl From<DomainHistory> for Recent {
+    fn from(entry: DomainHistory) -> Self {
+        Self {
+            source_id: entry.source_id.value(),
+            identity: entry.identity.to_storage(),
+            name: entry.name,
+            locator: entry.locator.to_string(),
+            played_at_unix: entry.played_at_unix,
+            position_secs: entry.position_secs,
+        }
+    }
 }
 
 /// One stored setting as an opaque key/value pair. The typed settings surface and defaults
