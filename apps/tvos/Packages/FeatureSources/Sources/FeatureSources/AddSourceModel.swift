@@ -125,28 +125,34 @@ public final class AddSourceModel {
     case .file: stream = access.importContent(id: created.id, content: pastedContent)
     }
 
-    var settled = false
+    var imported = false
+    var failure: ActionableError?
     loop: for await event in stream {
       switch event {
       case .progress(let progress):
         state = .importing(stage: progress.stage, channels: progress.channelsSeen)
       case .complete(let outcome):
         state = .done(outcome)
-        settled = true
+        imported = true
         break loop
       case .failed(.Cancelled):
         break loop
       case .failed(let error):
-        state = .failed(ActionableError(error))
-        settled = true
+        failure = ActionableError(error)
         break loop
       }
     }
 
-    if !settled {
-      // Cancelled (by the user or the core): drop the empty source we just created.
+    if !imported {
+      // Cancelled or failed: only a completed import earns the source its row, so drop the empty
+      // one we just created. Settling the state after the delete keeps a fast retry from racing
+      // the cleanup.
       await deleteQuietly(created.id)
-      state = .editing
+      if let failure {
+        state = .failed(failure)
+      } else {
+        state = .editing
+      }
     }
   }
 
@@ -170,7 +176,7 @@ public final class AddSourceModel {
       try await access.deleteSource(id: id)
     } catch {
       logger.error(
-        "cleanup of cancelled source failed: \(String(describing: error), privacy: .public)")
+        "cleanup of abandoned source failed: \(String(describing: error), privacy: .public)")
     }
   }
 }

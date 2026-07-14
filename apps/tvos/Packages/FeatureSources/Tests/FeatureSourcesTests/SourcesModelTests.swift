@@ -42,6 +42,9 @@ final class SourcesModelTests: XCTestCase {
     await model.waitForImport()
     guard case .failed(let error) = model.state else { return XCTFail("expected failed") }
     XCTAssertFalse(error.actions.isEmpty)
+    // The source was created before the import ran, so a failed import must drop it again —
+    // otherwise an empty source litters the list and a retry adds a duplicate.
+    XCTAssertEqual(access.deletedIds, [100])
   }
 
   // MARK: - SourcesModel

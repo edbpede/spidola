@@ -20,7 +20,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,9 +57,9 @@ fun SearchScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sources by viewModel.sources.collectAsStateWithLifecycle()
 
-    var query by remember { mutableStateOf("") }
-    var sourceFilter by remember { mutableStateOf<Long?>(null) }
-    var kindFilter by remember { mutableStateOf<MediaKind?>(null) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var sourceFilter by rememberSaveable { mutableStateOf<Long?>(null) }
+    var kindFilter by rememberSaveable { mutableStateOf<MediaKind?>(null) }
 
     fun runSearch() = viewModel.search(query, sourceFilter, kindFilter)
 
