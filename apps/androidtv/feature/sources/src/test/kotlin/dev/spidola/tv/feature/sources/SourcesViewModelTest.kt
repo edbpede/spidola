@@ -113,6 +113,9 @@ class SourcesViewModelTest {
             val state = viewModel.state.value
             check(state is AddSourceState.Failed)
             assertTrue(state.error.actions.isNotEmpty())
+            // The source was created before the import ran, so a failed import must drop it again —
+            // otherwise an empty source litters the list and a retry adds a duplicate.
+            assertEquals(listOf(100L), access.deletedIds)
         }
 
     @Test

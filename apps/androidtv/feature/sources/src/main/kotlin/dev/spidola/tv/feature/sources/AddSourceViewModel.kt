@@ -124,7 +124,8 @@ class AddSourceViewModel(
                 AddSourceMode.FILE -> access.importContent(created.id, form.content)
             }
 
-        var settled = false
+        var imported = false
+        var failure: ActionableError? = null
         try {
             flow.collect { event ->
                 when (event) {
@@ -133,22 +134,21 @@ class AddSourceViewModel(
                             AddSourceState.Importing(event.progress.stage, event.progress.channelsSeen)
                     is ImportEvent.Complete -> {
                         _state.value = AddSourceState.Done(event.outcome)
-                        settled = true
+                        imported = true
                     }
                     is ImportEvent.Failed ->
-                        if (event.error is ApiException.Cancelled) {
-                            // fall through to cleanup below
-                        } else {
-                            _state.value = AddSourceState.Failed(ActionableError.from(event.error))
-                            settled = true
+                        if (event.error !is ApiException.Cancelled) {
+                            failure = ActionableError.from(event.error)
                         }
                 }
             }
         } finally {
-            if (!settled) {
-                // Cancelled (by the user or the core): drop the empty source we just created.
+            if (!imported) {
+                // Cancelled or failed: only a completed import earns the source its row, so drop the
+                // empty one we just created. Settling the state after the delete keeps a fast retry
+                // from racing the cleanup.
                 withContext(NonCancellable) { deleteQuietly(created.id) }
-                _state.value = AddSourceState.Editing
+                _state.value = failure?.let { AddSourceState.Failed(it) } ?: AddSourceState.Editing
             }
         }
     }
@@ -169,7 +169,7 @@ class AddSourceViewModel(
         try {
             access.deleteSource(id)
         } catch (e: ApiException) {
-            Log.w(LOG_TAG, "cleanup of cancelled source failed", e)
+            Log.w(LOG_TAG, "cleanup of abandoned source failed", e)
         }
     }
 

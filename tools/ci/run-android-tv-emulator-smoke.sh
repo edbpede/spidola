@@ -12,7 +12,7 @@ evidence_dir="$root/target/androidtv-m0"
 mkdir -p "$evidence_dir"
 cd "$root/apps/androidtv"
 
-adb logcat -c
+adb logcat -c || echo "warning: adb logcat -c failed; continuing with uncleared buffer" >&2
 
 test_status=0
 ./gradlew :app:connectedDebugAndroidTest || test_status=$?
