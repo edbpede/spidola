@@ -2796,6 +2796,29 @@ public protocol SourceServiceProtocol: AnyObject, Sendable {
     func rename(id: Int64, name: String) async throws 
     
     /**
+     * The playable URL for a channel's stored locator — call this immediately before handing a
+     * stream to an engine.
+     *
+     * **Kind-agnostic by design.** An M3U locator is already playable and comes back unchanged;
+     * an Xtream locator is stored credential-free (§12, `core_xtream::urls`) and gets its
+     * credentials put back here, read from the host store. The shell therefore does not need to
+     * know which kind of source a channel came from — it asks for a playable URL and gets one,
+     * which is what keeps the zap path (PRD §8.4) free of per-kind branching.
+     *
+     * The returned string carries credentials for an Xtream source. It is bound for the engine
+     * and nowhere else: it must not be logged, persisted, or held past the play call. Resolve
+     * per play rather than caching — the whole point of storing a credential-free catalog is
+     * that the playable form does not outlive its use.
+     *
+     * # Errors
+     * Returns [`ApiError::NotFound`] if the source is gone or its stored locator is not a
+     * recognizable reference (a stale row; the source needs a refresh), [`ApiError::Unauthorized`]
+     * if the account's password is missing from the host store, [`ApiError::InvalidInput`] if
+     * `locator` is not a valid address, and [`ApiError::StorageCorrupt`] on a read failure.
+     */
+    func resolveStream(sourceId: Int64, locator: String) async throws  -> String
+    
+    /**
      * Sets (or clears, with `None`) the automatic refresh interval in seconds.
      *
      * # Errors
@@ -3058,6 +3081,43 @@ open func rename(id: Int64, name: String)async throws   {
             completeFunc: ffi_core_api_rust_future_complete_void,
             freeFunc: ffi_core_api_rust_future_free_void,
             liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * The playable URL for a channel's stored locator — call this immediately before handing a
+     * stream to an engine.
+     *
+     * **Kind-agnostic by design.** An M3U locator is already playable and comes back unchanged;
+     * an Xtream locator is stored credential-free (§12, `core_xtream::urls`) and gets its
+     * credentials put back here, read from the host store. The shell therefore does not need to
+     * know which kind of source a channel came from — it asks for a playable URL and gets one,
+     * which is what keeps the zap path (PRD §8.4) free of per-kind branching.
+     *
+     * The returned string carries credentials for an Xtream source. It is bound for the engine
+     * and nowhere else: it must not be logged, persisted, or held past the play call. Resolve
+     * per play rather than caching — the whole point of storing a credential-free catalog is
+     * that the playable form does not outlive its use.
+     *
+     * # Errors
+     * Returns [`ApiError::NotFound`] if the source is gone or its stored locator is not a
+     * recognizable reference (a stale row; the source needs a refresh), [`ApiError::Unauthorized`]
+     * if the account's password is missing from the host store, [`ApiError::InvalidInput`] if
+     * `locator` is not a valid address, and [`ApiError::StorageCorrupt`] on a read failure.
+     */
+open func resolveStream(sourceId: Int64, locator: String)async throws  -> String  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_sourceservice_resolve_stream(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterString.lower(locator)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterString.lift,
             errorHandler: FfiConverterTypeApiError_lift
         )
 }
@@ -7175,6 +7235,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_sourceservice_rename() != 38453) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_sourceservice_resolve_stream() != 516) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_sourceservice_set_auto_refresh() != 59646) {

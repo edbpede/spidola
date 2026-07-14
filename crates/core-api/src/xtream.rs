@@ -29,7 +29,7 @@ use core_model::channel::{ChannelOverrides, MediaKind};
 use core_model::ids::{SecretRef, SourceId};
 use core_model::locator::StreamLocator;
 use core_model::secret::Secret;
-use core_xtream::{CatalogChannel, Endpoint, XtreamError, catalog, series};
+use core_xtream::{CatalogChannel, Endpoint, StreamRef, XtreamError, catalog, series};
 use tracing::{info, info_span, warn};
 
 use crate::error::ApiError;
@@ -282,6 +282,40 @@ fn to_new_channel(channel: &CatalogChannel) -> NewChannel {
             preferred_engine: None,
         },
     }
+}
+
+/// Turns a stored, credential-free catalog locator into the playable URL for `source`.
+///
+/// The other half of the §12 bargain struck in `core_xtream::urls`: because the catalog stores a
+/// locator with no credential in it, something must put one back at play time, and this is that
+/// something. It is the *only* path from a stored Xtream row to a playable address.
+///
+/// On the zap path (PRD §8.4, D-pad up/down), so it is deliberately cheap: one host-secrets read
+/// and one string build, no network. The secret read runs on the blocking pool because Keychain /
+/// Keystore can block.
+pub(crate) async fn resolve_playable(
+    source: &XtreamSource,
+    secrets: &Arc<dyn SecretStore>,
+    locator: &StreamLocator,
+) -> Result<String, ApiError> {
+    // Recovered from the locator rather than carried alongside it, so a stored row stays the
+    // single source of truth about which stream it is.
+    let stream = StreamRef::from_catalog_locator(locator).ok_or_else(|| {
+        warn!(
+            target: targets::XTREAM,
+            "a stored Xtream locator is not a catalog reference; the source needs a refresh"
+        );
+        ApiError::NotFound
+    })?;
+    let endpoint = Endpoint::new(&source.server, &source.username).map_err(map_error)?;
+    let password = load_password(secrets, &source.secret).await?;
+    let resolved = endpoint
+        .resolve_stream(&password, &stream)
+        .map_err(map_error)?;
+    // `into_locator` is the deliberate unwrap of a self-redacting type — the one place the
+    // playable URL becomes a plain string, because the shell's engine cannot play anything else.
+    // It is never logged: the log line above names the failure, never the address.
+    Ok(resolved.into_locator().as_str().to_owned())
 }
 
 /// Reads the account password from the host store.

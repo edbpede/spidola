@@ -898,6 +898,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_core_api_checksum_method_sourceservice_rename(
     ): Int
+    external fun uniffi_core_api_checksum_method_sourceservice_resolve_stream(
+    ): Int
     external fun uniffi_core_api_checksum_method_sourceservice_set_auto_refresh(
     ): Int
     external fun uniffi_core_api_checksum_method_sourceservice_set_enabled(
@@ -1085,6 +1087,8 @@ internal object UniffiLib {
     external fun uniffi_core_api_fn_method_sourceservice_refresh(`ptr`: Long,`id`: Long,`listener`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
     external fun uniffi_core_api_fn_method_sourceservice_rename(`ptr`: Long,`id`: Long,`name`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_core_api_fn_method_sourceservice_resolve_stream(`ptr`: Long,`sourceId`: Long,`locator`: RustBuffer.ByValue,
     ): Long
     external fun uniffi_core_api_fn_method_sourceservice_set_auto_refresh(`ptr`: Long,`id`: Long,`secs`: RustBuffer.ByValue,
     ): Long
@@ -1374,6 +1378,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_sourceservice_rename() != 38453) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_sourceservice_resolve_stream() != 516) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_sourceservice_set_auto_refresh() != 59646) {
@@ -5322,6 +5329,29 @@ public interface SourceServiceInterface {
     suspend fun `rename`(`id`: kotlin.Long, `name`: kotlin.String)
     
     /**
+     * The playable URL for a channel's stored locator — call this immediately before handing a
+     * stream to an engine.
+     *
+     * **Kind-agnostic by design.** An M3U locator is already playable and comes back unchanged;
+     * an Xtream locator is stored credential-free (§12, `core_xtream::urls`) and gets its
+     * credentials put back here, read from the host store. The shell therefore does not need to
+     * know which kind of source a channel came from — it asks for a playable URL and gets one,
+     * which is what keeps the zap path (PRD §8.4) free of per-kind branching.
+     *
+     * The returned string carries credentials for an Xtream source. It is bound for the engine
+     * and nowhere else: it must not be logged, persisted, or held past the play call. Resolve
+     * per play rather than caching — the whole point of storing a credential-free catalog is
+     * that the playable form does not outlive its use.
+     *
+     * # Errors
+     * Returns [`ApiError::NotFound`] if the source is gone or its stored locator is not a
+     * recognizable reference (a stale row; the source needs a refresh), [`ApiError::Unauthorized`]
+     * if the account's password is missing from the host store, [`ApiError::InvalidInput`] if
+     * `locator` is not a valid address, and [`ApiError::StorageCorrupt`] on a read failure.
+     */
+    suspend fun `resolveStream`(`sourceId`: kotlin.Long, `locator`: kotlin.String): kotlin.String
+    
+    /**
      * Sets (or clears, with `None`) the automatic refresh interval in seconds.
      *
      * # Errors
@@ -5685,6 +5715,50 @@ open class SourceService: Disposable, AutoCloseable, SourceServiceInterface
         // lift function
         { Unit },
         
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * The playable URL for a channel's stored locator — call this immediately before handing a
+     * stream to an engine.
+     *
+     * **Kind-agnostic by design.** An M3U locator is already playable and comes back unchanged;
+     * an Xtream locator is stored credential-free (§12, `core_xtream::urls`) and gets its
+     * credentials put back here, read from the host store. The shell therefore does not need to
+     * know which kind of source a channel came from — it asks for a playable URL and gets one,
+     * which is what keeps the zap path (PRD §8.4) free of per-kind branching.
+     *
+     * The returned string carries credentials for an Xtream source. It is bound for the engine
+     * and nowhere else: it must not be logged, persisted, or held past the play call. Resolve
+     * per play rather than caching — the whole point of storing a credential-free catalog is
+     * that the playable form does not outlive its use.
+     *
+     * # Errors
+     * Returns [`ApiError::NotFound`] if the source is gone or its stored locator is not a
+     * recognizable reference (a stale row; the source needs a refresh), [`ApiError::Unauthorized`]
+     * if the account's password is missing from the host store, [`ApiError::InvalidInput`] if
+     * `locator` is not a valid address, and [`ApiError::StorageCorrupt`] on a read failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `resolveStream`(`sourceId`: kotlin.Long, `locator`: kotlin.String) : kotlin.String {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_sourceservice_resolve_stream(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterString.lower(`locator`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterString.lift(it) },
         // Error FFI converter
         ApiException.ErrorHandler,
     )

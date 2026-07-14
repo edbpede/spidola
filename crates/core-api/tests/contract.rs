@@ -653,6 +653,89 @@ fn secrets_never_reach_sqlite_or_the_log_stream() {
 }
 
 #[test]
+fn an_xtream_stream_is_playable_only_through_the_resolver() {
+    // The other half of the credential-free-catalog bargain: if nothing puts the password back at
+    // play time, an Xtream channel imports, browses, and favorites perfectly — and then cannot be
+    // played. This asserts the round trip the zap path depends on.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("spidola.sqlite");
+    let secrets = FakeSecrets::default();
+    let core = open_core(&rt, &db_path, RecordingSink::default(), secrets.clone());
+
+    let base = spawn_xtream_stub(1);
+    let source = rt
+        .block_on(core.sources().add_xtream(
+            "Home headend".to_owned(),
+            base.clone(),
+            XTREAM_USER.to_owned(),
+            XTREAM_PASSWORD.to_owned(),
+        ))
+        .expect("the stub accepts the account");
+    let id = match &source {
+        Source::Xtream { id, .. } => *id,
+        other => panic!("expected an Xtream source, got {other:?}"),
+    };
+
+    // The shape `core-xtream` persists: credential-free, `{server}/{kind}/{id}.{ext}`.
+    let stored = format!("{base}/live/4242.ts");
+    let playable = rt
+        .block_on(core.sources().resolve_stream(id, stored.clone()))
+        .expect("a stored Xtream locator resolves");
+
+    assert!(
+        !stored.contains(XTREAM_PASSWORD),
+        "the stored locator must be credential-free — that is the whole point"
+    );
+    assert!(
+        playable.contains(XTREAM_PASSWORD) && playable.contains(XTREAM_USER),
+        "the resolved URL must carry the credentials an engine needs"
+    );
+    assert!(
+        playable.contains("/live/") && playable.ends_with("4242.ts"),
+        "the resolved URL must still name the same stream: {playable}"
+    );
+
+    // Resolving must not leak it into the diagnostics the user can export.
+    assert!(
+        !core
+            .export_logs()
+            .iter()
+            .any(|l| l.contains(XTREAM_PASSWORD)),
+        "resolving a stream leaked the password into the log export"
+    );
+}
+
+#[test]
+fn an_m3u_locator_resolves_unchanged_so_the_zap_path_needs_no_per_kind_branch() {
+    // Kind-agnostic by contract: the shell asks for a playable URL and gets one, whatever the
+    // source is. An M3U URL is already playable and must come back untouched.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let source = rt
+        .block_on(harness.core.sources().add_m3u_url(
+            "Playlist".to_owned(),
+            "http://host.example/list.m3u".to_owned(),
+            None,
+            false,
+        ))
+        .expect("added");
+    let id = match &source {
+        Source::M3uUrl { id, .. } => *id,
+        other => panic!("expected an M3U source, got {other:?}"),
+    };
+    let stream = "http://host.example/live/7.ts".to_owned();
+    assert_eq!(
+        rt.block_on(harness.core.sources().resolve_stream(id, stream.clone()))
+            .expect("an M3U locator resolves"),
+        stream,
+        "an already-playable locator must pass through unchanged"
+    );
+}
+
+#[test]
 fn deleting_an_xtream_source_removes_its_stored_credential() {
     // The row is the only record of which opaque key belongs to this account, so a delete that
     // skipped the store would strand the password in the keychain with nothing able to name it.

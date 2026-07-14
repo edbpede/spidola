@@ -699,6 +699,11 @@ uint64_t uniffi_core_api_fn_method_sourceservice_refresh(uint64_t ptr, int64_t i
 uint64_t uniffi_core_api_fn_method_sourceservice_rename(uint64_t ptr, int64_t id, RustBuffer name
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_RESOLVE_STREAM
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_RESOLVE_STREAM
+uint64_t uniffi_core_api_fn_method_sourceservice_resolve_stream(uint64_t ptr, int64_t source_id, RustBuffer locator
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_SET_AUTO_REFRESH
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_SET_AUTO_REFRESH
 uint64_t uniffi_core_api_fn_method_sourceservice_set_auto_refresh(uint64_t ptr, int64_t id, RustBuffer secs
@@ -1304,6 +1309,12 @@ uint16_t uniffi_core_api_checksum_method_sourceservice_refresh(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SOURCESERVICE_RENAME
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SOURCESERVICE_RENAME
 uint16_t uniffi_core_api_checksum_method_sourceservice_rename(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SOURCESERVICE_RESOLVE_STREAM
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SOURCESERVICE_RESOLVE_STREAM
+uint16_t uniffi_core_api_checksum_method_sourceservice_resolve_stream(void
     
 );
 #endif

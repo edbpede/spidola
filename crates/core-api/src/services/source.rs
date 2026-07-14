@@ -260,6 +260,61 @@ impl SourceService {
             .await
     }
 
+    /// The playable URL for a channel's stored locator — call this immediately before handing a
+    /// stream to an engine.
+    ///
+    /// **Kind-agnostic by design.** An M3U locator is already playable and comes back unchanged;
+    /// an Xtream locator is stored credential-free (§12, `core_xtream::urls`) and gets its
+    /// credentials put back here, read from the host store. The shell therefore does not need to
+    /// know which kind of source a channel came from — it asks for a playable URL and gets one,
+    /// which is what keeps the zap path (PRD §8.4) free of per-kind branching.
+    ///
+    /// The returned string carries credentials for an Xtream source. It is bound for the engine
+    /// and nowhere else: it must not be logged, persisted, or held past the play call. Resolve
+    /// per play rather than caching — the whole point of storing a credential-free catalog is
+    /// that the playable form does not outlive its use.
+    ///
+    /// # Errors
+    /// Returns [`ApiError::NotFound`] if the source is gone or its stored locator is not a
+    /// recognizable reference (a stale row; the source needs a refresh), [`ApiError::Unauthorized`]
+    /// if the account's password is missing from the host store, [`ApiError::InvalidInput`] if
+    /// `locator` is not a valid address, and [`ApiError::StorageCorrupt`] on a read failure.
+    pub async fn resolve_stream(
+        &self,
+        source_id: i64,
+        locator: String,
+    ) -> Result<String, ApiError> {
+        let parsed = StreamLocator::parse(&locator)?; // parse, don't validate
+        let db = Arc::clone(&self.db);
+        let source = self
+            .rt
+            .run_blocking(move || read_source(&db, SourceId::new(source_id)))
+            .await?
+            .ok_or(ApiError::NotFound)?;
+        match source {
+            // Already playable: an M3U playlist's URLs are what the playlist said they were.
+            DomainSource::M3uUrl { .. } | DomainSource::M3uFile { .. } => Ok(locator),
+            DomainSource::Xtream {
+                server,
+                username,
+                secret,
+                ..
+            } => {
+                xtream::resolve_playable(
+                    &XtreamSource {
+                        id: SourceId::new(source_id),
+                        server,
+                        username,
+                        secret,
+                    },
+                    &self.secrets,
+                    &parsed,
+                )
+                .await
+            }
+        }
+    }
+
     /// Renames a source.
     ///
     /// # Errors
