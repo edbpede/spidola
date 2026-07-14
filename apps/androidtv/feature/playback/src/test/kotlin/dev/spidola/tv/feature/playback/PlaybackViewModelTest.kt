@@ -239,6 +239,23 @@ class PlaybackViewModelTest {
             assertEquals(2, harness.built.size)
         }
 
+    /**
+     * The zap path sets the channel from the window row, bypassing the route payload's mapping — so
+     * the row's kind must arrive intact. The strip's live marker keys on it, and a ring can mix
+     * kinds (favourites and search do), so inheriting the left channel's kind would lie.
+     */
+    @Test
+    fun `zap carries the window row's kind`() =
+        runTest(dispatcher) {
+            val harness = Harness()
+            val viewModel = harness.viewModel()
+            viewModel.start()
+            advanceUntilIdle()
+            viewModel.zap(ZapDirection.NEXT)
+            advanceUntilIdle()
+            assertEquals(MediaKind.MOVIE, viewModel.state.value.channel.kind)
+        }
+
     @Test
     fun `zap previous at the start is a no-op`() =
         runTest(dispatcher) {
@@ -332,6 +349,7 @@ private class Harness(
         fun channel(
             identity: Long,
             name: String,
+            kind: MediaKind = MediaKind.LIVE,
         ): PlayableChannel =
             PlayableChannel(
                 sourceId = 1,
@@ -340,7 +358,7 @@ private class Harness(
                 group = "News",
                 logo = null,
                 locator = "http://host.example/$identity.ts",
-                kind = MediaKind.LIVE,
+                kind = kind,
             )
     }
 }
@@ -362,7 +380,9 @@ private class FakePlaybackAccess : PlaybackAccess {
         return ZapWindow(
             previous = if (offset == 0u) null else Harness.channel(9L + offset.toLong(), "Prev"),
             current = Harness.channel(identity, "Current"),
-            next = Harness.channel(11L + offset.toLong(), "Next"),
+            // A kind that differs from the playing channel's, so a test can prove a zap target's
+            // kind comes from the window row rather than surviving from the channel left behind.
+            next = Harness.channel(11L + offset.toLong(), "Next", kind = MediaKind.MOVIE),
             offset = offset,
             total = 24uL,
         )

@@ -323,6 +323,15 @@ public final class MPVEngine: PlaybackEngine {
     statesContinuation.finish()
   }
 
+  /// The contract's backstop for a dropped reference. Without it a live core keeps decoding with
+  /// no owner left to stop it — the event task holds its stream, mpv holds the decoder, and the
+  /// process-wide audio session and now-playing info stay claimed. `isolated deinit` runs on the
+  /// main actor, so this is the same idempotent `stop()` the shell calls, not a second teardown
+  /// path.
+  isolated deinit {
+    stop()
+  }
+
   // MARK: - Events
 
   private func handle(_ event: MPVEvent) {

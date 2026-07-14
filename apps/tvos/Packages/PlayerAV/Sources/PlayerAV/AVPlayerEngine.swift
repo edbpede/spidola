@@ -181,6 +181,14 @@ public final class AVPlayerEngine: PlaybackEngine {
     AVEngineLog.logger.info("engine=avplayer event=stop")
   }
 
+  /// The contract's backstop for a dropped reference. Without it the observer tasks — which hold
+  /// the KVO streams, which retain the player — outlive the engine, and playback continues with no
+  /// owner left to stop it. `isolated deinit` runs on the main actor, so this is the same
+  /// idempotent `stop()` the shell calls, not a second teardown path.
+  isolated deinit {
+    stop()
+  }
+
   // MARK: - Asset options
 
   /// AVPlayer's asset options for `request`.

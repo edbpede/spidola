@@ -156,6 +156,18 @@ final class PlaybackModelTests: XCTestCase {
     XCTAssertEqual(harness.built.count, 2)
   }
 
+  /// The zap path sets the channel from the window row, bypassing the route payload's mapping — so
+  /// the row's kind must arrive intact. The strip's live marker keys on it, and a ring can mix
+  /// kinds (favourites and search do), so inheriting the left channel's kind would lie.
+  func testZapCarriesTheWindowRowsKind() async {
+    let harness = Harness()
+    let model = harness.model()
+    await model.start()
+    await settle()
+    await model.zap(.next)
+    XCTAssertEqual(model.channel.kind, .movie)
+  }
+
   func testZapPreviousAtTheStartIsANoOp() async {
     let harness = Harness()
     let model = harness.model()
@@ -270,10 +282,10 @@ private final class Harness {
     return EngineRegistry(platformDefault: .mpv, factories: factories)
   }
 
-  static func channel(identity: Int64, name: String) -> PlayableChannel {
+  static func channel(identity: Int64, name: String, kind: MediaKind = .live) -> PlayableChannel {
     PlayableChannel(
       sourceId: 1, identity: identity, name: name, group: "News", logo: nil,
-      locator: "http://host.example/\(identity).ts", kind: .live)
+      locator: "http://host.example/\(identity).ts", kind: kind)
   }
 }
 
@@ -297,7 +309,9 @@ private final class FakePlaybackAccess: PlaybackAccess {
     return ZapWindow(
       previous: offset == 0 ? nil : Harness.channel(identity: Int64(9 + offset), name: "Prev"),
       current: Harness.channel(identity: identity, name: "Current"),
-      next: Harness.channel(identity: Int64(11 + offset), name: "Next"),
+      // A kind that differs from the playing channel's, so a test can prove a zap target's kind
+      // comes from the window row rather than surviving from the channel left behind.
+      next: Harness.channel(identity: Int64(11 + offset), name: "Next", kind: .movie),
       offset: offset,
       total: 24)
   }

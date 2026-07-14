@@ -159,8 +159,9 @@ public final class PlaybackModel {
 
     // Both lookups reach the core, and the viewer can leave while they are in flight. Every
     // suspension is therefore followed by a guard, and the engine is not built until the last one
-    // has passed: an engine built before a guard could be orphaned by a `stop` landing mid-load,
-    // and no engine has a `deinit` to catch it.
+    // has passed: an engine built before a guard would be orphaned by a `stop` landing mid-load,
+    // left to its `deinit` backstop — which reclaims it eventually, where never building it costs
+    // nothing and tears down deterministically.
     let resolved = await resolveEngine(target, override: engineOverride)
     guard isCurrent(generation) else { return }
 
