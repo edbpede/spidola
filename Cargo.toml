@@ -45,6 +45,11 @@ uniffi = "0.32"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 rand = "0.9"
+# Authenticated at-rest protection for credential-bearing M3U locators. Both crates already sit
+# in the locked transitive graph; naming them here lets `core-api` use the audited primitives
+# directly instead of inventing crypto or a wire encoding.
+base64 = "0.22"
+ring = "0.17"
 # Application-only (xtask + tests); never a library dependency (TECH_SPEC §4.7).
 anyhow = "1"
 # Test / bench tooling.

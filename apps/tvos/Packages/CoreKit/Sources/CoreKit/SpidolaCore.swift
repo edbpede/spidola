@@ -354,8 +354,17 @@ public final class SpidolaCore: CatalogAccess, SourcesAccess, BrowseAccess, Sear
     try await core.settings().setBuffering(profile: .init(playbackKey: profile))
   }
 
-  public func resolveStream(sourceId: Int64, locator: String) async throws -> String {
-    try await core.sources().resolveStream(sourceId: sourceId, locator: locator)
+  public func resolvePlayback(_ channel: PlayableChannel) async throws -> ResolvedPlaybackStream {
+    let resolved = try await core.sources().resolvePlayback(
+      sourceId: channel.sourceId,
+      identity: channel.identity,
+      locator: channel.locator)
+    return ResolvedPlaybackStream(
+      locator: resolved.locator(),
+      userAgent: resolved.userAgent(),
+      headers: resolved.headers().map {
+        ResolvedPlaybackHeader(name: $0.name(), value: $0.value())
+      })
   }
 }
 
@@ -404,7 +413,7 @@ extension Source {
   /// "unknown future variant" arm the FFI boundary rules require (TECH_SPEC §5).
   public var id: Int64 {
     switch self {
-    case .m3uUrl(let id, _, _, _, _): id
+    case .m3uUrl(let id, _, _, _): id
     case .m3uFile(let id, _): id
     case .xtream(let id, _, _, _, _): id
     @unknown default: -1
@@ -414,7 +423,7 @@ extension Source {
   /// The user-facing source name shared by every source kind.
   public var name: String {
     switch self {
-    case .m3uUrl(_, let common, _, _, _): common.name
+    case .m3uUrl(_, let common, _, _): common.name
     case .m3uFile(_, let common): common.name
     case .xtream(_, let common, _, _, _): common.name
     @unknown default: ""
@@ -424,7 +433,7 @@ extension Source {
   /// The common per-source settings (enabled, auto-refresh) shared by every kind.
   public var common: SourceCommon {
     switch self {
-    case .m3uUrl(_, let common, _, _, _): common
+    case .m3uUrl(_, let common, _, _): common
     case .m3uFile(_, let common): common
     case .xtream(_, let common, _, _, _): common
     @unknown default: SourceCommon(name: "", enabled: true, autoRefreshSecs: nil)

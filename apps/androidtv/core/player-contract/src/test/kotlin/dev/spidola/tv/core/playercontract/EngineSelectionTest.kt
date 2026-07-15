@@ -3,6 +3,7 @@
 
 package dev.spidola.tv.core.playercontract
 
+import kotlinx.collections.immutable.persistentListOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -18,6 +19,19 @@ class EngineSelectionTest {
     private val mpv = EngineId.MPV
     private val exo = EngineId.EXOPLAYER
     private val both = setOf(mpv, exo)
+
+    @Test
+    fun `engine request diagnostics redact credentials`() {
+        val secret = "credential-value"
+        val request =
+            StreamRequest(
+                locator = "https://stream.example/$secret",
+                headers = persistentListOf(StreamHeader("Authorization", secret)),
+                userAgent = "Bearer-$secret",
+            )
+
+        assertFalse(secret in request.toString())
+    }
 
     // region Precedence: channel → source → platform default
 

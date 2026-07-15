@@ -419,6 +419,51 @@ void uniffi_core_api_fn_free_taskhandle(uint64_t handle, RustCallStatus *_Nonnul
 void uniffi_core_api_fn_method_taskhandle_cancel(uint64_t ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_RESOLVEDHEADER
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_RESOLVEDHEADER
+uint64_t uniffi_core_api_fn_clone_resolvedheader(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_FREE_RESOLVEDHEADER
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_FREE_RESOLVEDHEADER
+void uniffi_core_api_fn_free_resolvedheader(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RESOLVEDHEADER_NAME
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RESOLVEDHEADER_NAME
+RustBuffer uniffi_core_api_fn_method_resolvedheader_name(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RESOLVEDHEADER_VALUE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RESOLVEDHEADER_VALUE
+RustBuffer uniffi_core_api_fn_method_resolvedheader_value(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_RESOLVEDSTREAM
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_RESOLVEDSTREAM
+uint64_t uniffi_core_api_fn_clone_resolvedstream(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_FREE_RESOLVEDSTREAM
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_FREE_RESOLVEDSTREAM
+void uniffi_core_api_fn_free_resolvedstream(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RESOLVEDSTREAM_HEADERS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RESOLVEDSTREAM_HEADERS
+RustBuffer uniffi_core_api_fn_method_resolvedstream_headers(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RESOLVEDSTREAM_LOCATOR
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RESOLVEDSTREAM_LOCATOR
+RustBuffer uniffi_core_api_fn_method_resolvedstream_locator(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RESOLVEDSTREAM_USER_AGENT
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RESOLVEDSTREAM_USER_AGENT
+RustBuffer uniffi_core_api_fn_method_resolvedstream_user_agent(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_CATALOGSERVICE
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_CATALOGSERVICE
 uint64_t uniffi_core_api_fn_clone_catalogservice(uint64_t handle, RustCallStatus *_Nonnull out_status
@@ -707,6 +752,11 @@ uint64_t uniffi_core_api_fn_method_sourceservice_refresh(uint64_t ptr, int64_t i
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_RENAME
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_RENAME
 uint64_t uniffi_core_api_fn_method_sourceservice_rename(uint64_t ptr, int64_t id, RustBuffer name
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_RESOLVE_PLAYBACK
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_RESOLVE_PLAYBACK
+uint64_t uniffi_core_api_fn_method_sourceservice_resolve_playback(uint64_t ptr, int64_t source_id, int64_t identity, RustBuffer locator
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_SOURCESERVICE_RESOLVE_STREAM
@@ -1070,6 +1120,36 @@ uint16_t uniffi_core_api_checksum_method_taskhandle_cancel(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RESOLVEDHEADER_NAME
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RESOLVEDHEADER_NAME
+uint16_t uniffi_core_api_checksum_method_resolvedheader_name(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RESOLVEDHEADER_VALUE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RESOLVEDHEADER_VALUE
+uint16_t uniffi_core_api_checksum_method_resolvedheader_value(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RESOLVEDSTREAM_HEADERS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RESOLVEDSTREAM_HEADERS
+uint16_t uniffi_core_api_checksum_method_resolvedstream_headers(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RESOLVEDSTREAM_LOCATOR
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RESOLVEDSTREAM_LOCATOR
+uint16_t uniffi_core_api_checksum_method_resolvedstream_locator(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RESOLVEDSTREAM_USER_AGENT
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_RESOLVEDSTREAM_USER_AGENT
+uint16_t uniffi_core_api_checksum_method_resolvedstream_user_agent(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CATALOGSERVICE_CHANNEL
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CATALOGSERVICE_CHANNEL
 uint16_t uniffi_core_api_checksum_method_catalogservice_channel(void
@@ -1331,6 +1411,12 @@ uint16_t uniffi_core_api_checksum_method_sourceservice_refresh(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SOURCESERVICE_RENAME
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SOURCESERVICE_RENAME
 uint16_t uniffi_core_api_checksum_method_sourceservice_rename(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SOURCESERVICE_RESOLVE_PLAYBACK
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SOURCESERVICE_RESOLVE_PLAYBACK
+uint16_t uniffi_core_api_checksum_method_sourceservice_resolve_playback(void
     
 );
 #endif

@@ -16,7 +16,7 @@ use rusqlite_migration::{M, Migrations};
 use crate::error::DbResult;
 
 /// The current schema version — the boundary handshake reports this (TECH_SPEC §13).
-pub const SCHEMA_VERSION: usize = 1;
+pub const SCHEMA_VERSION: usize = 2;
 
 /// Migration 001: the full Phase-1 schema.
 ///
@@ -131,9 +131,21 @@ CREATE TRIGGER channels_au AFTER UPDATE ON channels BEGIN
 END;
 ";
 
+/// Migration 002: credential-bearing M3U values move out of plaintext SQLite.
+///
+/// Pre-1.0 data compatibility is deliberately not owed (TECH_SPEC §13). Existing M3U sources are
+/// removed rather than pretending an in-place UPDATE can erase their URLs from WAL/freelist
+/// pages; `Db::open` performs the post-migration checkpoint + vacuum that completes the cutover.
+const M002_SEALED_M3U: &str = "\
+ALTER TABLE sources ADD COLUMN has_user_agent INTEGER NOT NULL DEFAULT 0;
+DELETE FROM sources WHERE kind IN ('m3u-url', 'm3u-file');
+INSERT INTO settings(key, value) VALUES ('security.m3u_scrub.v2', 'pending')
+ON CONFLICT(key) DO UPDATE SET value = 'pending';
+";
+
 /// The ordered migration set. Append the next `M::up(...)` to grow the schema.
 static MIGRATIONS: LazyLock<Migrations<'static>> =
-    LazyLock::new(|| Migrations::new(vec![M::up(M001_INIT)]));
+    LazyLock::new(|| Migrations::new(vec![M::up(M001_INIT), M::up(M002_SEALED_M3U)]));
 
 /// Applies all pending migrations, bringing `conn` to [`SCHEMA_VERSION`].
 ///

@@ -46,6 +46,40 @@ public struct ZapWindow: Sendable, Equatable {
   }
 }
 
+/// One plaintext HTTP header returned only by the play-time resolver.
+public struct ResolvedPlaybackHeader: Sendable, Equatable, CustomDebugStringConvertible {
+  public let name: String
+  public let value: String
+
+  public init(name: String, value: String) {
+    self.name = name
+    self.value = value
+  }
+
+  public var debugDescription: String {
+    "ResolvedPlaybackHeader(name: \(name), value: [REDACTED])"
+  }
+}
+
+/// Ephemeral engine input after the core has opened every authenticated catalog envelope.
+public struct ResolvedPlaybackStream: Sendable, Equatable, CustomDebugStringConvertible {
+  public let locator: String
+  public let userAgent: String?
+  public let headers: [ResolvedPlaybackHeader]
+
+  public init(locator: String, userAgent: String?, headers: [ResolvedPlaybackHeader]) {
+    self.locator = locator
+    self.userAgent = userAgent
+    self.headers = headers
+  }
+
+  public var debugDescription: String {
+    let redactedUserAgent = userAgent == nil ? "nil" : "[REDACTED]"
+    return
+      "ResolvedPlaybackStream(locator: [REDACTED], userAgent: \(redactedUserAgent), headers: \(headers))"
+  }
+}
+
 /// The narrow core surface the **playback** slice needs: the zap ring, the persisted engine
 /// overrides the selection policy reads, the engine-neutral playback settings, and the play-time
 /// recents record.
@@ -71,15 +105,15 @@ public protocol PlaybackAccess: Sendable {
   func bufferingProfile() async throws -> String?
   func setBufferingProfile(_ profile: String) async throws
 
-  /// The playable URL for a channel's stored locator. Call this immediately before handing a
-  /// stream to an engine, and never store the result.
+  /// The playable URL and request overrides for a channel. Call this immediately before handing
+  /// the result to an engine, and never store it.
   ///
   /// Not a formality: an Xtream catalog stores a **credential-free** locator so the account's
   /// password never reaches SQLite (TECH_SPEC §12), which means the locator on a `PlayableChannel`
   /// is not playable on its own — this is what puts the credential back. Kind-agnostic, so the zap
-  /// path never branches on where a channel came from: an M3U locator is already playable and
-  /// returns unchanged.
-  func resolveStream(sourceId: Int64, locator: String) async throws -> String
+  /// path never branches on where a channel came from. M3U locators and override values remain
+  /// authenticated envelopes until this call.
+  func resolvePlayback(_ channel: PlayableChannel) async throws -> ResolvedPlaybackStream
 
   func recordRecent(_ channel: PlayableChannel) async throws
 }

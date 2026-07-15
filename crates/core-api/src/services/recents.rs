@@ -20,6 +20,7 @@ use core_model::locator::StreamLocator;
 use crate::error::ApiError;
 use crate::records::{Recent, identity_from_storage};
 use crate::runtime::CoreRuntime;
+use crate::storage_crypto::CatalogCipher;
 
 /// Settings key backing the off-switch. Absent (the default) or any value but `"0"` means
 /// recording is on; `"0"` means off.
@@ -36,12 +37,13 @@ fn enabled_from(stored: Option<&str>) -> bool {
 pub struct RecentsService {
     rt: Arc<CoreRuntime>,
     db: Arc<Db>,
+    cipher: Arc<CatalogCipher>,
 }
 
 impl RecentsService {
     /// Builds the service over shared runtime and database handles.
-    pub(crate) fn new(rt: Arc<CoreRuntime>, db: Arc<Db>) -> Arc<Self> {
-        Arc::new(Self { rt, db })
+    pub(crate) fn new(rt: Arc<CoreRuntime>, db: Arc<Db>, cipher: Arc<CatalogCipher>) -> Arc<Self> {
+        Arc::new(Self { rt, db, cipher })
     }
 }
 
@@ -65,6 +67,7 @@ impl RecentsService {
         position_secs: Option<u32>,
     ) -> Result<(), ApiError> {
         let db = Arc::clone(&self.db);
+        let cipher = Arc::clone(&self.cipher);
         let played_at = now_unix();
         self.rt
             .run_blocking(move || {
@@ -76,7 +79,7 @@ impl RecentsService {
                     source_id: SourceId::new(source_id),
                     identity: identity_from_storage(identity),
                     name,
-                    locator: StreamLocator::parse(&locator)?, // parse, don't validate
+                    locator: cipher.seal_locator(&StreamLocator::parse(&locator)?)?,
                     played_at_unix: played_at,
                     position_secs,
                 };

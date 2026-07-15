@@ -57,6 +57,25 @@ data class ZapWindow(
     val total: ULong?,
 )
 
+/** One plaintext HTTP header returned only by the play-time resolver. */
+data class ResolvedPlaybackHeader(
+    val name: String,
+    val value: String,
+) {
+    override fun toString(): String = "ResolvedPlaybackHeader(name=$name, value=[REDACTED])"
+}
+
+/** Ephemeral engine input after the core has opened every authenticated catalog envelope. */
+data class ResolvedPlaybackStream(
+    val locator: String,
+    val userAgent: String?,
+    val headers: List<ResolvedPlaybackHeader>,
+) {
+    override fun toString(): String =
+        "ResolvedPlaybackStream(locator=[REDACTED], " +
+            "userAgent=${if (userAgent == null) "null" else "[REDACTED]"}, headers=$headers)"
+}
+
 /**
  * The narrow core surface the **playback** slice needs: the zap ring, the persisted engine overrides
  * the selection policy reads, the engine-neutral playback settings, and the play-time recents
@@ -100,19 +119,16 @@ interface PlaybackAccess {
     suspend fun setBufferingProfile(profile: String)
 
     /**
-     * The playable URL for a channel's stored locator. Call immediately before handing a stream to
-     * an engine, and never store the result.
+     * The playable URL and request overrides for a channel. Call immediately before handing the
+     * result to an engine, and never store it.
      *
      * Not a formality: an Xtream catalog stores a **credential-free** locator so the account's
      * password never reaches SQLite (TECH_SPEC §12), which means the locator on a [PlayableChannel]
      * is not playable on its own — this is what puts the credential back. Kind-agnostic, so the zap
-     * path never branches on where a channel came from: an M3U locator is already playable and
-     * returns unchanged.
+     * path never branches on where a channel came from. M3U locators and override values remain
+     * authenticated envelopes until this call.
      */
-    suspend fun resolveStream(
-        sourceId: Long,
-        locator: String,
-    ): String
+    suspend fun resolvePlayback(channel: PlayableChannel): ResolvedPlaybackStream
 
     suspend fun recordRecent(channel: PlayableChannel)
 }

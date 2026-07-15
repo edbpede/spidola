@@ -18,6 +18,8 @@
 
 import Foundation
 
+let resolvedDiagnosticSecret = "ffi-diagnostic-secret"
+
 #if canImport(Glibc)
     import Glibc
 #else
@@ -157,16 +159,23 @@ func startStub(body: [UInt8], chunk: Int, delayUs: UInt32) -> String {
 }
 
 func playlist(_ count: Int) -> String {
-    var out = "#EXTM3U\n"
-    for i in 0..<count {
-        out +=
-            "#EXTINF:-1 tvg-id=\"id\(i)\" group-title=\"News\",Channel \(i)\nhttp://host.example/live/\(i).ts\n"
+  var out = "#EXTM3U\n"
+  for i in 0..<count {
+    out += "#EXTINF:-1 tvg-id=\"id\(i)\" group-title=\"News\",Channel \(i)\n"
+    if i == 0 {
+      out += "#EXTVLCOPT:http-user-agent=Bearer-\(resolvedDiagnosticSecret)\n"
+      out +=
+        "#EXTVLCOPT:http-referrer=https://portal.example/\(resolvedDiagnosticSecret)\n"
+      out += "http://host.example/live/\(resolvedDiagnosticSecret)/\(i).ts\n"
+    } else {
+      out += "http://host.example/live/\(i).ts\n"
     }
+  }
     return out
 }
 
 func sourceId(_ source: Source) -> Int64 {
-    guard case let .m3uUrl(id, _, _, _, _) = source else { fail("expected an m3u-url source") }
+    guard case let .m3uUrl(id, _, _, _) = source else { fail("expected an m3u-url source") }
     return id
 }
 
@@ -222,6 +231,26 @@ check(collector.progressCount >= 1, "no progress callbacks were delivered")
 let count = try await core.catalog().channelCount(sourceId: id)
 check(count == 2000, "catalog count \(count) != 2000")
 check(sink.targets.contains("spidola::import"), "log sink never saw import records")
+
+// The raw generated boundary objects must not reveal plaintext through default native
+// diagnostics before CoreKit has a chance to adapt them.
+let first = try await core.catalog().channels(sourceId: id, offset: 0, limit: 1).channels[0]
+let resolved = try await core.sources().resolvePlayback(
+    sourceId: id, identity: first.identity, locator: first.locator)
+let resolvedHeaders = resolved.headers()
+check(
+    resolved.locator().contains(resolvedDiagnosticSecret),
+    "resolved locator did not cross the generated boundary")
+check(
+    resolved.userAgent()?.contains(resolvedDiagnosticSecret) == true,
+    "resolved user-agent did not cross the generated boundary")
+check(
+    resolvedHeaders[0].value().contains(resolvedDiagnosticSecret),
+    "resolved header did not cross the generated boundary")
+check(
+    !String(reflecting: resolved).contains(resolvedDiagnosticSecret)
+        && !String(reflecting: resolvedHeaders[0]).contains(resolvedDiagnosticSecret),
+    "generated Swift diagnostics exposed a resolved credential")
 
 // 4) Cancel a slow import mid-stream; nothing partial is committed.
 let slowBody = Array(playlist(6000).utf8)

@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+[bindings.kotlin]
+# The same committed binding is compiled by Android (minSdk 26) and the plain-JVM contract
+# harness. UniFFI's JVM cleaner references java.lang.ref.Cleaner, which Android exposes only from
+# API 33; use UniFFI's JNA cleaner on both hosts instead.
+disable_java_cleaner = true

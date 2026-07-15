@@ -16,6 +16,16 @@ final class EngineSelectionTests: XCTestCase {
   private let av = EngineID.avPlayer
   private var both: Set<EngineID> { [mpv, av] }
 
+  func testEngineRequestDiagnosticsRedactCredentials() {
+    let secret = "credential-value"
+    let request = StreamRequest(
+      locator: "https://stream.example/\(secret)",
+      headers: [StreamHeader(name: "Authorization", value: secret)],
+      userAgent: "Bearer-\(secret)")
+
+    XCTAssertFalse(String(reflecting: request).contains(secret))
+  }
+
   // MARK: - Precedence: channel → source → platform default
 
   func testChannelOverrideWinsOverSourceAndDefault() {

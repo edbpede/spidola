@@ -145,8 +145,7 @@ class BrowseViewModelTest {
         Source.M3uUrl(
             id = id,
             common = SourceCommon(name = "Fixture", enabled = true, autoRefreshSecs = null),
-            url = "http://host.example/list.m3u",
-            userAgent = null,
+            hasUserAgent = false,
             acceptInvalidTls = false,
         )
 

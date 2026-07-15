@@ -18,7 +18,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use core_db::{Db, repo};
-use core_model::ids::{SecretRef, SourceId};
+use core_model::ids::{ChannelIdentity, SecretRef, SourceId};
 use core_model::locator::StreamLocator;
 use core_model::secret::Secret;
 use core_model::source::{Source as DomainSource, SourceCommon as DomainCommon};
@@ -30,9 +30,10 @@ use crate::error::ApiError;
 use crate::events::{CancelToken, ImportListener, TaskHandle};
 use crate::import::{run_import, run_import_content};
 use crate::logging::targets;
-use crate::records::Source;
+use crate::records::{ResolvedHeader, ResolvedStream, Source};
 use crate::runtime::CoreRuntime;
 use crate::secrets::SecretStore;
+use crate::storage_crypto::CatalogCipher;
 use crate::xtream::{self, XtreamSource};
 
 /// Cancellation tokens for in-flight long operations (refresh, content import), keyed by source
@@ -47,6 +48,7 @@ pub struct SourceService {
     rt: Arc<CoreRuntime>,
     db: Arc<Db>,
     secrets: Arc<dyn SecretStore>,
+    cipher: Arc<CatalogCipher>,
     refreshes: Arc<RefreshRegistry>,
     /// Monotonic source of the unique per-operation keys used within [`Self::refreshes`].
     next_refresh_seq: AtomicU64,
@@ -58,11 +60,13 @@ impl SourceService {
         rt: Arc<CoreRuntime>,
         db: Arc<Db>,
         secrets: Arc<dyn SecretStore>,
+        cipher: Arc<CatalogCipher>,
     ) -> Arc<Self> {
         Arc::new(Self {
             rt,
             db,
             secrets,
+            cipher,
             refreshes: Arc::new(Mutex::new(HashMap::new())),
             next_refresh_seq: AtomicU64::new(0),
         })
@@ -153,10 +157,37 @@ impl SourceService {
         user_agent: Option<String>,
         accept_invalid_tls: bool,
     ) -> Result<Source, ApiError> {
-        let db = Arc::clone(&self.db);
+        StreamLocator::parse(&url)?; // validate before anything is stored
+        let url = Secret::new(url);
+        let user_agent = user_agent.map(Secret::new);
+        let secret_ref = mint_secret_ref("m3u-url");
+        let url_key = secret_ref.as_str().to_owned();
+        let user_agent_key = m3u_user_agent_key(&secret_ref);
+        let secrets = Arc::clone(&self.secrets);
+        let stored_url = url.expose().to_owned();
+        let stored_user_agent = user_agent.as_ref().map(|value| value.expose().to_owned());
+        let has_user_agent = stored_user_agent.is_some();
         self.rt
             .run_blocking(move || {
-                let locator = StreamLocator::parse(&url)?; // parse, don't validate
+                secrets.set(url_key.clone(), stored_url)?;
+                if let Some(agent) = stored_user_agent
+                    && let Err(error) = secrets.set(user_agent_key, agent)
+                {
+                    let _ = secrets.delete(url_key);
+                    return Err(error);
+                }
+                Ok(())
+            })
+            .await?;
+        drop(user_agent);
+        drop(url);
+
+        let db = Arc::clone(&self.db);
+        let secrets = Arc::clone(&self.secrets);
+        let orphaned_url = secret_ref.as_str().to_owned();
+        let orphaned_user_agent = m3u_user_agent_key(&secret_ref);
+        self.rt
+            .run_blocking(move || {
                 insert_source(
                     &db,
                     DomainSource::M3uUrl {
@@ -166,11 +197,17 @@ impl SourceService {
                             enabled: true,
                             auto_refresh_secs: None,
                         },
-                        url: locator,
-                        user_agent,
+                        url_secret: secret_ref,
+                        has_user_agent,
                         accept_invalid_tls,
                     },
                 )
+                .inspect_err(|_| {
+                    let _ = secrets.delete(orphaned_url);
+                    if has_user_agent {
+                        let _ = secrets.delete(orphaned_user_agent);
+                    }
+                })
             })
             .await
     }
@@ -209,7 +246,7 @@ impl SourceService {
             .await
             .map_err(xtream::map_error)?;
 
-        let secret_ref = mint_secret_ref();
+        let secret_ref = mint_secret_ref("xtream");
         // Store the credential before the row that references it: a source whose key resolves to
         // nothing is a broken source, whereas an orphaned secret with no source is merely
         // garbage. Fail this and nothing was persisted.
@@ -263,11 +300,9 @@ impl SourceService {
     /// The playable URL for a channel's stored locator — call this immediately before handing a
     /// stream to an engine.
     ///
-    /// **Kind-agnostic by design.** An M3U locator is already playable and comes back unchanged;
+    /// **Kind-agnostic by design.** An M3U locator is an authenticated envelope and is opened here;
     /// an Xtream locator is stored credential-free (§12, `core_xtream::urls`) and gets its
-    /// credentials put back here, read from the host store. The shell therefore does not need to
-    /// know which kind of source a channel came from — it asks for a playable URL and gets one,
-    /// which is what keeps the zap path (PRD §8.4) free of per-kind branching.
+    /// credentials put back here from the host store. The shell therefore does not branch on kind.
     ///
     /// The returned string carries credentials for an Xtream source. It is bound for the engine
     /// and nowhere else: it must not be logged, persisted, or held past the play call. Resolve
@@ -292,8 +327,12 @@ impl SourceService {
             .await?
             .ok_or(ApiError::NotFound)?;
         match source {
-            // Already playable: an M3U playlist's URLs are what the playlist said they were.
-            DomainSource::M3uUrl { .. } | DomainSource::M3uFile { .. } => Ok(locator),
+            // M3U values cross SQLite/FFI/navigation only as authenticated envelopes. Recover the
+            // original exact bytes here, immediately before the engine call.
+            DomainSource::M3uUrl { .. } | DomainSource::M3uFile { .. } => self
+                .cipher
+                .open_sealed_locator(&parsed)
+                .map(|playable| playable.as_str().to_owned()),
             DomainSource::Xtream {
                 server,
                 username,
@@ -313,6 +352,71 @@ impl SourceService {
                 .await
             }
         }
+    }
+
+    /// Resolves a channel's playable locator and its per-channel HTTP overrides together,
+    /// immediately before engine construction. The shell passes only stable identity plus the
+    /// opaque stored locator; plaintext header values never enter navigation state.
+    ///
+    /// A recent whose channel no longer exists still resolves its snapshotted locator, but has no
+    /// current catalog overrides to apply. That is the only honest fallback because history does
+    /// not persist a second copy of override material.
+    ///
+    /// # Errors
+    /// Returns the same failures as [`Self::resolve_stream`], plus [`ApiError::StorageCorrupt`] if
+    /// the current channel row or an authenticated override envelope is corrupt.
+    pub async fn resolve_playback(
+        &self,
+        source_id: i64,
+        identity: i64,
+        locator: String,
+    ) -> Result<Arc<ResolvedStream>, ApiError> {
+        let locator = self.resolve_stream(source_id, locator).await?;
+        let db = Arc::clone(&self.db);
+        let (requires_envelope, overrides) = self
+            .rt
+            .run_blocking(move || {
+                let conn = db.reader()?;
+                let source = repo::sources::get(&conn, SourceId::new(source_id))?
+                    .ok_or(ApiError::NotFound)?;
+                let requires_envelope = matches!(
+                    source,
+                    DomainSource::M3uUrl { .. } | DomainSource::M3uFile { .. }
+                );
+                let overrides = repo::channels::get_by_identity(
+                    &conn,
+                    SourceId::new(source_id),
+                    ChannelIdentity::from_storage(identity),
+                )?
+                .map(|channel| channel.overrides)
+                .unwrap_or_default();
+                Ok((requires_envelope, overrides))
+            })
+            .await?;
+        let user_agent = overrides
+            .user_agent
+            .as_deref()
+            .map(|value| {
+                if requires_envelope {
+                    self.cipher.open_sealed_value(value)
+                } else {
+                    self.cipher.open_value(value)
+                }
+            })
+            .transpose()?;
+        let headers = overrides
+            .headers
+            .into_iter()
+            .map(|(name, value)| {
+                let opened = if requires_envelope {
+                    self.cipher.open_sealed_value(&value)
+                } else {
+                    self.cipher.open_value(&value)
+                };
+                opened.map(|value| ResolvedHeader::new(name, value))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(ResolvedStream::new(locator, user_agent, headers))
     }
 
     /// Renames a source.
@@ -406,19 +510,32 @@ impl SourceService {
             .run_blocking(move || {
                 // Read the source before removing it: its row carries the only pointer to the
                 // credential, so the key must be recovered while it still exists.
-                let secret = {
+                let secret_keys = {
                     let conn = db.reader()?;
                     match repo::sources::get(&conn, SourceId::new(id))? {
-                        Some(DomainSource::Xtream { secret, .. }) => Some(secret),
-                        _ => None,
+                        Some(DomainSource::M3uUrl {
+                            url_secret,
+                            has_user_agent,
+                            ..
+                        }) => {
+                            let mut keys = vec![url_secret.as_str().to_owned()];
+                            if has_user_agent {
+                                keys.push(m3u_user_agent_key(&url_secret));
+                            }
+                            keys
+                        }
+                        Some(DomainSource::Xtream { secret, .. }) => {
+                            vec![secret.as_str().to_owned()]
+                        }
+                        _ => Vec::new(),
                     }
                 };
-                if let Some(secret) = secret {
+                for secret in secret_keys {
                     // Ahead of the row, and allowed to fail the call. `SecretStore::delete` is
                     // idempotent, so a retry that finds the key already gone still succeeds and
                     // goes on to remove the row — which is what makes pressing delete twice a
                     // convergent act rather than a guess about how far the first one got.
-                    secrets.delete(secret.as_str().to_owned())?;
+                    secrets.delete(secret)?;
                 }
                 let conn = db.writer();
                 repo::sources::delete(&conn, SourceId::new(id))?;
@@ -437,12 +554,13 @@ impl SourceService {
         let token = CancelToken::default();
         let db = Arc::clone(&self.db);
         let secrets = Arc::clone(&self.secrets);
+        let cipher = Arc::clone(&self.cipher);
         let listener: Arc<dyn ImportListener> = Arc::from(listener);
         let task_token = token.clone();
         let seq = self.register(id, token.clone());
         let refreshes = Arc::clone(&self.refreshes);
         self.rt.spawn(async move {
-            run_refresh(db, SourceId::new(id), secrets, task_token, listener).await;
+            run_refresh(db, cipher, SourceId::new(id), secrets, task_token, listener).await;
             Self::deregister(&refreshes, id, seq);
         });
         Arc::new(TaskHandle::new(token))
@@ -462,6 +580,7 @@ impl SourceService {
     ) -> Arc<TaskHandle> {
         let token = CancelToken::default();
         let db = Arc::clone(&self.db);
+        let cipher = Arc::clone(&self.cipher);
         let listener: Arc<dyn ImportListener> = Arc::from(listener);
         let task_token = token.clone();
         let seq = self.register(id, token.clone());
@@ -469,6 +588,7 @@ impl SourceService {
         self.rt.spawn(async move {
             run_import_content(
                 db,
+                cipher,
                 SourceId::new(id),
                 content.into_bytes(),
                 task_token,
@@ -487,6 +607,7 @@ impl SourceService {
 /// compile error here rather than a silent "nothing happened" at runtime.
 async fn run_refresh(
     db: Arc<Db>,
+    cipher: Arc<CatalogCipher>,
     source_id: SourceId,
     secrets: Arc<dyn SecretStore>,
     token: CancelToken,
@@ -504,15 +625,40 @@ async fn run_refresh(
     };
     match source {
         DomainSource::M3uUrl {
-            url,
-            user_agent,
+            url_secret,
+            has_user_agent,
             accept_invalid_tls,
             ..
         } => {
+            let secure_values = {
+                let secrets = Arc::clone(&secrets);
+                tokio::task::spawn_blocking(move || {
+                    let url = secrets
+                        .get(url_secret.as_str().to_owned())?
+                        .ok_or(ApiError::Unauthorized)?;
+                    let user_agent = if has_user_agent {
+                        Some(
+                            secrets
+                                .get(m3u_user_agent_key(&url_secret))?
+                                .ok_or(ApiError::Unauthorized)?,
+                        )
+                    } else {
+                        None
+                    };
+                    Ok::<_, ApiError>((url, user_agent))
+                })
+                .await
+            };
+            let (url, user_agent) = match secure_values {
+                Ok(Ok(values)) => values,
+                Ok(Err(error)) => return listener.on_failed(error),
+                Err(_) => return listener.on_failed(ApiError::Internal),
+            };
             run_import(
                 db,
+                cipher,
                 source_id,
-                url.to_string(),
+                url,
                 user_agent,
                 accept_invalid_tls,
                 token,
@@ -556,16 +702,21 @@ async fn run_refresh(
 /// the row is inserted (and the row must carry the key), and "opaque" should mean it — a key an
 /// attacker can compute from a rowid tells them what to ask the keychain for. 128 bits of
 /// hex from the OS CSPRNG, namespaced so a keychain browser shows what it belongs to.
-fn mint_secret_ref() -> SecretRef {
+fn mint_secret_ref(namespace: &str) -> SecretRef {
     let bytes: [u8; 16] = rand::rng().random();
-    let mut key = String::with_capacity("xtream/".len() + bytes.len() * 2);
-    key.push_str("xtream/");
+    let mut key = String::with_capacity(namespace.len() + 1 + bytes.len() * 2);
+    key.push_str(namespace);
+    key.push('/');
     for byte in bytes {
         // Writing into a `String` is infallible — its `fmt::Write` impl cannot fail — so the
         // `Result` carries no information and is deliberately dropped rather than unwrapped.
         let _ = write!(key, "{byte:02x}");
     }
     SecretRef::new(key)
+}
+
+fn m3u_user_agent_key(url_secret: &SecretRef) -> String {
+    format!("{}/user-agent", url_secret.as_str())
 }
 
 /// Blocking read of one source's persisted definition.

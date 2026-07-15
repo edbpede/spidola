@@ -10,6 +10,22 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import uniffi.core_api.Handshake
+
+private const val SUPPORTED_SCHEMA_VERSION = 2u
+private const val SUPPORTED_BOUNDARY_VERSION = 4u
+
+/** Refuses a core whose persisted schema or boundary this shell cannot safely interpret. */
+internal fun requireCompatibleCore(handshake: Handshake) {
+    check(
+        handshake.coreVersion.isNotBlank() &&
+            handshake.schemaVersion == SUPPORTED_SCHEMA_VERSION &&
+            handshake.boundaryVersion == SUPPORTED_BOUNDARY_VERSION,
+    ) {
+        "Incompatible core ${handshake.coreVersion}: schema ${handshake.schemaVersion}, " +
+            "boundary ${handshake.boundaryVersion}"
+    }
+}
 
 /**
  * The single-Activity composition root's application object. On start it builds the app container,
@@ -30,6 +46,7 @@ class SpidolaApplication : Application() {
         super.onCreate()
         container = AppContainer(this)
         val handshake = container.core.handshake()
+        requireCompatibleCore(handshake)
         Log.i(
             BOOT_TAG,
             "core ${handshake.coreVersion}, schema ${handshake.schemaVersion}, " +

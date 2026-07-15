@@ -148,6 +148,22 @@ pub fn count_for_source(conn: &Connection, source: SourceId) -> DbResult<u64> {
     Ok(u64::try_from(n).unwrap_or(0))
 }
 
+/// Resolves one current catalog row by its refresh-stable identity.
+///
+/// # Errors
+/// Returns [`DbError`] on a query failure or corrupt stored row.
+pub fn get_by_identity(
+    conn: &Connection,
+    source: SourceId,
+    identity: ChannelIdentity,
+) -> DbResult<Option<Channel>> {
+    let sql =
+        format!("SELECT {SELECT_COLUMNS} FROM channels WHERE source_id = ?1 AND identity = ?2");
+    let mut statement = conn.prepare(&sql)?;
+    let mut rows = statement.query(params![source.value(), identity.to_storage()])?;
+    rows.next()?.map(map_channel).transpose()
+}
+
 /// Lists a page of a source's channels in playlist order (paged by contract, §4.6).
 ///
 /// # Errors

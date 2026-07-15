@@ -146,22 +146,25 @@ coherently in each platform's tooling. Physical-device validation is deferred an
 - [x] **Add-source flows (both platforms)**
   - [x] M3U by URL with live progress, cancellation, and diagnostics summary ("N channels, M skipped")
   - [x] M3U from local file (document picker / SAF / paste)
-  - [x] Source list: rename, disable, refresh, delete; refresh preserves favorites/hidden (identity-hash test on device)
+  - [x] Source list: rename, disable, refresh, delete; refresh preserves favorites/hidden (identity-hash regression plus live-catalog emulator pass)
   - [x] Per-source auto-refresh interval setting
+  - [x] M3U source URLs plus channel/history locators and credential-bearing headers are authenticated-encrypted at rest; M3U identities use a catalog-keyed HMAC rather than exposing a public verifier for credential URLs; the catalog key lives in the platform secure store (crash-retry-safe schema 2 cutover and raw SQLite/WAL regression)
 - [x] **Actionable-error UX (PRD §6.3 discipline)**
   - [x] Error-presentation component mapping every FFI variant to plain-language class + prescribed actions; snapshot/UI tests over the full variant set
   - [x] "No action available" is unrepresentable in the component's API
 - [x] **Browse completion**
-  - [x] Source → type → category → channel drill-down; virtualized everywhere; scroll-hitch profiling pass on the low-end Android baseline
+  - [x] Source → type → category → channel drill-down; virtualized everywhere
+  - [ ] Scroll-hitch profiling on the low-end Android hardware baseline — Phase 7 performance acceptance
   - [x] Logo pipeline: lazy load, placeholder, capped disk cache (Coil / URLSession pipeline)
   - [x] Context menu: play, favorite, hide, details, per-channel engine override (engine option stubbed until Phase 5)
 - [x] **Search UI**
   - [x] Global search reachable everywhere; per-keystroke results against the core budget; source/type filters
-  - [x] Remote text entry + platform phone-keyboard input flow verified on hardware
+  - [x] Remote text entry and platform phone-keyboard integration implemented; remote text entry verified on virtual devices
+  - [ ] Platform phone-keyboard input verified with a physical phone/TV pair — Phase 7 hardware acceptance
 - [x] **Favorites + recents**
   - [x] Favorites row first on home; recents with purge toggle and off switch
 
-**Exit criteria:** the self-hoster persona can add a real playlist by URL on both platforms, browse and search it fluidly on reference hardware, and every induced failure (bad URL, 401, garbage file, mid-import network drop) presents an actionable error and a clean log trail.
+**Exit criteria:** the self-hoster persona can add a real playlist by URL on both platforms, browse and search it fluidly on reference hardware, and every induced failure (bad URL, 401, garbage file, mid-import network drop) presents an actionable error and a clean log trail. The complete functional flow is verified on both virtual devices (checkpoint below); reference/low-end hardware performance and phone-keyboard acceptance remain Phase 7 work.
 
 ---
 
@@ -261,7 +264,8 @@ coherently in each platform's tooling. Physical-device validation is deferred an
       on-screen viewer on both platforms — tvOS has no user-visible file system, and parity is the
       default (PRD §7)
 - [x] **Accessibility + localization baseline**
-  - [x] VoiceOver / TalkBack pass over every focusable element; reduce-motion honored; contrast audit against tokens
+  - [x] Accessibility semantics pass over every focusable element; reduce-motion honored; contrast audit against tokens
+  - [ ] Full VoiceOver / TalkBack walkthrough on physical TV hardware — Phase 7 accessibility acceptance
     - **Reduce-motion is done and was a real bug**: `SpidolaFocusRing` (tvOS) and `SpidolaFocus`
       (Android) both animated the focus lift unconditionally, so every focusable surface in the app
       moved even with animations switched off — older than this phase, and failing the P0 bar for
@@ -329,15 +333,45 @@ coherently in each platform's tooling. Physical-device validation is deferred an
       *entire* surface stays unextracted meanwhile (failureClass, message, and the "Try again" /
       "Go back" / "Edit" action labels), so the one place visible English remains is deliberate and
       reads as pending work rather than as an oversight
+  - [ ] Finish the structured error-code boundary and the three documented view-model localization channels before claiming a fully localizable 1.0 surface
 
-**Exit criteria:** all PRD P0 features function on both platforms; secrets provably never touch SQLite or logs; the app passes a full screen-reader walkthrough.
+**Exit criteria:** all PRD P0 features function on both platforms; plaintext credentials provably never touch SQLite or logs; the app passes a full screen-reader walkthrough. Virtual-device P0 functionality and the expanded secret boundary are verified below; the physical screen-reader walkthrough and documented localization boundary work remain open.
+
+### Pre-Phase-7 validation checkpoint — 2026-07-15
+
+- [x] **Real IPTV functional pass on both virtual platforms**
+  - [x] Imported an 860-entry M3U catalog on tvOS 26.5 Simulator and an Android API 36 TV AVD
+  - [x] Exercised import, source/category/channel browsing, live playback, zap, favorite, search, settings, diagnostics, refresh, and favorite persistence
+  - [x] Used Computer Use for the tvOS journeys, including a signed post-security-fix fixture drill-down through stream resolution; Android's raw QEMU window is not addressable by Computer Use, so its visible journey used ADB plus Compose instrumentation
+- [x] **Full automated regression matrix after repairs**
+  - [x] Rust: 275 tests; rustfmt; strict Clippy
+  - [x] tvOS: 187/187 signed simulator unit/UI tests; strict swift-format and SwiftLint
+  - [x] Android: 189 JVM tests; lint, ktlint, detekt, debug + instrumentation builds; 4/4 API 36 emulator tests; all three packaged ABIs
+  - [x] Swift and Kotlin real-core FFI harnesses pass at schema 2 / boundary 4; generated bindings have no drift
+- [x] **Validation-found defects repaired and regression-locked**
+  - [x] Removed the API-33 Java Cleaner requirement from generated Android bindings and added root Android lint to CI
+  - [x] Fixed Android Add Source D-pad/IME traversal and retained-screen source/home reloads
+  - [x] Made Android secret fields memory-only across activity recreation; made Keystore writes/deletes fail closed; made instrumentation data ownership and emulator-only execution explicit
+  - [x] Defined deterministic initial tvOS Home focus and made the UI smoke wait for focus settlement without weakening its assertions
+  - [x] Removed direct stored-locator playback fallbacks; both shells must resolve locators plus per-channel user-agent/header overrides through the core before constructing an engine
+  - [x] Authenticated-encrypted all M3U source/channel/history credential material at rest; added catalog-keyed channel identities, strict domain-separated envelopes, and opaque resolved-stream/header FFI objects whose native diagnostics cannot reflect plaintext
+  - [x] Made the schema-2 legacy-row/page scrub crash-retry-safe with a durable pending/complete marker, and proved credentials stay out of SQLite/WAL/logs
+  - [x] Made Android refuse any core other than schema 2 / boundary 4 before bootstrap, matching the startup-handshake contract already enforced by tvOS
+- [ ] **Hardware/headend acceptance that virtual devices cannot close**
+  - [ ] Stand up the deterministic maintainer headend and run `docs/engine-acceptance.md` across all four engines and every EngineError/decode route
+  - [ ] Measure click-to-first-frame, zap teardown/rebuild, scroll hitching, startup, and series-heavy Xtream peak memory on reference and low-end hardware
+  - [ ] Verify physical phone-keyboard/pairing-camera flows plus VPN and multi-interface address selection
+  - [ ] Verify hardware decode/codec coverage, Siri/interruption handling, AirPlay, audio/subtitle behavior, and physical-remote semantics
+  - [ ] Complete the physical VoiceOver/TalkBack walkthrough and the remaining localization boundary work above
+
+**Checkpoint result:** Phase 7 can begin with all automatable pre-Phase-7 emulator/simulator work green. The open items are deliberately carried into Phase 7 because they require physical hardware, a deterministic headend, performance measurement, or the already-scoped localization boundary change; they do not masquerade as completed acceptance.
 
 ---
 
 ## Phase 7 — Hardening and release (Milestone M2 / 1.0)
 
 - [ ] **Performance verification** — every PRD §9 budget measured on reference + low-end hardware; criterion regression gates locked; Instruments / Macrobenchmark+Perfetto reports archived per release checklist
-- [ ] **Soak and abuse testing** — 24 h playback soak per default engine; hostile-input pass over parsers/pairing (oversized lines, malformed UTF-8, slow-loris on pairing server)
+- [ ] **Hostile-input testing** — exercise parsers and pairing with oversized lines, malformed UTF-8, and slow-loris behavior
 - [ ] **Release engineering**
   - [ ] Signed store pipelines; Android direct-release fat APK with checksums attached to GitHub releases
   - [ ] Third-party notices generated into About; final cargo-deny/REUSE audit; LGPL build flags for mpv/FFmpeg committed and verified

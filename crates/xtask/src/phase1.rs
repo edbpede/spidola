@@ -21,8 +21,7 @@ use tokio::sync::mpsc;
 
 use core_db::{Db, RefreshCommit, repo};
 use core_model::channel::channel_identity;
-use core_model::ids::SourceId;
-use core_model::locator::StreamLocator;
+use core_model::ids::{SecretRef, SourceId};
 use core_model::source::{Source, SourceCommon};
 use core_parse::{ChannelSink, M3uParser, ParsedChannel};
 use core_search::{SearchRequest, search};
@@ -89,8 +88,8 @@ pub(crate) async fn verify(channels: usize) -> anyhow::Result<Report> {
                     enabled: true,
                     auto_refresh_secs: None,
                 },
-                url: StreamLocator::parse(&url)?,
-                user_agent: None,
+                url_secret: SecretRef::new("xtask/verification/url"),
+                has_user_agent: false,
                 accept_invalid_tls: false,
             },
         )?

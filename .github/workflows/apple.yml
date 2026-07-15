@@ -89,8 +89,7 @@ jobs:
           xcodebuild test \
             -project apps/tvos/Spidola.xcodeproj \
             -scheme Spidola \
-            -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest' \
-            CODE_SIGNING_ALLOWED=NO | xcbeautify
+            -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest' | xcbeautify
 
   # FFI parity keel (TECH_SPEC §5, §10): build the Swift contract harness against the real
   # compiled core and run the same fixture flow as the Rust + Kotlin harnesses.

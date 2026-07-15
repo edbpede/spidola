@@ -32,20 +32,20 @@ fn parse_locator(raw: &str) -> DbResult<StreamLocator> {
 /// Returns [`DbError`] on a write failure.
 pub fn insert(conn: &Connection, source: &Source) -> DbResult<SourceId> {
     let common = source.common();
-    let (url, username, secret_ref, user_agent, accept_invalid_tls) = match source {
+    let (url, username, secret_ref, has_user_agent, accept_invalid_tls) = match source {
         Source::M3uUrl {
-            url,
-            user_agent,
+            url_secret,
+            has_user_agent,
             accept_invalid_tls,
             ..
         } => (
-            Some(url.as_str().to_owned()),
             None,
             None,
-            user_agent.clone(),
+            Some(url_secret.as_str().to_owned()),
+            *has_user_agent,
             *accept_invalid_tls,
         ),
-        Source::M3uFile { .. } => (None, None, None, None, false),
+        Source::M3uFile { .. } => (None, None, None, false, false),
         Source::Xtream {
             server,
             username,
@@ -55,14 +55,14 @@ pub fn insert(conn: &Connection, source: &Source) -> DbResult<SourceId> {
             Some(server.as_str().to_owned()),
             Some(username.clone()),
             Some(secret.as_str().to_owned()),
-            None,
+            false,
             false,
         ),
     };
     conn.execute(
         "INSERT INTO sources(kind, name, enabled, auto_refresh_secs, url, username, \
-         secret_ref, user_agent, accept_invalid_tls) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+         secret_ref, user_agent, has_user_agent, accept_invalid_tls) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
         params![
             kind_to_str(source.kind()),
             common.name,
@@ -71,7 +71,8 @@ pub fn insert(conn: &Connection, source: &Source) -> DbResult<SourceId> {
             url,
             username,
             secret_ref,
-            user_agent,
+            Option::<String>::None,
+            has_user_agent,
             accept_invalid_tls,
         ],
     )?;
@@ -92,8 +93,10 @@ fn map_source(row: &Row<'_>) -> DbResult<Source> {
         "m3u-url" => Ok(Source::M3uUrl {
             id,
             common,
-            url: parse_locator(&row.get::<_, String>("url")?)?,
-            user_agent: row.get("user_agent")?,
+            url_secret: SecretRef::new(row.get::<_, Option<String>>("secret_ref")?.ok_or_else(
+                || DbError::Integrity("M3U URL source has no secure reference".to_owned()),
+            )?),
+            has_user_agent: row.get("has_user_agent")?,
             accept_invalid_tls: row.get("accept_invalid_tls")?,
         }),
         "m3u-file" => Ok(Source::M3uFile { id, common }),
@@ -114,7 +117,7 @@ fn map_source(row: &Row<'_>) -> DbResult<Source> {
 }
 
 const SELECT_COLUMNS: &str = "id, kind, name, enabled, auto_refresh_secs, url, username, \
-                              secret_ref, user_agent, accept_invalid_tls";
+                              secret_ref, user_agent, has_user_agent, accept_invalid_tls";
 
 /// Fetches one source by id.
 ///
@@ -223,8 +226,8 @@ mod tests {
                 enabled: true,
                 auto_refresh_secs: None,
             },
-            url: StreamLocator::parse("https://a.example/list.m3u").unwrap(),
-            user_agent: Some("Spidola/0".to_owned()),
+            url_secret: SecretRef::new("m3u-url/test/url"),
+            has_user_agent: true,
             accept_invalid_tls: false,
         }
     }

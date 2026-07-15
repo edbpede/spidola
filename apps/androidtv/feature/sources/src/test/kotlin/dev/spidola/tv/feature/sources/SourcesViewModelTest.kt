@@ -147,8 +147,7 @@ class SourcesViewModelTest {
         Source.M3uUrl(
             id = id,
             common = SourceCommon(name = name, enabled = enabled, autoRefreshSecs = null),
-            url = "http://host.example/list.m3u",
-            userAgent = null,
+            hasUserAgent = false,
             acceptInvalidTls = false,
         )
 }

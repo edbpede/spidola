@@ -78,14 +78,14 @@ impl From<Submission> for PairingSubmission {
     fn from(submission: Submission) -> Self {
         match submission {
             Submission::M3uUrl { url } => Self::M3uUrl {
-                url: url.to_string(),
+                url: url.as_str().to_owned(),
             },
             Submission::Xtream {
                 server,
                 username,
                 password,
             } => Self::Xtream {
-                server: server.to_string(),
+                server: server.as_str().to_owned(),
                 username,
                 // The one sanctioned exposure, per this module's header. An explicit, greppable
                 // act rather than an implicit conversion — which is exactly why `Secret` has no

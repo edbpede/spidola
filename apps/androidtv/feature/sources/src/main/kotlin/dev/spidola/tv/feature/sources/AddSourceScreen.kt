@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,13 +25,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -68,15 +78,14 @@ fun AddSourceScreen(
 
     var mode by rememberSaveable { mutableStateOf(prefill?.mode ?: AddSourceMode.URL) }
     var name by rememberSaveable { mutableStateOf("") }
-    var url by rememberSaveable { mutableStateOf(prefill?.url.orEmpty()) }
-    var content by rememberSaveable { mutableStateOf("") }
-    var userAgent by rememberSaveable { mutableStateOf("") }
+    // These values may contain embedded credentials or tokens. Keep them in memory only: saveable
+    // state is serialized by the framework and may outlive this screen (TECH_SPEC §12).
+    var url by remember { mutableStateOf(prefill?.url.orEmpty()) }
+    var content by remember { mutableStateOf("") }
+    var userAgent by remember { mutableStateOf("") }
     var acceptInvalidTls by rememberSaveable { mutableStateOf(false) }
     var server by rememberSaveable { mutableStateOf(prefill?.server.orEmpty()) }
     var username by rememberSaveable { mutableStateOf(prefill?.username.orEmpty()) }
-    // `remember`, deliberately not `rememberSaveable`: saveable state is serialized to disk by the
-    // framework, and a password belongs in memory only, in flight to `addXtream` (TECH_SPEC §12).
-    // The cost is that a process death empties this one field, which is the right trade.
     var password by remember { mutableStateOf(prefill?.password.orEmpty()) }
 
     fun form() = AddSourceForm(mode, name, url, content, userAgent, acceptInvalidTls, server, username, password)
@@ -194,6 +203,7 @@ private fun Form(
                     content,
                     onContentChange,
                     "add-source-content",
+                    singleLine = false,
                 )
             AddSourceMode.XTREAM -> {
                 LabeledField(stringResource(R.string.add_source_server), server, onServerChange, "add-source-server")
@@ -223,8 +233,7 @@ private fun Form(
     }
 }
 
-/** A labelled text field. [masked] renders a password: dots on screen, and single-line because a
- * password has no lines. */
+/** A labelled text field that gives D-pad and software-keyboard users the same forward path. */
 @Composable
 private fun LabeledField(
     label: String,
@@ -232,7 +241,9 @@ private fun LabeledField(
     onValueChange: (String) -> Unit,
     tag: String,
     masked: Boolean = false,
+    singleLine: Boolean = true,
 ) {
+    val focusManager = LocalFocusManager.current
     Box(
         modifier =
             Modifier
@@ -246,11 +257,28 @@ private fun LabeledField(
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            singleLine = masked,
+            singleLine = singleLine,
+            keyboardOptions =
+                KeyboardOptions(imeAction = if (singleLine) ImeAction.Next else ImeAction.Default),
+            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
             visualTransformation = if (masked) PasswordVisualTransformation() else VisualTransformation.None,
             textStyle = MaterialTheme.typography.bodyLarge.merge(TextStyle(color = SpidolaPalette.BroadcastWhite)),
             cursorBrush = SolidColor(SpidolaPalette.TestCardAmber),
-            modifier = Modifier.fillMaxWidth().testTag(tag),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown) {
+                            false
+                        } else {
+                            when (event.key) {
+                                Key.DirectionDown, Key.Tab -> focusManager.moveFocus(FocusDirection.Down)
+                                Key.DirectionUp -> focusManager.moveFocus(FocusDirection.Up)
+                                else -> false
+                            }
+                        }
+                    }
+                    .testTag(tag),
         )
     }
 }

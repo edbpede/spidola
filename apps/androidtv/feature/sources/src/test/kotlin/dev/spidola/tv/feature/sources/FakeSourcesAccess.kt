@@ -54,8 +54,7 @@ internal class FakeSourcesAccess(
         Source.M3uUrl(
             id = nextId++,
             common = SourceCommon(name = name, enabled = true, autoRefreshSecs = null),
-            url = url,
-            userAgent = userAgent,
+            hasUserAgent = userAgent != null,
             acceptInvalidTls = acceptInvalidTls,
         )
 

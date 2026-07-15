@@ -102,7 +102,11 @@ mod tests {
         set(&conn, "ui.language", "en").unwrap();
         set(&conn, "ui.language", "da").unwrap(); // upsert
         assert_eq!(get(&conn, "ui.language").unwrap().as_deref(), Some("da"));
-        assert_eq!(all(&conn).unwrap().len(), 1);
+        assert!(
+            all(&conn)
+                .unwrap()
+                .contains(&("ui.language".to_owned(), "da".to_owned()))
+        );
         remove(&conn, "ui.language").unwrap();
         assert!(get(&conn, "ui.language").unwrap().is_none());
     }

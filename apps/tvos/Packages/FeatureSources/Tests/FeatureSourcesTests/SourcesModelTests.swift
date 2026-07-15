@@ -203,8 +203,7 @@ final class SourcesModelTests: XCTestCase {
     .m3uUrl(
       id: id,
       common: SourceCommon(name: name, enabled: enabled, autoRefreshSecs: nil),
-      url: "https://example.invalid/list.m3u",
-      userAgent: nil,
+      hasUserAgent: false,
       acceptInvalidTls: false)
   }
 }
@@ -254,7 +253,7 @@ private final class FakeSourcesAccess: SourcesAccess, @unchecked Sendable {
     nextId += 1
     return .m3uUrl(
       id: id, common: SourceCommon(name: name, enabled: true, autoRefreshSecs: nil),
-      url: url, userAgent: userAgent, acceptInvalidTls: acceptInvalidTls)
+      hasUserAgent: userAgent != nil, acceptInvalidTls: acceptInvalidTls)
   }
 
   func addXtream(name: String, server: String, username: String, password: String)

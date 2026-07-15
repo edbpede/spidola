@@ -73,7 +73,11 @@ fun SpidolaNavHost(
         entryProvider =
             entryProvider {
                 entry<HomeRoute> {
-                    HomeScreen(access = core, navigator = navigator)
+                    HomeScreen(
+                        access = core,
+                        navigator = navigator,
+                        isActive = backStack.lastOrNull() == HomeRoute,
+                    )
                 }
                 entry<SourceRoute> { route ->
                     SourceBrowseScreen(sourceId = route.sourceId, access = core, navigator = navigator)
@@ -117,6 +121,7 @@ fun SpidolaNavHost(
                         access = core,
                         onAddSource = { backStack.add(AddSourceRoute) },
                         onPairPhone = { backStack.add(PairingRoute) },
+                        isActive = backStack.lastOrNull() == ManageSourcesRoute,
                     )
                 }
                 entry<AddSourceRoute> {

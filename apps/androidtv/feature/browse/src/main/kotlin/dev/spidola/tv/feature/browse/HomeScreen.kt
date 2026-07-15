@@ -51,9 +51,13 @@ fun HomeScreen(
     access: HomeAccess,
     navigator: BrowseNavigator,
     modifier: Modifier = Modifier,
+    isActive: Boolean = true,
     viewModel: HomeViewModel = viewModel(factory = HomeViewModel.factory(access)),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(isActive) {
+        if (isActive) viewModel.load()
+    }
     Box(modifier = modifier.fillMaxSize().background(SpidolaPalette.Studio)) {
         when (val current = state) {
             LoadState.Loading -> CenteredMessage(stringResource(R.string.browse_home_loading))
