@@ -11,6 +11,17 @@
         }
       }
     },
+    "%lld of %lld": {
+      "comment": "The playing channel's place in the zap ring, spoken by a screen reader. Separate from the shown '%lld / %lld' because a slash is heard as the word 'slash'; say it the way someone would say it aloud.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld of %lld"
+          }
+        }
+      }
+    },
     "Audio": {
       "localizations": {
         "en": {

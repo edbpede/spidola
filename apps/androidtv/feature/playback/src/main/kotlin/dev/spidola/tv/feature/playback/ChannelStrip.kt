@@ -52,10 +52,11 @@ fun ChannelStrip(
     isLive: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    // Both resolved out here: `semantics {}` is not a composable scope, and the band and the
-    // announcement must name the same position rather than each compute one.
+    // All resolved out here: `semantics {}` is not a composable scope. The band shows the position
+    // and the announcement says it, and they are deliberately not the same string — see
+    // [spokenPosition].
     val position = position(window)
-    val description = accessibilityLabel(channel, isLive, position)
+    val description = accessibilityLabel(channel, isLive, spokenPosition(window))
     Column(
         // A lower-third sits on the lower third. The video above it stays uncovered, which is the
         // difference between a strip and a scrim.
@@ -197,6 +198,17 @@ private fun LiveMarker() {
 private fun position(window: ZapWindow?): String? {
     val total = window?.total ?: return null
     return stringResource(R.string.playback_position, (window.offset + 1u).toInt(), total.toInt())
+}
+
+/**
+ * The same place in the ring, said rather than shown. Separate from [position] because the slash
+ * that reads well is heard as the word "slash"; the announcement says "of" instead, which is what
+ * the eye was reading off the glyph all along (PRD §6.10). tvOS's strip carries the same pair.
+ */
+@Composable
+private fun spokenPosition(window: ZapWindow?): String? {
+    val total = window?.total ?: return null
+    return stringResource(R.string.playback_position_spoken, (window.offset + 1u).toInt(), total.toInt())
 }
 
 @Composable

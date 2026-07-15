@@ -26,6 +26,12 @@
     <string name="playback_live_announcement">Live</string>
     <!-- The playing channel's place in the zap ring, e.g. "3 / 40". -->
     <string name="playback_position">%1$d / %2$d</string>
+    <!--
+      The same place, said rather than shown, because a slash is a shape and not a word: read out,
+      "3 / 40" is "3 slash 40", which is not how anyone says where they are in a list. The eye takes
+      the separator as "of" and the ear cannot, so the glyph stays above and the word lives here.
+    -->
+    <string name="playback_position_spoken">%1$d of %2$d</string>
 
     <!-- Options: audio, subtitles, picture (PRD §8.4) -->
     <string name="playback_options_audio">Audio</string>
