@@ -141,16 +141,6 @@
         }
       }
     },
-    "Try again": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Try again"
-          }
-        }
-      }
-    },
     "Try other player": {
       "localizations": {
         "en": {

@@ -68,15 +68,18 @@ struct PlaybackErrorView: View {
   let onRetry: @MainActor () -> Void
   let onBack: @MainActor () -> Void
 
+  // These two titles are deliberately not localized, alone in this file. They are not this
+  // slice's words: they are the `ErrorAction` vocabulary spelled out by hand, and the class and
+  // message above them come from `EngineError` in the same English. Resourcing the buttons would
+  // translate the answer and leave the question — the half-done state that reads as finished,
+  // which is the whole reason that vocabulary is excluded rather than swept (TECH_SPEC §14). It
+  // goes when the core returns a code and the shells own the words; until then it goes nowhere.
   var body: some View {
     ActionableErrorView(
       failureClass: error.failureClass,
       message: error.message,
-      primary: SpidolaErrorButton(
-        title: String(localized: "Try again", bundle: .module), action: onRetry),
-      others: [
-        SpidolaErrorButton(title: String(localized: "Go back", bundle: .module), action: onBack)
-      ])
+      primary: SpidolaErrorButton(title: "Try again", action: onRetry),
+      others: [SpidolaErrorButton(title: "Go back", action: onBack)])
   }
 }
 
