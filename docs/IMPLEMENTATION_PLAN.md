@@ -6,7 +6,7 @@
 
 | | |
 |---|---|
-| **Document status** | Draft v1.1 — July 2026 |
+| **Document status** | Draft v1.2 — July 2026 (2026-07-16: Phases 7–9 restructured — physical-hardware acceptance deferred to Phase 8; remaining software work consolidated into Phase 7) |
 | **Companion documents** | `PRD.md` (scope, priorities) · `TECH_SPEC.md` (architecture, standards) |
 | **Coding standards** | `.augment/rules/rust-dev-pro.md` · `.augment/rules/swift-dev-pro.md` · `.augment/rules/kotlin-dev-pro.md` — normative for every task below |
 | **Conventions** | Phases are sequential; tasks within a phase may run in parallel unless a dependency is noted. Every phase ends with explicit **exit criteria**. Checkboxes track completion. |
@@ -29,7 +29,7 @@ Two standing rules apply to **every** task in this plan and are not repeated per
 - [x] **Governance (launch-blocking, PRD §10)**
   - [x] Decide and document the contributor model (recommendation: DCO + explicit App Store distribution grant)
   - [x] Add CONTRIBUTING with the modularity doctrine summary and the two standing rules above
-  - [x] Run the "Spidola" trademark / store-name availability check (original name "Orbita" failed and was replaced; App Store Connect reservation remains the definitive test, tracked in Phase 7)
+  - [x] Run the "Spidola" trademark / store-name availability check (original name "Orbita" failed and was replaced; App Store Connect reservation remains the definitive test, tracked in Phase 8 — deferred)
 - [x] **Toolchain pins**
   - [x] `rust-toolchain.toml` pinned to 1.96.1; workspace manifest with resolver 3, edition 2024, `workspace.lints` per rules file
   - [x] `docs/toolchains.md` recording the Xcode/Swift (6.3.x) and Kotlin (2.4.0) / AGP / KSP2 / Gradle pins; build scripts assert them
@@ -154,17 +154,17 @@ coherently in each platform's tooling. Physical-device validation is deferred an
   - [x] "No action available" is unrepresentable in the component's API
 - [x] **Browse completion**
   - [x] Source → type → category → channel drill-down; virtualized everywhere
-  - [ ] Scroll-hitch profiling on the low-end Android hardware baseline — Phase 7 performance acceptance
+  - [ ] Scroll-hitch profiling on the low-end Android hardware baseline — Phase 8 (deferred) performance acceptance
   - [x] Logo pipeline: lazy load, placeholder, capped disk cache (Coil / URLSession pipeline)
   - [x] Context menu: play, favorite, hide, details, per-channel engine override (engine option stubbed until Phase 5)
 - [x] **Search UI**
   - [x] Global search reachable everywhere; per-keystroke results against the core budget; source/type filters
   - [x] Remote text entry and platform phone-keyboard integration implemented; remote text entry verified on virtual devices
-  - [ ] Platform phone-keyboard input verified with a physical phone/TV pair — Phase 7 hardware acceptance
+  - [ ] Platform phone-keyboard input verified with a physical phone/TV pair — Phase 8 (deferred) hardware acceptance
 - [x] **Favorites + recents**
   - [x] Favorites row first on home; recents with purge toggle and off switch
 
-**Exit criteria:** the self-hoster persona can add a real playlist by URL on both platforms, browse and search it fluidly on reference hardware, and every induced failure (bad URL, 401, garbage file, mid-import network drop) presents an actionable error and a clean log trail. The complete functional flow is verified on both virtual devices (checkpoint below); reference/low-end hardware performance and phone-keyboard acceptance remain Phase 7 work.
+**Exit criteria:** the self-hoster persona can add a real playlist by URL on both platforms, browse and search it fluidly on reference hardware, and every induced failure (bad URL, 401, garbage file, mid-import network drop) presents an actionable error and a clean log trail. The complete functional flow is verified on both virtual devices (checkpoint below); reference/low-end hardware performance and phone-keyboard acceptance remain Phase 8 (deferred) work.
 
 ---
 
@@ -202,9 +202,12 @@ coherently in each platform's tooling. Physical-device validation is deferred an
   - [ ] Maintainer test headend serving self-produced streams per EngineError class; per-release manual checklist committed
     - [x] Per-release manual checklist committed (`docs/engine-acceptance.md`), including the headend
           stream/route specification
-    - [ ] Headend stood up and the checklist run on hardware — **maintainer action**, blocks the M1 exit
+    - [ ] Headend stood up and the forceable EngineError/fallback routes run on virtual devices — Phase 7 hardening
+    - [ ] Full checklist (decode matrix and timing columns) run on physical hardware — Phase 8 (deferred);
+          per the 2026-07-16 restructure this no longer blocks the software milestones, only the 1.0 gate
 
 **Exit criteria (= M1):** a household member watches a channel unaided on both platforms; zap and channel strip meet budgets on reference hardware; forcing each EngineError class produces the correct loud-fallback or actionable error on all four engines.
+*Re-scoped 2026-07-16:* the reference-hardware clauses are deferred to Phase 8 with the rest of the physical-device acceptance; until hardware exists, M1 stands as virtual-device verification (already green in the pre-Phase-7 checkpoint) plus the Phase 7 headend/EngineError pass.
 
 ---
 
@@ -217,7 +220,7 @@ coherently in each platform's tooling. Physical-device validation is deferred an
     - Catalogs persist a **credential-free** locator; the password is embedded only at play time,
       in `core-xtream/src/urls.rs` (the audited point). Xtream buffers each listing whole rather
       than streaming — the protocol returns one unpaginated JSON array per listing, so there is
-      nothing to stream; bounded by a 64 MiB cap. Revisit against the low-end baseline in Phase 7.
+      nothing to stream; bounded by a 64 MiB cap. Revisit against the low-end baseline in Phase 8 (deferred).
 - [x] **Xtream in the apps** — add-account flow, series browsing UI, per-source refresh semantics, 401-renewal error path
   - `SourceService::add_xtream` **verifies the account before storing it**, so a wrong password is a
     sentence on the add screen rather than a mystery on the next refresh; the 401-renewal path is
@@ -256,7 +259,7 @@ coherently in each platform's tooling. Physical-device validation is deferred an
       grouped `SpidolaRow` list showing each setting's current value, with nine closed-set settings
       routing through one reusable picker that hands back a **typed** value
     - The **EPG window is deliberately not surfaced**: it is in the core vocabulary because §6.9
-      lists it, but ingest is Phase 8 and a control that does nothing is a UX bug
+      lists it, but ingest is Phase 7 (EPG now/next) and a control that does nothing is a UX bug
   - [x] Diagnostics screen: log level (runtime tracing filter), log export (ring buffer, redaction test on export output), versions incl. core git revision
     - `set_log_level` persists **and** applies the live filter (and is re-applied at startup),
       `export_logs` snapshots the ring, the handshake reports the core git revision. Redaction on
@@ -265,7 +268,7 @@ coherently in each platform's tooling. Physical-device validation is deferred an
       default (PRD §7)
 - [x] **Accessibility + localization baseline**
   - [x] Accessibility semantics pass over every focusable element; reduce-motion honored; contrast audit against tokens
-  - [ ] Full VoiceOver / TalkBack walkthrough on physical TV hardware — Phase 7 accessibility acceptance
+  - [ ] Full VoiceOver / TalkBack walkthrough on physical TV hardware — Phase 8 (deferred) accessibility acceptance
     - **Reduce-motion is done and was a real bug**: `SpidolaFocusRing` (tvOS) and `SpidolaFocus`
       (Android) both animated the focus lift unconditionally, so every focusable surface in the app
       moved even with animations switched off — older than this phase, and failing the P0 bar for
@@ -333,7 +336,7 @@ coherently in each platform's tooling. Physical-device validation is deferred an
       *entire* surface stays unextracted meanwhile (failureClass, message, and the "Try again" /
       "Go back" / "Edit" action labels), so the one place visible English remains is deliberate and
       reads as pending work rather than as an oversight
-  - [ ] Finish the structured error-code boundary and the three documented view-model localization channels before claiming a fully localizable 1.0 surface
+  - [ ] Finish the structured error-code boundary and the three documented view-model localization channels before claiming a fully localizable 1.0 surface — tracked as Phase 7 work (software, no hardware needed)
 
 **Exit criteria:** all PRD P0 features function on both platforms; plaintext credentials provably never touch SQLite or logs; the app passes a full screen-reader walkthrough. Virtual-device P0 functionality and the expanded secret boundary are verified below; the physical screen-reader walkthrough and documented localization boundary work remain open.
 
@@ -357,23 +360,34 @@ coherently in each platform's tooling. Physical-device validation is deferred an
   - [x] Authenticated-encrypted all M3U source/channel/history credential material at rest; added catalog-keyed channel identities, strict domain-separated envelopes, and opaque resolved-stream/header FFI objects whose native diagnostics cannot reflect plaintext
   - [x] Made the schema-2 legacy-row/page scrub crash-retry-safe with a durable pending/complete marker, and proved credentials stay out of SQLite/WAL/logs
   - [x] Made Android refuse any core other than schema 2 / boundary 4 before bootstrap, matching the startup-handshake contract already enforced by tvOS
-- [ ] **Hardware/headend acceptance that virtual devices cannot close**
-  - [ ] Stand up the deterministic maintainer headend and run `docs/engine-acceptance.md` across all four engines and every EngineError/decode route
-  - [ ] Measure click-to-first-frame, zap teardown/rebuild, scroll hitching, startup, and series-heavy Xtream peak memory on reference and low-end hardware
-  - [ ] Verify physical phone-keyboard/pairing-camera flows plus VPN and multi-interface address selection
-  - [ ] Verify hardware decode/codec coverage, Siri/interruption handling, AirPlay, audio/subtitle behavior, and physical-remote semantics
-  - [ ] Complete the physical VoiceOver/TalkBack walkthrough and the remaining localization boundary work above
+- [ ] **Hardware/headend acceptance that virtual devices cannot close** — *moved on 2026-07-16*: the
+      hardware items now live verbatim in Phase 8 (deferred), which is their single tracking home;
+      the headend stand-up and its virtual-device EngineError routes, plus the localization boundary
+      work above, moved into the consolidated Phase 7 as software-verifiable tasks
 
-**Checkpoint result:** Phase 7 can begin with all automatable pre-Phase-7 emulator/simulator work green. The open items are deliberately carried into Phase 7 because they require physical hardware, a deterministic headend, performance measurement, or the already-scoped localization boundary change; they do not masquerade as completed acceptance.
+**Checkpoint result:** Phase 7 can begin with all automatable pre-Phase-7 emulator/simulator work green. The open items are deliberately carried forward because they require physical hardware, a deterministic headend, performance measurement, or the already-scoped localization boundary change; they do not masquerade as completed acceptance. *(2026-07-16: with physical hardware unavailable for the foreseeable future, the hardware items were split out into the deferred Phase 8 and the remaining software work consolidated into Phase 7 below.)*
 
 ---
 
-## Phase 7 — Hardening and release (Milestone M2 / 1.0)
+## Phase 7 — Consolidated software work: hardening, P1, explorations (software-complete)
 
-- [ ] **Performance verification** — every PRD §9 budget measured on reference + low-end hardware; criterion regression gates locked; Instruments / Macrobenchmark+Perfetto reports archived per release checklist
-- [ ] **Hostile-input testing** — exercise parsers and pairing with oversized lines, malformed UTF-8, and slow-loris behavior
-- [ ] **Release engineering**
-  - [ ] Signed store pipelines; Android direct-release fat APK with checksums attached to GitHub releases
+*Restructured 2026-07-16.* Physical Apple TV / Android TV hardware is unavailable for the
+foreseeable future, and the plan stops pretending otherwise: everything that genuinely requires
+devices, a phone/TV pair, reference/low-end performance hardware, or store accounts now lives in
+Phase 8 (deferred), and this phase consolidates all remaining buildable work — the
+software-verifiable remainder of the former Phase 7 plus the former Phases 8 and 9 in full, and the
+localization boundary carried from Phase 6. The verification rig is what actually exists: the tvOS
+Simulator (drivable via Computer Use), the Android TV emulator (ADB + Compose instrumentation),
+host-side test suites, and CI. Milestone note: M2 (1.0) moves to Phase 8 with the release gate, and
+the M3/M4 *ship* gates collapse into it too — this phase's exit is **software-complete**, not
+shipped.
+
+- [ ] **Hardening (from the former Phase 7)**
+  - [ ] Hostile-input testing — exercise parsers and pairing with oversized lines, malformed UTF-8, and slow-loris behavior
+  - [ ] Criterion regression gates locked for every budget measurable off-hardware; the on-hardware measurements themselves are Phase 8
+  - [ ] Maintainer test headend stood up (self-produced streams per EngineError class); the forceable EngineError/fallback routes of `docs/engine-acceptance.md` run on both virtual devices across all four engines — the decode matrix and timing columns stay with Phase 8
+- [ ] **Release engineering (everything except the store/hardware gate)**
+  - [ ] Android direct-release fat APK with checksums attached to GitHub releases; store signing configuration prepared (the signed store pipelines themselves ride Phase 8 with submission)
   - [ ] Third-party notices generated into About; final cargo-deny/REUSE audit; LGPL build flags for mpv/FFmpeg committed and verified
   - [ ] **Close the license-gate gap: cargo-deny only audits the Rust graph.** The JVM/Gradle graph
         (Media3, Compose, Hilt, JNA, zxing) and the SPM graph (MPVKit) have no automated license
@@ -384,32 +398,48 @@ coherently in each platform's tooling. Physical-device validation is deferred an
         so "all bundled components must be AGPL-compatible" (PRD §10) is enforced rather than
         asserted (TECH_SPEC §12)
   - [ ] Conventional-commit changelog generation
-- [ ] **Store submission (PRD §10 posture)**
-  - [ ] Reserve the app name in App Store Connect (create the app record) — the definitive "Spidola" availability test (PRD §13); maintainer action
-  - [ ] Content-neutral listings; one-page privacy policy; reviewer demo source on the maintainer headend (self-produced/public-domain streams only)
-  - [ ] Play TV form-factor checklist (banner, D-pad completeness); App Store submission with appeal plan documented
-- [ ] **1.0 tag** — versioned schema + boundary handshake verified against a deliberately stale shell (fails fast and legibly)
-
-**Exit criteria (= M2):** store approvals or documented appeals in flight; direct-distribution artifacts published; all budgets green in the archived reports.
-
----
-
-## Phase 8 — P1 fast-follow (Milestone M3)
-
-- [ ] **EPG (now/next)** — XMLTV streaming parser with rolling-window pruning (`core-parse/xmltv`); Xtream EPG endpoints; background incremental ingest with bounded storage; now/next on channel rows and in the channel strip
+  - [ ] Stale-shell drill: versioned schema + boundary handshake verified against a deliberately stale shell (fails fast and legibly) — formerly bundled with the 1.0 tag; the tag itself is Phase 8
+- [ ] **Localization boundary (carried from Phase 6)** — the core returns an error code plus structured data and the shells own the vocabulary (TECH_SPEC §14): implement the structured error-code boundary for `ActionableError` across both shells, and resource the three documented view-model channels (`AddSourceViewModel.validation`, `SourcesViewModel.status`, `ChannelDetailViewModel.notice`)
+- [ ] **EPG (now/next)** — XMLTV streaming parser with rolling-window pruning (`core-parse/xmltv`); Xtream EPG endpoints; background incremental ingest with bounded storage; now/next on channel rows and in the channel strip; surface the §6.9 EPG-window setting deliberately withheld in Phase 6
 - [ ] **Custom channels** — create/edit (name, URL, logo, headers/UA); groups; portable export/import (the cross-device answer, PRD §6.7)
 - [ ] **Platform surfaces** — tvOS Top Shelf extension (app-group snapshot); Android home-screen channels / watch-next; Android system content-search provider
 - [ ] **Personalization** — user-arrangeable favorites ordering
-- [ ] **Community** — translation platform live; first community locales shipped; contributor docs validated by the first external PR (governance model from Phase 0 exercised)
+- [ ] **Community** — translation platform live; first community locales merged (they ship with the Phase 8 releases); contributor docs validated by the first external PR (governance model from Phase 0 exercised)
+- [ ] **2.0 explorations (from the former Phase 9, decision-gated)**
+  - [ ] **EPG timeline grid** — virtualized two-axis grid within TV performance budgets (asserted against the virtual-device baseline; hardware confirmation rides Phase 8)
+  - [ ] **Recording (Android only, PRD §6.8)** — remux-to-storage while watching; storage management UX; explicit non-support messaging on tvOS
+  - [ ] **Platform expansion review** — assess phone/tablet ports now that core + contract are proven
 
-**Exit criteria (= M3):** all P1 features shipped in a 1.x release on both platforms with parity per PRD §7.
+**Exit criteria (software-complete):** every P0 hardening item, every P1 feature, and each resolved
+exploration works on the virtual-device matrix with parity per PRD §7 and the full regression suite
+green; hostile-input and per-graph license gates run in CI; each Phase 9-descended item is resolved
+by working feature or documented decision — no silent backlog. Nothing is tagged or shipped:
+releases are gated by Phase 8.
 
 ---
 
-## Phase 9 — 2.0 explorations (Milestone M4, decision-gated)
+## Phase 8 — Deferred: physical hardware, headend-on-hardware, and store acceptance (Milestone M2 / 1.0, then the M3/M4 ships)
 
-- [ ] **EPG timeline grid** — virtualized two-axis grid within TV performance budgets
-- [ ] **Recording (Android only, PRD §6.8)** — remux-to-storage while watching; storage management UX; explicit non-support messaging on tvOS
-- [ ] **Platform expansion review** — assess phone/tablet ports now that core + contract are proven
+*Deferred 2026-07-16, not removed.* Every item here requires something the project does not
+currently have: physical Apple TV / Android TV devices, a phone/TV pair on a real LAN, reference
+and low-end performance hardware, or store accounts. Keeping the checklist intact is deliberate —
+the pre-Phase-7 checkpoint's rule that open acceptance must not masquerade as completed acceptance
+applies to this whole phase. When hardware becomes available, this phase runs as specified and
+gates the 1.0 tag and store submission; the software built in Phase 7 then ships as 1.0 and the 1.x
+line.
 
-**Exit criteria:** each item resolved by shipped feature or documented decision; no silent backlog.
+- [ ] **Performance verification on hardware** — every PRD §9 budget measured on reference + low-end hardware: click-to-first-frame, zap teardown/rebuild, scroll hitching, startup, and series-heavy Xtream peak memory (the TECH_SPEC §14 flag); Instruments / Macrobenchmark+Perfetto reports archived per release checklist
+- [ ] **Engine acceptance on hardware** — run the full `docs/engine-acceptance.md` checklist, decode matrix and timing columns included, across all four engines and every EngineError/decode route against the maintainer headend (stood up in Phase 7)
+- [ ] **Physical-interaction flows** — phone-keyboard input with a physical phone/TV pair; pairing camera/QR flow; VPN and multi-interface address selection
+- [ ] **Platform hardware behavior** — hardware decode/codec coverage, Siri/interruption handling, AirPlay, audio/subtitle behavior, physical-remote semantics
+- [ ] **Accessibility acceptance** — full VoiceOver / TalkBack walkthrough on physical TV hardware
+- [ ] **Store submission (PRD §10 posture)**
+  - [ ] Signed store pipelines (Apple + Play), completing the signing configuration prepared in Phase 7
+  - [ ] Reserve the app name in App Store Connect (create the app record) — the definitive "Spidola" availability test (PRD §13); maintainer action
+  - [ ] Content-neutral listings; one-page privacy policy; reviewer demo source on the maintainer headend (self-produced/public-domain streams only)
+  - [ ] Play TV form-factor checklist (banner, D-pad completeness); App Store submission with appeal plan documented
+- [ ] **1.0 tag** — cut once the above are green; re-run the Phase 7 stale-shell handshake drill against the release artifacts
+
+**Exit criteria (= M2, unblocking the M3/M4 ships):** store approvals or documented appeals in
+flight; direct-distribution artifacts published; all budgets green in the archived hardware
+reports; the already-software-complete P1 and exploration features ship in the ensuing 1.x line.
