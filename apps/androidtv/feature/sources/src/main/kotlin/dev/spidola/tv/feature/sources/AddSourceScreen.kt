@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -174,13 +176,16 @@ private fun Form(
                     onUserAgentChange,
                     "add-source-userAgent",
                 )
+                val tlsState =
+                    stringResource(if (acceptInvalidTls) R.string.add_source_on else R.string.add_source_off)
                 SpidolaRow(
                     title = stringResource(R.string.add_source_allow_self_signed),
-                    accessory =
-                        RowAccessory.Label(
-                            stringResource(if (acceptInvalidTls) R.string.add_source_on else R.string.add_source_off),
-                        ),
+                    accessory = RowAccessory.Label(tlsState),
                     onClick = onToggleTls,
+                    // A switch in all but name, so it announces like one: the title is what it
+                    // governs, "On" is where it stands. Whether this TV will trust a certificate
+                    // nobody vouched for is not a fact to bury in a row's name.
+                    modifier = Modifier.semantics { stateDescription = tlsState },
                 )
             }
             AddSourceMode.FILE ->

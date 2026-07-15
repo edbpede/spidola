@@ -199,18 +199,14 @@ private fun SettingsList(
             )
         }
         item(key = "clear-history") {
+            val clearWarning = stringResource(R.string.settings_clear_history_warning)
             SpidolaRow(
                 title =
                     stringResource(
                         if (confirmClear) R.string.settings_clear_history_confirm else R.string.settings_clear_history,
                     ),
                 subtitle = stringResource(R.string.settings_clear_history_explainer),
-                accessory =
-                    if (confirmClear) {
-                        RowAccessory.Label(stringResource(R.string.settings_clear_history_warning))
-                    } else {
-                        RowAccessory.None
-                    },
+                accessory = if (confirmClear) RowAccessory.Label(clearWarning) else RowAccessory.None,
                 onClick = {
                     if (confirmClear) {
                         onClearHistory()
@@ -219,7 +215,12 @@ private fun SettingsList(
                         confirmClear = true
                     }
                 },
-                modifier = Modifier.testTag("settings-clear-history"),
+                // The warning is the armed state, not decoration: the next press is the one that
+                // cannot be taken back, and a listener has to hear that before pressing.
+                modifier =
+                    Modifier
+                        .semantics { if (confirmClear) stateDescription = clearWarning }
+                        .testTag("settings-clear-history"),
             )
         }
 

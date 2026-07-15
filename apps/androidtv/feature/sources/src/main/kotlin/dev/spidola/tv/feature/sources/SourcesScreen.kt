@@ -22,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -191,17 +193,25 @@ private fun SourceItem(
     viewModel: SourcesViewModel,
 ) {
     val autoRefresh = AutoRefreshOption.from(source.common.autoRefreshSecs)
+    val condition =
+        when {
+            isRefreshing -> stringResource(R.string.sources_refreshing)
+            !source.common.enabled -> stringResource(R.string.sources_disabled)
+            else -> null
+        }
     SpidolaRow(
         title = source.name,
         subtitle = stringResource(R.string.sources_subtitle, source.kindLabel, stringResource(autoRefresh.label)),
-        accessory =
-            when {
-                isRefreshing -> RowAccessory.Label(stringResource(R.string.sources_refreshing))
-                !source.common.enabled -> RowAccessory.Label(stringResource(R.string.sources_disabled))
-                else -> RowAccessory.None
-            },
+        accessory = if (condition != null) RowAccessory.Label(condition) else RowAccessory.None,
         onClick = onToggleExpanded,
-        modifier = Modifier.testTag("manage-source-${source.name}"),
+        // Refreshing and disabled are what this source *is* at the moment, so they announce as the
+        // row's state. Left in the accessory alone they would land inside the name — and "Disabled"
+        // read as part of a name collides with the word TalkBack already uses for a control that
+        // cannot be pressed, which this row very much can (PRD §6.10).
+        modifier =
+            Modifier
+                .semantics { condition?.let { stateDescription = it } }
+                .testTag("manage-source-${source.name}"),
     )
     if (!expanded) return
 
@@ -237,16 +247,14 @@ private fun SourceItem(
             modifier = actionModifier,
         )
     }
+    val deleteWarning = stringResource(R.string.sources_delete_warning)
     SpidolaRow(
         title = stringResource(if (confirmDelete) R.string.sources_delete_confirm else R.string.sources_delete),
-        accessory =
-            if (confirmDelete) {
-                RowAccessory.Label(stringResource(R.string.sources_delete_warning))
-            } else {
-                RowAccessory.None
-            },
+        accessory = if (confirmDelete) RowAccessory.Label(deleteWarning) else RowAccessory.None,
         onClick = onDeleteClick,
-        modifier = actionModifier,
+        // The warning is the armed state, not decoration: this row's second press is the one that
+        // cannot be taken back, and a listener has to hear that before pressing rather than after.
+        modifier = actionModifier.semantics { if (confirmDelete) stateDescription = deleteWarning },
     )
 }
 

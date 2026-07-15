@@ -19,7 +19,17 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 
-/** A trailing accessory on a [SpidolaRow] — a status word or a favorite star. */
+/**
+ * A trailing accessory on a [SpidolaRow] — a status word or a favorite star.
+ *
+ * **Every accessory is silent to a screen reader, and the caller announces what it means.** An
+ * accessory is a glance: a word or a mark placed where the eye already is, saying what this row
+ * *is* right now. Read aloud it becomes part of the row's name instead — "Keep recently watched,
+ * On" — which buries a fact TalkBack has a place of its own for, and then says it twice over for
+ * any caller that also put it there properly. So the slot carries no semantics, and a caller that
+ * shows one owes its meaning to `stateDescription` (or `selected`, where the row is a choice).
+ * Nothing here is lost by that: it is the same fact, moved to where a listener expects it.
+ */
 sealed interface RowAccessory {
     data object None : RowAccessory
 
@@ -29,9 +39,8 @@ sealed interface RowAccessory {
 
     /**
      * The mark a row wears to stand out from its neighbours — a favorite, or the choice in force.
-     * What it means is the caller's to say: it reads as a star to anyone who can see one, and the
-     * callers that use it mean three different things by it, so it is silent to a screen reader and
-     * each caller announces its own sense of it as the row's state (PRD §6.10).
+     * What it means is especially the caller's to say: it reads as a star to anyone who can see
+     * one, and the callers that use it mean three different things by it.
      */
     data object Star : RowAccessory
 }
@@ -78,21 +87,25 @@ fun SpidolaRow(
                     )
                 }
             }
-            when (accessory) {
-                RowAccessory.None -> Unit
-                is RowAccessory.Label ->
-                    Text(
-                        text = accessory.value,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = SpidolaPalette.Static,
-                    )
-                RowAccessory.Star ->
-                    Text(
-                        text = "★",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = SpidolaPalette.TestCardAmber,
-                        modifier = Modifier.clearAndSetSemantics { },
-                    )
+            // Cleared once, around the slot rather than inside each arm: the rule belongs to what an
+            // accessory *is*, so a fourth kind added below inherits it instead of having to
+            // remember it.
+            Row(modifier = Modifier.clearAndSetSemantics { }) {
+                when (accessory) {
+                    RowAccessory.None -> Unit
+                    is RowAccessory.Label ->
+                        Text(
+                            text = accessory.value,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = SpidolaPalette.Static,
+                        )
+                    RowAccessory.Star ->
+                        Text(
+                            text = "★",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = SpidolaPalette.TestCardAmber,
+                        )
+                }
             }
         }
     }
