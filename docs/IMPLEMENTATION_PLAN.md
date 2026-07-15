@@ -260,8 +260,8 @@ coherently in each platform's tooling. Physical-device validation is deferred an
       export is asserted end-to-end against a headend that mirrors the password back. "Export" is an
       on-screen viewer on both platforms — tvOS has no user-visible file system, and parity is the
       default (PRD §7)
-- [ ] **Accessibility + localization baseline**
-  - [ ] VoiceOver / TalkBack pass over every focusable element; reduce-motion honored; contrast audit against tokens
+- [x] **Accessibility + localization baseline**
+  - [x] VoiceOver / TalkBack pass over every focusable element; reduce-motion honored; contrast audit against tokens
     - **Reduce-motion is done and was a real bug**: `SpidolaFocusRing` (tvOS) and `SpidolaFocus`
       (Android) both animated the focus lift unconditionally, so every focusable surface in the app
       moved even with animations switched off — older than this phase, and failing the P0 bar for
@@ -269,15 +269,54 @@ coherently in each platform's tooling. Physical-device validation is deferred an
       border stays, since an invisible focus ring is the worse failure). Android's comment showed
       the misconception outright — "kept under the reduce-motion-safe ceiling (< 200 ms)" conflates
       duration with suppression
-    - Screen-reader labels ship on the settings slices; the sweep over the older slices, and the
-      contrast audit, remain
-  - [ ] String extraction complete; localization infrastructure live; English strings copy-edited per PRD §8.6 voice
-    - **Infrastructure is live on both** (`Localizable.xcstrings`, `strings.xml`), English-first.
-      Android's `feature:settings` and `feature:sources` are fully resourced (47 entries, plurals
-      where counts appear). The tvOS sweep over the older slices remains and is small
-    - **Two view-model channels are deliberately left in English** and are not a sweep:
-      `AddSourceViewModel.validation` and `SourcesViewModel.status` carry sentences, and the latter
-      interpolates, so resourcing them means restructuring a view-model API to carry resource ids
+    - **State is announced as state, not as part of the name**: the sweep over browse, search, and
+      playback follows the idiom the settings slices established — `.accessibilityLabel` +
+      `.accessibilityValue` on tvOS, `stateDescription` on Android — because a row that reads
+      "Recents, On" as one blob is not what a VoiceOver or TalkBack user expects to hear. The
+      favorite/hide and filter-chip surfaces announce their *current* state rather than only the
+      verb that would change it. Decorative glyphs (`★`, `✓`, `▲▼`) are cleared from the
+      accessibility tree: they are ornament, and a screen reader spelling them out is noise
+    - **The contrast audit found a real failure, and this is why it was worth running.** The palette
+      was expected to pass everywhere; every pair listed in PRD §8.2 does. But Stream Red — the one
+      semantic color that carries *prose* (the add-source validation message on both shells, and
+      Material's `error` role on Android) — was `#C0554E` and reached only **4.05:1** on Studio and
+      **3.58:1** on Set against the 4.5:1 floor for body text. §8.2 pins hexes for its five named
+      values and asks only for a *muted red in the same tonal family*, so the hex was ours: it is
+      now `#C96E69`, same hue and saturation, lightness 53% → 60%, at **5.16:1** and **4.56:1**.
+      Recorded in TECH_SPEC §14 with the rejected alternatives. Full table, all passing:
+
+      | fg | bg | ratio | needs |
+      |---|---|---|---|
+      | Broadcast White | Studio | 15.91:1 | 4.5:1 |
+      | Broadcast White | Set | 14.06:1 | 4.5:1 |
+      | Static | Studio | 5.98:1 | 4.5:1 |
+      | Static | Set | 5.28:1 | 4.5:1 |
+      | Studio | Test-Card Amber | 8.43:1 | 4.5:1 |
+      | Test-Card Amber | Studio | 8.43:1 | 3:1 (non-text) |
+      | Test-Card Amber | Set | 7.45:1 | 3:1 (non-text) |
+      | Stream Red | Studio | 5.16:1 | 4.5:1 |
+      | Stream Red | Set | 4.56:1 | 4.5:1 |
+      | Stream Green | Studio | 6.21:1 | 3:1 (icon) |
+
+    - **Focus behaviour remains inspection-verified, deliberately.** The labels are a code pass
+      against established idioms; a per-feature-module instrumentation harness that could assert
+      focus *restoration* is Phase-7-sized and is not in this phase. The existing XCUITest smoke
+      and the Android smoke test stay as they are, and this note says so rather than letting the
+      tick imply coverage that does not exist
+  - [x] String extraction complete; localization infrastructure live; English strings copy-edited per PRD §8.6 voice
+    - **Infrastructure is live on both** (`Localizable.xcstrings`, `strings.xml`), English-first, and
+      the sweep now covers every slice: tvOS `FeatureSources`, `FeatureBrowse`, `FeaturePlayback`,
+      `FeatureSearch`, and the two interpolation formats in `DesignSystem` (localized as *formats*,
+      so word order can vary by language); Android `feature:browse`, `feature:playback`,
+      `feature:search`. Counts pluralize through the catalogs rather than through concatenation.
+      Enum labels reaching UI resolve through feature-side `@Composable` resolvers, so no resource
+      landed in corekit or player-contract
+    - **`defaultLocalization` is the silent-echo trap**: a Swift package without it compiles, runs,
+      and shows the key instead of the string. Every newly-resourced package carries it
+    - **Three view-model channels are deliberately left in English** and are not a sweep:
+      `AddSourceViewModel.validation`, `SourcesViewModel.status`, and `ChannelDetailViewModel.notice`
+      (found during this pass, same shape as the two already recorded) carry sentences, and some
+      interpolate, so resourcing them means restructuring a view-model API to carry resource ids
       plus args — a design change, decided separately
     - **`ActionableError` cannot be localized by a sweep, and this is the reason:**
       `ApiError::InvalidInput` carries `reason: String` — **English prose generated in Rust** — which
@@ -285,8 +324,11 @@ coherently in each platform's tooling. Physical-device validation is deferred an
       arm *except the one that varies*, which is worse than not doing it, because it would look
       done. Fully localizing means the core returns an **error code plus structured data** and the
       shell renders the sentence: a TECH_SPEC §5 boundary change across both shells, three slices
-      each, and the core's taxonomy. The same question as the buffering enum — who owns the
-      vocabulary — and it needs answering before the work is scoped
+      each, and the core's taxonomy. **That question is now answered — the shells own the
+      vocabulary (TECH_SPEC §14) — and the implementation is a scoped follow-up, not this PR.** The
+      *entire* surface stays unextracted meanwhile (failureClass, message, and the "Try again" /
+      "Go back" / "Edit" action labels), so the one place visible English remains is deliberate and
+      reads as pending work rather than as an oversight
 
 **Exit criteria:** all PRD P0 features function on both platforms; secrets provably never touch SQLite or logs; the app passes a full screen-reader walkthrough.
 
