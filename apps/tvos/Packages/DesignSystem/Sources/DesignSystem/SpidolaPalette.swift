@@ -23,7 +23,12 @@ public enum SpidolaPalette {
   public static let testCardAmber = rgb(0xE3_A4_4A)
 
   /// Stream-health / error only, muted into the same tonal family.
-  public static let streamRed = rgb(0xC0_55_4E)
+  ///
+  /// Light enough to carry prose: this is the one semantic color that reaches text (a
+  /// validation message), and at the Set surface's 4.5:1 floor that sets its lightness, not
+  /// taste. PRD §8.2 pins no hex here — it asks only for a muted red in the same tonal family —
+  /// so the hue and saturation are the design and the lightness is the constraint.
+  public static let streamRed = rgb(0xC9_6E_69)
 
   /// Stream-health only, muted into the same tonal family.
   public static let streamGreen = rgb(0x6F_A3_6A)
