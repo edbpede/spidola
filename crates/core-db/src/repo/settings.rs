@@ -50,12 +50,17 @@ pub fn set(conn: &Connection, key: &str, value: &str) -> DbResult<()> {
 pub fn set_pair(conn: &Connection, first: (&str, &str), second: (&str, &str)) -> DbResult<()> {
     conn.execute_batch("BEGIN IMMEDIATE")?;
     let written = set(conn, first.0, first.1).and_then(|()| set(conn, second.0, second.1));
-    if let Err(error) = written {
-        // The refusal left the transaction open; take the landed write back out with it.
+    // Every failure below leaves the transaction open, and this connection is the writer every
+    // later call borrows — so an unresolved one would not just fail this write, it would refuse
+    // the next `BEGIN` on a handle nothing else can reset. Resolving it here is what keeps a
+    // refused pair a refused pair rather than a wedged database.
+    if let Err(error) = written.and_then(|()| Ok(conn.execute_batch("COMMIT")?)) {
+        // Rolling back a failed `COMMIT` is SQLite's own prescription, not a guess: the
+        // transaction stays live and awaits either a retry or this. The rollback's own result is
+        // dropped because the error worth reporting is the one that got us here.
         let _ = conn.execute_batch("ROLLBACK");
         return Err(error);
     }
-    conn.execute_batch("COMMIT")?;
     Ok(())
 }
 
