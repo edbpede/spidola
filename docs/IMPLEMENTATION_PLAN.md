@@ -215,20 +215,36 @@ coherently in each platform's tooling. Physical-device validation is deferred an
       in `core-xtream/src/urls.rs` (the audited point). Xtream buffers each listing whole rather
       than streaming — the protocol returns one unpaginated JSON array per listing, so there is
       nothing to stream; bounded by a 64 MiB cap. Revisit against the low-end baseline in Phase 7.
-- [ ] **Xtream in the apps** — add-account flow, series browsing UI, per-source refresh semantics, 401-renewal error path
-  - Core side ready: `SourceService::add_xtream` (verifies before storing) and the Xtream arm of
-    `refresh` (staging-and-swap, honest cancellation) are live behind the boundary
-- [ ] **`core-pair` + pairing UX**
+- [x] **Xtream in the apps** — add-account flow, series browsing UI, per-source refresh semantics, 401-renewal error path
+  - `SourceService::add_xtream` **verifies the account before storing it**, so a wrong password is a
+    sentence on the add screen rather than a mystery on the next refresh; the 401-renewal path is
+    the same `Unauthorized` variant with the same prescribed action (re-enter credentials)
+  - **Series browsing needed no code**: episodes arrive as channels with `MediaKind::SeriesEpisode`
+    and `core-xtream` writes the show name into `group_title`, so the existing
+    source → kind → group → channel drill-down already reads source → Series → show → episodes
+  - **Play-time resolution was the missing keel**: nothing called `resolve_stream`, so an Xtream
+    channel imported, browsed and favorited perfectly and then could not play — the catalog stores
+    a credential-free locator by design. Both shells now resolve immediately before handing a
+    stream to an engine (per play, never cached), kind-agnostic so the zap path never branches
+- [x] **`core-pair` + pairing UX**
   - [x] LAN-only server, alive only while its screen is visible; session-random token; single static form + single POST shape
     - Locality is enforced as a **peer check** (private / link-local / loopback), not merely a bind
   - [x] AGPL §13 source link on every served page
     - One shared page shell ends in a quiet colophon, so a page cannot be served without the
       offer; a test enumerates every renderable page and asserts it
-  - [ ] TV screen with QR + URL + token; submission lands as a pre-filled add-source flow
-    - Core side ready: `PairingService::start/stop` + `PairingSubmission` events. **The shell must
-      supply the TV's LAN address** — the core infers it from the route out, which is wrong behind
-      a full-tunnel VPN or on a multi-homed host (`core-pair` crate docs carry the measurements);
-      tvOS has `NWInterface` and Android `WifiManager`/`NetworkInterface` for the right answer
+  - [x] TV screen with QR + URL + token; submission lands as a pre-filled add-source flow
+    - **Each shell supplies the TV's LAN address itself** (`NWInterface` on tvOS,
+      `NetworkInterface` on Android — not `WifiManager`, which is Wi-Fi-only and deprecated from
+      API 31). The core's own inference reads the route out of the host, which a full-tunnel VPN
+      defeats; both shells prefer `eth*`/`wlan*` so a tunnel cannot win
+    - **The submission never travels on the Android back stack**: `rememberNavBackStack` is
+      serialized into saved instance state, so a payload there would have written an Xtream
+      password to disk. It goes through a one-slot in-memory handoff whose `take()` empties it, so
+      a submission pre-fills exactly once; the password field is `remember`, not `rememberSaveable`
+    - QR is `zxing` on Android and CoreImage's built-in `CIQRCodeGenerator` on tvOS — an
+      implementation asymmetry, not a §7 divergence, since both shells show one. The Android test
+      renders the matrix to pixels and decodes it with a real reader: a matrix of the right shape
+      that no camera can read would pass every structural check
 - [x] **Settings (full PRD §6.9 surface)**
   - [x] All settings wired through the core SettingsService; defaults verified ("usable without opening settings" walkthrough)
     - The typed vocabulary + defaults (`core-api/src/settings.rs`) replace Phase 2's opaque
