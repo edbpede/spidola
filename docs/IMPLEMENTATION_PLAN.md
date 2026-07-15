@@ -229,20 +229,38 @@ coherently in each platform's tooling. Physical-device validation is deferred an
       supply the TV's LAN address** — the core infers it from the route out, which is wrong behind
       a full-tunnel VPN or on a multi-homed host (`core-pair` crate docs carry the measurements);
       tvOS has `NWInterface` and Android `WifiManager`/`NetworkInterface` for the right answer
-- [ ] **Settings (full PRD §6.9 surface)**
-  - [ ] All settings wired through the core SettingsService; defaults verified ("usable without opening settings" walkthrough)
-    - Core side done: the typed vocabulary + defaults (`core-api/src/settings.rs`) replace Phase 2's
-      opaque key/value FFI surface, so a shell cannot invent an untyped setting; a contract test
-      asserts a fresh install resolves every setting with no stored row. The shell settings screens
-      and the walkthrough itself remain
-  - [ ] Diagnostics screen: log level (runtime tracing filter), log export (ring buffer, redaction test on export output), versions incl. core git revision
-    - Core side done: `set_log_level` persists **and** applies the live filter (and is re-applied at
-      startup), `export_logs` snapshots the ring, and the handshake now reports the core git
-      revision. Redaction on export is asserted end-to-end against a headend that mirrors the
-      password back. The screen itself remains
+- [x] **Settings (full PRD §6.9 surface)**
+  - [x] All settings wired through the core SettingsService; defaults verified ("usable without opening settings" walkthrough)
+    - The typed vocabulary + defaults (`core-api/src/settings.rs`) replace Phase 2's opaque
+      key/value FFI surface, so a shell cannot invent an untyped setting; a contract test asserts a
+      fresh install resolves every setting with no stored row. Both shells render the same IA: a
+      grouped `SpidolaRow` list showing each setting's current value, with nine closed-set settings
+      routing through one reusable picker that hands back a **typed** value
+    - The **EPG window is deliberately not surfaced**: it is in the core vocabulary because §6.9
+      lists it, but ingest is Phase 8 and a control that does nothing is a UX bug
+  - [x] Diagnostics screen: log level (runtime tracing filter), log export (ring buffer, redaction test on export output), versions incl. core git revision
+    - `set_log_level` persists **and** applies the live filter (and is re-applied at startup),
+      `export_logs` snapshots the ring, the handshake reports the core git revision. Redaction on
+      export is asserted end-to-end against a headend that mirrors the password back. "Export" is an
+      on-screen viewer on both platforms — tvOS has no user-visible file system, and parity is the
+      default (PRD §7)
 - [ ] **Accessibility + localization baseline**
   - [ ] VoiceOver / TalkBack pass over every focusable element; reduce-motion honored; contrast audit against tokens
+    - **Reduce-motion is done and was a real bug**: `SpidolaFocusRing` (tvOS) and `SpidolaFocus`
+      (Android) both animated the focus lift unconditionally, so every focusable surface in the app
+      moved even with animations switched off — older than this phase, and failing the P0 bar for
+      every slice. Fixed in the shared token on both platforms (only the movement goes; the amber
+      border stays, since an invisible focus ring is the worse failure). Android's comment showed
+      the misconception outright — "kept under the reduce-motion-safe ceiling (< 200 ms)" conflates
+      duration with suppression
+    - Screen-reader labels ship on the settings slices; the sweep over the older slices, and the
+      contrast audit, remain
   - [ ] String extraction complete; localization infrastructure live; English strings copy-edited per PRD §8.6 voice
+    - **Infrastructure is live on both** (`Localizable.xcstrings`, `strings.xml`), English-first, and
+      the settings slices go through it. The sweep over the older slices remains and is small
+      (~12 hardcoded strings per shell). One known cross-slice gap: `ActionableError`'s strings are
+      hardcoded English inside each shell's corekit, so error text is unlocalized everywhere it
+      appears — pre-existing, and it belongs with the sweep
 
 **Exit criteria:** all PRD P0 features function on both platforms; secrets provably never touch SQLite or logs; the app passes a full screen-reader walkthrough.
 
