@@ -77,6 +77,28 @@ impl SettingsService {
             .await
     }
 
+    /// Writes two vocabulary keys as one act on the blocking pool: either both land or neither
+    /// does.
+    ///
+    /// The pair-wise sibling of [`Self::put`], for a setting that is one choice the user makes
+    /// and two rows the store keeps. Two `put`s are two transactions with a moment between them
+    /// where the stored pair is a combination nobody chose — and, if the second never runs, a
+    /// moment that lasts. One transaction has no such moment.
+    async fn put_pair(
+        &self,
+        first: (String, String),
+        second: (String, String),
+    ) -> Result<(), ApiError> {
+        let db = Arc::clone(&self.db);
+        self.rt
+            .run_blocking(move || {
+                let conn = db.writer();
+                repo::settings::set_pair(&conn, (&first.0, &first.1), (&second.0, &second.1))?;
+                Ok(())
+            })
+            .await
+    }
+
     /// Clears one vocabulary key, reverting it to its code default.
     async fn clear(&self, key: String) -> Result<(), ApiError> {
         let db = Arc::clone(&self.db);
@@ -293,23 +315,25 @@ impl SettingsService {
     }
 
     /// Sets the EPG rolling window (PRD §6.6). Both bounds move together because they describe
-    /// one window; separate setters would invite a half-applied intermediate state.
+    /// one window — a single setter for the pair, and a single transaction underneath it, so
+    /// there is no half-applied window for a fault to leave behind or a reader to see.
     ///
     /// # Errors
-    /// Returns [`ApiError::StorageCorrupt`] on a write failure.
+    /// Returns [`ApiError::StorageCorrupt`] on a write failure, with the previous window whole.
     pub async fn set_epg_window(
         &self,
         ahead_hours: u32,
         behind_hours: u32,
     ) -> Result<(), ApiError> {
-        self.put(
-            keys::EPG_WINDOW_AHEAD_HOURS.to_owned(),
-            ahead_hours.to_string(),
-        )
-        .await?;
-        self.put(
-            keys::EPG_WINDOW_BEHIND_HOURS.to_owned(),
-            behind_hours.to_string(),
+        self.put_pair(
+            (
+                keys::EPG_WINDOW_AHEAD_HOURS.to_owned(),
+                ahead_hours.to_string(),
+            ),
+            (
+                keys::EPG_WINDOW_BEHIND_HOURS.to_owned(),
+                behind_hours.to_string(),
+            ),
         )
         .await
     }

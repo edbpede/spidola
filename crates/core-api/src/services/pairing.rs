@@ -23,9 +23,10 @@
 //! nothing here writes it anywhere.
 
 use std::net::Ipv4Addr;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::Arc;
 
 use core_pair::{PairError, PairServer, Submission, SubmissionSink};
+use tokio::sync::Mutex;
 use tracing::{info, warn};
 
 use crate::error::ApiError;
@@ -125,9 +126,18 @@ pub struct PairingService {
     rt: Arc<CoreRuntime>,
     /// The one live server, or `None` while the pairing screen is closed.
     ///
-    /// A `Mutex` because `stop` must *take* the server (its `stop` consumes `self`) and two
-    /// screens racing to start must not each end up with one. The guard is never held across an
-    /// `.await` — it is taken, the value moved out, and the guard dropped before any awaiting.
+    /// An **async** mutex, held for the whole of [`Self::start`] and [`Self::stop`] rather than
+    /// only around the slot access — which is exactly what a `tokio::sync::Mutex` is for and a
+    /// `std` one forbids. Both operations are "await something, *then* decide what the slot
+    /// holds", so a lock scoped to the access alone would leave the deciding part outside it:
+    /// two starts would each bind a socket and only the last would be remembered, handing the
+    /// other's caller a URL for a server about to die; and a stop landing between a start's
+    /// bind and its store would find the slot still empty, stop nothing, and return — while the
+    /// listener it was called to close went live a moment later, outliving the screen whose
+    /// visibility is the token's entire meaning (TECH_SPEC §12).
+    ///
+    /// Serializing the whole body is what makes the pair coherent. Two starts fully order, and
+    /// a stop always sees — and stops — whatever the start before it left behind.
     server: Mutex<Option<PairServer>>,
 }
 
@@ -138,6 +148,20 @@ impl PairingService {
             rt,
             server: Mutex::new(None),
         })
+    }
+
+    /// Stops whatever `slot` holds, leaving it empty.
+    ///
+    /// Takes the slot rather than the lock so both public methods can call it under the guard
+    /// they already hold: `start` must stop the old server without releasing the lock, and a
+    /// re-entrant `self.stop()` would deadlock on it instead.
+    async fn stop_slot(&self, slot: &mut Option<PairServer>) {
+        if let Some(server) = slot.take() {
+            // A join failure means the accept task is already gone, which is the state we were
+            // asking for; there is nothing to report and nothing to retry.
+            self.rt.spawn(server.stop()).await.ok();
+            info!(target: targets::PAIR, "pairing server stopped");
+        }
     }
 }
 
@@ -156,6 +180,9 @@ impl PairingService {
     /// Starting while one already runs stops the old server first, so a re-entered screen gets a
     /// fresh token rather than silently reusing the last one — a token's whole meaning is
     /// "someone is looking at this screen right now", and a stale one outlives that claim.
+    /// Overlapping calls are serialized rather than interleaved, so this holds however they
+    /// arrive: at most one server is ever live, it is the one the last start to finish created,
+    /// and a [`Self::stop`] issued at any point takes whichever one that turns out to be.
     ///
     /// # Errors
     /// Returns [`ApiError::InvalidInput`] if `host` is not a usable LAN address (either supplied
@@ -175,7 +202,11 @@ impl PairingService {
             })?),
             None => None,
         };
-        self.stop().await;
+        // Everything from here to the store happens under the lock — the address parse above
+        // does not, because a call that never starts anything has no business stopping what is
+        // already running.
+        let mut slot = self.server.lock().await;
+        self.stop_slot(&mut slot).await;
         let sink: Arc<dyn SubmissionSink> = Arc::new(ListenerSink {
             listener: Arc::from(listener),
         });
@@ -199,7 +230,7 @@ impl PairingService {
             token: server.token().display().to_owned(),
         };
         info!(target: targets::PAIR, port = session.port, "pairing server started");
-        *self.server.lock().unwrap_or_else(PoisonError::into_inner) = Some(server);
+        *slot = Some(server);
         Ok(session)
     }
 
@@ -209,17 +240,8 @@ impl PairingService {
     /// thing, so a shell that forgets to call this still cannot leave a listener on the LAN —
     /// this exists so the stop is *prompt* and awaited, not so it is possible.
     pub async fn stop(&self) {
-        let server = self
-            .server
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .take();
-        if let Some(server) = server {
-            // A join failure means the accept task is already gone, which is the state we were
-            // asking for; there is nothing to report and nothing to retry.
-            self.rt.spawn(server.stop()).await.ok();
-            info!(target: targets::PAIR, "pairing server stopped");
-        }
+        let mut slot = self.server.lock().await;
+        self.stop_slot(&mut slot).await;
     }
 }
 

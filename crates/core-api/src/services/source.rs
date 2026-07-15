@@ -126,23 +126,17 @@ impl SourceService {
         let db = Arc::clone(&self.db);
         self.rt
             .run_blocking(move || {
-                let source = DomainSource::M3uFile {
-                    id: SourceId::new(0), // the DB mints the rowid
-                    common: DomainCommon {
-                        name,
-                        enabled: true,
-                        auto_refresh_secs: None,
+                insert_source(
+                    &db,
+                    DomainSource::M3uFile {
+                        id: SourceId::new(0), // the DB mints the rowid
+                        common: DomainCommon {
+                            name,
+                            enabled: true,
+                            auto_refresh_secs: None,
+                        },
                     },
-                };
-                let id = {
-                    let conn = db.writer();
-                    repo::sources::insert(&conn, &source)?
-                };
-                let created = {
-                    let conn = db.writer();
-                    repo::sources::get(&conn, id)?.ok_or(ApiError::Internal)?
-                };
-                Ok(Source::from(created))
+                )
             })
             .await
     }
@@ -163,26 +157,20 @@ impl SourceService {
         self.rt
             .run_blocking(move || {
                 let locator = StreamLocator::parse(&url)?; // parse, don't validate
-                let source = DomainSource::M3uUrl {
-                    id: SourceId::new(0), // the DB mints the rowid
-                    common: DomainCommon {
-                        name,
-                        enabled: true,
-                        auto_refresh_secs: None,
+                insert_source(
+                    &db,
+                    DomainSource::M3uUrl {
+                        id: SourceId::new(0), // the DB mints the rowid
+                        common: DomainCommon {
+                            name,
+                            enabled: true,
+                            auto_refresh_secs: None,
+                        },
+                        url: locator,
+                        user_agent,
+                        accept_invalid_tls,
                     },
-                    url: locator,
-                    user_agent,
-                    accept_invalid_tls,
-                };
-                let id = {
-                    let conn = db.writer();
-                    repo::sources::insert(&conn, &source)?
-                };
-                let created = {
-                    let conn = db.writer();
-                    repo::sources::get(&conn, id)?.ok_or(ApiError::Internal)?
-                };
-                Ok(Source::from(created))
+                )
             })
             .await
     }
@@ -224,7 +212,12 @@ impl SourceService {
         let secret_ref = mint_secret_ref();
         // Store the credential before the row that references it: a source whose key resolves to
         // nothing is a broken source, whereas an orphaned secret with no source is merely
-        // garbage — and `delete` cleans those up anyway. Fail this and nothing was persisted.
+        // garbage. Fail this and nothing was persisted.
+        //
+        // The garbage is swept below rather than by `delete`, which never gets the chance: it
+        // learns which key belongs to an account by reading the account's row, and the case that
+        // strands one is precisely the case where no row was written. This is the only code that
+        // still knows the key, so it is the only code that can clean up after it.
         let secrets = Arc::clone(&self.secrets);
         let key = secret_ref.as_str().to_owned();
         let stored = password.expose().to_owned();
@@ -234,6 +227,8 @@ impl SourceService {
         drop(password);
 
         let db = Arc::clone(&self.db);
+        let secrets = Arc::clone(&self.secrets);
+        let orphaned = secret_ref.as_str().to_owned();
         self.rt
             .run_blocking(move || {
                 let source = DomainSource::Xtream {
@@ -247,15 +242,20 @@ impl SourceService {
                     username,
                     secret: secret_ref,
                 };
-                let id = {
-                    let conn = db.writer();
-                    repo::sources::insert(&conn, &source)?
-                };
-                let created = {
-                    let conn = db.writer();
-                    repo::sources::get(&conn, id)?.ok_or(ApiError::Internal)?
-                };
-                Ok(Source::from(created))
+                insert_source(&db, source).inspect_err(|_| {
+                    // Best-effort, and it must stay that way: the caller's error is why the add
+                    // failed, and a cleanup that reported its own would replace a true sentence
+                    // with a confusing one. A key that survives this is inert — nothing names
+                    // it, nothing reads it — so it is worth a log line and not a failure.
+                    if let Err(error) = secrets.delete(orphaned) {
+                        warn!(
+                            target: targets::DB,
+                            %error,
+                            "the account could not be added, and the credential it had already \
+                             stored could not be removed"
+                        );
+                    }
+                })
             })
             .await
     }
@@ -368,6 +368,12 @@ impl SourceService {
     /// would strand the password in the platform keychain with nothing left able to name it
     /// (TECH_SPEC §12).
     ///
+    /// The credential therefore goes **first**, and a secure store that refuses it fails the
+    /// whole call with the source still listed. That is the only order in which a half-done
+    /// delete is one the user can finish by pressing delete again: the row is what names the
+    /// key, so while it stands the retry knows what to remove, and once it is gone nothing
+    /// does. A locked device is a wait, not a leak.
+    ///
     /// Signals every in-flight refresh for this source to cancel first, so a still-downloading
     /// import aborts at its next batch boundary and discards its staged catalog rather than
     /// swapping one in for a source that is about to vanish. This is best-effort: a refresh already
@@ -375,7 +381,9 @@ impl SourceService {
     /// the swap and reports the refresh as cancelled — never a spurious storage failure.
     ///
     /// # Errors
-    /// Returns [`ApiError::StorageCorrupt`] on a write failure.
+    /// Returns [`ApiError::StorageCorrupt`] on a write failure, or whatever the host secure
+    /// store reports if it will not release the account's password — in which case nothing was
+    /// removed at all and the call can simply be made again.
     pub async fn delete(&self, id: i64) -> Result<(), ApiError> {
         // Signal cancellation before contending for the writer: whether the delete or a
         // refresh's staging transaction wins the writer mutex, each refresh observes the flag at
@@ -405,22 +413,15 @@ impl SourceService {
                         _ => None,
                     }
                 };
-                {
-                    let conn = db.writer();
-                    repo::sources::delete(&conn, SourceId::new(id))?;
-                }
                 if let Some(secret) = secret {
-                    // The row is already gone, so a failing store must not fail the delete —
-                    // the user asked for the source to be removed and it has been. Log it: a
-                    // stranded key is a real (if minor) hygiene problem worth seeing.
-                    if let Err(error) = secrets.delete(secret.as_str().to_owned()) {
-                        warn!(
-                            target: targets::DB,
-                            %error,
-                            "source deleted, but its stored credential could not be removed"
-                        );
-                    }
+                    // Ahead of the row, and allowed to fail the call. `SecretStore::delete` is
+                    // idempotent, so a retry that finds the key already gone still succeeds and
+                    // goes on to remove the row — which is what makes pressing delete twice a
+                    // convergent act rather than a guess about how far the first one got.
+                    secrets.delete(secret.as_str().to_owned())?;
                 }
+                let conn = db.writer();
+                repo::sources::delete(&conn, SourceId::new(id))?;
                 Ok(())
             })
             .await
@@ -571,4 +572,25 @@ fn mint_secret_ref() -> SecretRef {
 fn read_source(db: &Db, id: SourceId) -> Result<Option<DomainSource>, ApiError> {
     let conn = db.reader()?;
     Ok(repo::sources::get(&conn, id)?)
+}
+
+/// Blocking insert of a new source, answered from the definition that was written.
+///
+/// Deliberately does **not** read the row back. A reread is a second thing that can fail after
+/// the add has already committed, and its failure is indistinguishable at the boundary from the
+/// add never happening — so the caller retries, and the retry duplicates the row (and, for an
+/// Xtream account, mints a second credential for the same headend). The report of a write is
+/// not the place to discover a read fault.
+///
+/// Answering from the definition is sound because storage decides nothing here but the rowid.
+/// `repo::sources::insert` writes each field verbatim, and the one field that could plausibly
+/// be reshaped in transit is documented not to be: a [`StreamLocator`] preserves its original
+/// bytes precisely because IPTV URLs do not survive normalization (`core_model::locator`). A
+/// round trip through SQLite could therefore only return what went in.
+fn insert_source(db: &Db, source: DomainSource) -> Result<Source, ApiError> {
+    let id = {
+        let conn = db.writer();
+        repo::sources::insert(&conn, &source)?
+    };
+    Ok(Source::from(source.with_id(id)))
 }

@@ -37,6 +37,9 @@ uniffi = { workspace = true, features = ["tokio"] }
 [dev-dependencies]
 # Contract tests build a real `Core` over a throwaway on-disk database.
 tempfile = { workspace = true }
+# A second handle to that database, for the one thing the boundary is too typed to express: a
+# test that needs a specific write to fail installs the refusal on the schema itself.
+core-db = { path = "../core-db" }
 
 [lints]
 workspace = true

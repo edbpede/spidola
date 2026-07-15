@@ -1301,7 +1301,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_favoritesservice_remove() != 49667) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_core_api_checksum_method_pairingservice_start() != 5246) {
+    if (lib.uniffi_core_api_checksum_method_pairingservice_start() != 33307) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_pairingservice_stop() != 19522) {
@@ -1346,7 +1346,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_settingsservice_set_engine_for_source() != 51543) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_core_api_checksum_method_settingsservice_set_epg_window() != 26564) {
+    if (lib.uniffi_core_api_checksum_method_settingsservice_set_epg_window() != 46990) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_settingsservice_set_image_cache_max_mb() != 6888) {
@@ -1379,7 +1379,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_sourceservice_add_xtream() != 11873) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_core_api_checksum_method_sourceservice_delete() != 42781) {
+    if (lib.uniffi_core_api_checksum_method_sourceservice_delete() != 9569) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_sourceservice_import_m3u_content() != 7156) {
@@ -3446,6 +3446,9 @@ public interface PairingServiceInterface {
      * Starting while one already runs stops the old server first, so a re-entered screen gets a
      * fresh token rather than silently reusing the last one — a token's whole meaning is
      * "someone is looking at this screen right now", and a stale one outlives that claim.
+     * Overlapping calls are serialized rather than interleaved, so this holds however they
+     * arrive: at most one server is ever live, it is the one the last start to finish created,
+     * and a [`Self::stop`] issued at any point takes whichever one that turns out to be.
      *
      * # Errors
      * Returns [`ApiError::InvalidInput`] if `host` is not a usable LAN address (either supplied
@@ -3585,6 +3588,9 @@ open class PairingService: Disposable, AutoCloseable, PairingServiceInterface
      * Starting while one already runs stops the old server first, so a re-entered screen gets a
      * fresh token rather than silently reusing the last one — a token's whole meaning is
      * "someone is looking at this screen right now", and a stale one outlives that claim.
+     * Overlapping calls are serialized rather than interleaved, so this holds however they
+     * arrive: at most one server is ever live, it is the one the last start to finish created,
+     * and a [`Self::stop`] issued at any point takes whichever one that turns out to be.
      *
      * # Errors
      * Returns [`ApiError::InvalidInput`] if `host` is not a usable LAN address (either supplied
@@ -4572,10 +4578,11 @@ public interface SettingsServiceInterface {
     
     /**
      * Sets the EPG rolling window (PRD §6.6). Both bounds move together because they describe
-     * one window; separate setters would invite a half-applied intermediate state.
+     * one window — a single setter for the pair, and a single transaction underneath it, so
+     * there is no half-applied window for a fault to leave behind or a reader to see.
      *
      * # Errors
-     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     * Returns [`ApiError::StorageCorrupt`] on a write failure, with the previous window whole.
      */
     suspend fun `setEpgWindow`(`aheadHours`: kotlin.UInt, `behindHours`: kotlin.UInt)
     
@@ -4968,10 +4975,11 @@ open class SettingsService: Disposable, AutoCloseable, SettingsServiceInterface
     
     /**
      * Sets the EPG rolling window (PRD §6.6). Both bounds move together because they describe
-     * one window; separate setters would invite a half-applied intermediate state.
+     * one window — a single setter for the pair, and a single transaction underneath it, so
+     * there is no half-applied window for a fault to leave behind or a reader to see.
      *
      * # Errors
-     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     * Returns [`ApiError::StorageCorrupt`] on a write failure, with the previous window whole.
      */
     @Throws(ApiException::class)
     @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
@@ -5389,6 +5397,12 @@ public interface SourceServiceInterface {
      * would strand the password in the platform keychain with nothing left able to name it
      * (TECH_SPEC §12).
      *
+     * The credential therefore goes **first**, and a secure store that refuses it fails the
+     * whole call with the source still listed. That is the only order in which a half-done
+     * delete is one the user can finish by pressing delete again: the row is what names the
+     * key, so while it stands the retry knows what to remove, and once it is gone nothing
+     * does. A locked device is a wait, not a leak.
+     *
      * Signals every in-flight refresh for this source to cancel first, so a still-downloading
      * import aborts at its next batch boundary and discards its staged catalog rather than
      * swapping one in for a source that is about to vanish. This is best-effort: a refresh already
@@ -5396,7 +5410,9 @@ public interface SourceServiceInterface {
      * the swap and reports the refresh as cancelled — never a spurious storage failure.
      *
      * # Errors
-     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     * Returns [`ApiError::StorageCorrupt`] on a write failure, or whatever the host secure
+     * store reports if it will not release the account's password — in which case nothing was
+     * removed at all and the call can simply be made again.
      */
     suspend fun `delete`(`id`: kotlin.Long)
     
@@ -5693,6 +5709,12 @@ open class SourceService: Disposable, AutoCloseable, SourceServiceInterface
      * would strand the password in the platform keychain with nothing left able to name it
      * (TECH_SPEC §12).
      *
+     * The credential therefore goes **first**, and a secure store that refuses it fails the
+     * whole call with the source still listed. That is the only order in which a half-done
+     * delete is one the user can finish by pressing delete again: the row is what names the
+     * key, so while it stands the retry knows what to remove, and once it is gone nothing
+     * does. A locked device is a wait, not a leak.
+     *
      * Signals every in-flight refresh for this source to cancel first, so a still-downloading
      * import aborts at its next batch boundary and discards its staged catalog rather than
      * swapping one in for a source that is about to vanish. This is best-effort: a refresh already
@@ -5700,7 +5722,9 @@ open class SourceService: Disposable, AutoCloseable, SourceServiceInterface
      * the swap and reports the refresh as cancelled — never a spurious storage failure.
      *
      * # Errors
-     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     * Returns [`ApiError::StorageCorrupt`] on a write failure, or whatever the host secure
+     * store reports if it will not release the account's password — in which case nothing was
+     * removed at all and the call can simply be made again.
      */
     @Throws(ApiException::class)
     @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")

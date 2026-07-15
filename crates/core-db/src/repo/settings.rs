@@ -35,6 +35,30 @@ pub fn set(conn: &Connection, key: &str, value: &str) -> DbResult<()> {
     Ok(())
 }
 
+/// Writes (upserts) two settings as one act: either both land or neither does.
+///
+/// Exists because not every setting is one row. The EPG window is a single choice the user makes
+/// once and reads back as a pair (PRD §6.6), and two separate [`set`] calls cannot promise that
+/// what comes back is a pair they ever chose — a fault between them leaves one new bound beside
+/// one old one, a window nobody asked for and nothing later corrects. One transaction has no
+/// between.
+///
+/// Each argument is a `(key, value)` pair, written in the order given.
+///
+/// # Errors
+/// Returns [`DbError`](crate::error::DbError) on a write failure, with neither key changed.
+pub fn set_pair(conn: &Connection, first: (&str, &str), second: (&str, &str)) -> DbResult<()> {
+    conn.execute_batch("BEGIN IMMEDIATE")?;
+    let written = set(conn, first.0, first.1).and_then(|()| set(conn, second.0, second.1));
+    if let Err(error) = written {
+        // The refusal left the transaction open; take the landed write back out with it.
+        let _ = conn.execute_batch("ROLLBACK");
+        return Err(error);
+    }
+    conn.execute_batch("COMMIT")?;
+    Ok(())
+}
+
 /// Removes a setting, reverting it to its code default.
 ///
 /// # Errors
@@ -76,5 +100,44 @@ mod tests {
         assert_eq!(all(&conn).unwrap().len(), 1);
         remove(&conn, "ui.language").unwrap();
         assert!(get(&conn, "ui.language").unwrap().is_none());
+    }
+
+    #[test]
+    fn a_pair_writes_both_keys() {
+        let db = Db::open_in_memory().unwrap();
+        let conn = db.writer();
+        set_pair(&conn, ("epg.ahead", "72"), ("epg.behind", "24")).unwrap();
+        assert_eq!(get(&conn, "epg.ahead").unwrap().as_deref(), Some("72"));
+        assert_eq!(get(&conn, "epg.behind").unwrap().as_deref(), Some("24"));
+    }
+
+    #[test]
+    fn a_pair_refused_halfway_moves_neither_key() {
+        // The whole reason `set_pair` exists, so it is the case worth pinning: the first write
+        // lands, the second is refused, and what the user reads back afterwards must be the
+        // window they already had rather than half of the one they asked for. The trigger stands
+        // in for whatever might refuse the write — the point is only that something can.
+        let db = Db::open_in_memory().unwrap();
+        let conn = db.writer();
+        set(&conn, "epg.ahead", "72").unwrap();
+        conn.execute_batch(
+            "CREATE TRIGGER refuse_behind BEFORE INSERT ON settings \
+             WHEN NEW.key = 'epg.behind' \
+             BEGIN SELECT RAISE(ABORT, 'the store said no'); END",
+        )
+        .unwrap();
+
+        let refused = set_pair(&conn, ("epg.ahead", "24"), ("epg.behind", "12"));
+
+        assert!(refused.is_err(), "a refused half must fail the whole pair");
+        assert_eq!(
+            get(&conn, "epg.ahead").unwrap().as_deref(),
+            Some("72"),
+            "the bound that did write must have gone back with the one that didn't"
+        );
+        assert!(
+            get(&conn, "epg.behind").unwrap().is_none(),
+            "the refused bound must not have landed"
+        );
     }
 }

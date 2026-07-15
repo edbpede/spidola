@@ -17,7 +17,7 @@
 use std::fmt::Write as _;
 use std::io::{Read, Write};
 use std::net::TcpListener;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{Sender, channel};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
@@ -47,9 +47,14 @@ fn serial() -> MutexGuard<'static, ()> {
 /// Shares its map behind an `Arc` so a test can hold one handle while the `Core` owns another —
 /// which is what lets the secrets tests below assert on what the host was actually asked to
 /// store, rather than trusting the core's word for it.
+///
+/// A real Keychain can say no — the device is locked, an entitlement is wrong — and the orders
+/// the credential paths are written in are only observable when it does. `refuse_deletes` is how
+/// a test asks for that no.
 #[derive(Clone, Default)]
 struct FakeSecrets {
     store: Arc<Mutex<std::collections::HashMap<String, String>>>,
+    refuse_deletes: Arc<AtomicBool>,
 }
 
 impl SecretStore for FakeSecrets {
@@ -61,9 +66,28 @@ impl SecretStore for FakeSecrets {
         Ok(())
     }
     fn delete(&self, key: String) -> Result<(), ApiError> {
+        if self.refuse_deletes.load(Ordering::SeqCst) {
+            return Err(ApiError::Internal);
+        }
         self.store.lock().unwrap().remove(&key);
         Ok(())
     }
+}
+
+/// Makes every subsequent `sources` insert on the database at `db_path` fail.
+///
+/// Installed over a second handle to the same file, because the boundary is typed all the way
+/// down: it offers no way to ask for one write to fail and the rest to work, and the paths that
+/// matter here are the ones that run when a write does. SQLite keeps the trigger in the schema,
+/// so the `Core`'s own connections meet it on their next insert without knowing this happened.
+fn refuse_source_inserts(db_path: &std::path::Path) {
+    let db = core_db::Db::open(db_path).expect("a second handle to the same database");
+    db.writer()
+        .execute_batch(
+            "CREATE TRIGGER refuse_sources BEFORE INSERT ON sources \
+             BEGIN SELECT RAISE(ABORT, 'the disk said no'); END",
+        )
+        .expect("the trigger installs");
 }
 
 /// A pairing listener recording what the phone submitted.
@@ -838,6 +862,97 @@ fn deleting_an_xtream_source_removes_its_stored_credential() {
 }
 
 #[test]
+fn an_add_that_cannot_write_its_row_takes_its_credential_back() {
+    // The password is stored before the row that names it, deliberately — but that leaves a
+    // window where the keychain holds a secret nothing has ever heard of. Nothing else can close
+    // it: a later `delete` finds out which key belongs to an account by reading the account's
+    // row, and the row is exactly what did not get written. So the add cleans up after itself,
+    // and here is where that is true rather than assumed.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("spidola.sqlite");
+    let secrets = FakeSecrets::default();
+    let core = open_core(&rt, &db_path, RecordingSink::default(), secrets.clone());
+    refuse_source_inserts(&db_path);
+
+    let base = spawn_xtream_stub(1);
+    let result = rt.block_on(core.sources().add_xtream(
+        "Home headend".to_owned(),
+        base,
+        XTREAM_USER.to_owned(),
+        XTREAM_PASSWORD.to_owned(),
+    ));
+
+    assert!(
+        result.is_err(),
+        "a refused insert must fail the add, not report a source that does not exist"
+    );
+    assert!(
+        secrets.store.lock().unwrap().is_empty(),
+        "a failed add must not strand its password in the host store"
+    );
+    assert!(
+        rt.block_on(core.sources().list()).unwrap().is_empty(),
+        "a failed add must leave no source behind"
+    );
+}
+
+#[test]
+fn a_store_that_refuses_the_password_leaves_the_source_deletable() {
+    // The credential goes before the row because the row is the only thing that can name it, and
+    // a store saying no is the only way to see that order. The delete must fail with the source
+    // still listed: pressing delete again then finishes the job, where the other order would
+    // leave a password nothing could ever reach.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("spidola.sqlite");
+    let secrets = FakeSecrets::default();
+    let core = open_core(&rt, &db_path, RecordingSink::default(), secrets.clone());
+
+    let base = spawn_xtream_stub(1);
+    let source = rt
+        .block_on(core.sources().add_xtream(
+            "Home headend".to_owned(),
+            base,
+            XTREAM_USER.to_owned(),
+            XTREAM_PASSWORD.to_owned(),
+        ))
+        .expect("the stub accepts the account");
+    let id = match &source {
+        Source::Xtream { id, .. } => *id,
+        other => panic!("expected an Xtream source, got {other:?}"),
+    };
+
+    secrets.refuse_deletes.store(true, Ordering::SeqCst);
+    assert!(
+        rt.block_on(core.sources().delete(id)).is_err(),
+        "a store that refuses the password must fail the delete rather than log past it"
+    );
+    assert_eq!(
+        rt.block_on(core.sources().list()).unwrap().len(),
+        1,
+        "the row that names the credential must survive, or nothing can ever name it again"
+    );
+    assert_eq!(
+        secrets.store.lock().unwrap().len(),
+        1,
+        "nothing was removed, so both halves must still be there"
+    );
+
+    // Unlocked, the same call the user already made converges: no source, no password.
+    secrets.refuse_deletes.store(false, Ordering::SeqCst);
+    rt.block_on(core.sources().delete(id))
+        .expect("the retry deletes");
+    assert!(rt.block_on(core.sources().list()).unwrap().is_empty());
+    assert!(
+        secrets.store.lock().unwrap().is_empty(),
+        "the retry must finish what the refused delete started"
+    );
+}
+
+#[test]
 fn a_rejected_xtream_account_is_never_persisted() {
     // Verifying before storing is what makes a wrong password a sentence on the add screen rather
     // than a mystery on the next refresh — and it must leave nothing behind when it fails.
@@ -996,6 +1111,170 @@ fn a_phone_submission_reaches_the_shell_only_with_the_session_token() {
     drop(seen);
 
     rt.block_on(harness.core.pairing().stop());
+}
+
+#[test]
+fn racing_starts_leave_exactly_one_server_on_the_lan() {
+    // Two screens — or one screen re-entered before the first start finished — can ask for a
+    // session at the same moment, and only one server may come out of it: a listener nobody is
+    // showing a token for is a way into this TV that no one is watching (§12).
+    //
+    // What that rests on is the *order*, which is why the load-bearing assertion here reads the
+    // log rather than the sockets. Whether a socket is still open cannot tell the two designs
+    // apart — `PairServer`'s `Drop` signals shutdown as well, so an overwritten slot closes the
+    // loser's listener either way, and the port probe below passes even against a start that
+    // never stopped anything. What only serialization can produce is the first server being
+    // stopped *before* the second one starts listening: `start` takes the lock, stops what it
+    // finds, and only then binds. Two interleaved starts cannot do that in any order — they both
+    // read the slot before either has stored anything, so both listeners are up before the first
+    // one is taken down.
+    //
+    // `biased;` pins the polling order so the interleaving under test is the one described,
+    // rather than whichever `join!` happened to rotate to.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let pairing = harness.core.pairing();
+
+    let (first, second) = rt.block_on(async {
+        tokio::join!(
+            biased;
+            pairing.start(
+                Some("127.0.0.1".to_owned()),
+                Box::new(RecordingPairingListener::default()),
+            ),
+            pairing.start(
+                Some("127.0.0.1".to_owned()),
+                Box::new(RecordingPairingListener::default()),
+            ),
+        )
+    });
+    let first = first.expect("the first start succeeds");
+    let second = second.expect("the second start succeeds");
+    assert_ne!(
+        first.token, second.token,
+        "each start must mint its own token, never reuse the last: {first:?} {second:?}"
+    );
+    let lifecycle = pairing_lifecycle(&harness.sink);
+    let listens: Vec<usize> = positions_of(&lifecycle, "listening");
+    let stops: Vec<usize> = positions_of(&lifecycle, "stopped");
+    assert_eq!(
+        listens.len(),
+        2,
+        "both starts bound a listener: {lifecycle:?}"
+    );
+    assert!(
+        stops
+            .first()
+            .is_some_and(|first_stop| *first_stop < listens[1]),
+        "the first server must be stopped before the second starts listening; the two starts ran \
+         on top of each other instead: {lifecycle:?}"
+    );
+
+    // The consequence, and cheap to check even though it holds for the wrong reasons too.
+    // Deduplicated because the loser's socket is closed before the winner binds, which frees its
+    // number for the OS to hand straight back — the same port twice is a pass, not a collision.
+    let mut ports = vec![first.port, second.port];
+    ports.sort_unstable();
+    ports.dedup();
+    let live = ports
+        .iter()
+        .filter(|port| std::net::TcpStream::connect(("127.0.0.1", **port)).is_ok())
+        .count();
+    assert_eq!(live, 1, "exactly one of {ports:?} may answer");
+
+    // And the survivor is the one the service holds, so the screen closing still closes it.
+    rt.block_on(pairing.stop());
+    for port in ports {
+        assert!(
+            std::net::TcpStream::connect(("127.0.0.1", port)).is_err(),
+            "port {port} still answers after stop"
+        );
+    }
+}
+
+/// Every pairing server's birth and death as the log saw them, oldest first.
+///
+/// `core-pair` announces both ends of a server's life on this target, and announces the death
+/// from inside the accept task that `PairServer::stop` awaits — so a "stopped" here is a socket
+/// that is provably closed, not one that has merely been asked to close. That is what makes the
+/// sequence worth reading: the question of whether two starts ran in turn or on top of each
+/// other is exactly the question of where the stops fall between the listens.
+///
+/// Deliberately not a count. `core-pair` and `PairingService` log the same sentence on the same
+/// target when a server goes down, so one stop can produce two records — the ordering carries
+/// the meaning, the tally does not.
+fn pairing_lifecycle(sink: &RecordingSink) -> Vec<&'static str> {
+    sink.records
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|record| record.target == "spidola::pair")
+        .filter_map(|record| {
+            if record.message.contains("pairing server listening") {
+                Some("listening")
+            } else if record.message.contains("pairing server stopped") {
+                Some("stopped")
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+/// Where `event` occurs in a lifecycle sequence.
+fn positions_of(lifecycle: &[&str], event: &str) -> Vec<usize> {
+    lifecycle
+        .iter()
+        .enumerate()
+        .filter_map(|(at, seen)| (*seen == event).then_some(at))
+        .collect()
+}
+
+#[test]
+fn a_stop_racing_a_start_still_leaves_nothing_listening() {
+    // The ordering that makes `stop` mean what the shell means by it. A shell drives start and
+    // stop from its screen lifecycle, so a stop can arrive while a start is still binding — and
+    // must not slip between the bind and the moment the service remembers it, stopping nothing
+    // and returning while the listener it was called to close goes live behind it.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let pairing = harness.core.pairing();
+
+    let session = rt.block_on(async {
+        let (started, ()) = tokio::join!(
+            biased;
+            pairing.start(
+                Some("127.0.0.1".to_owned()),
+                Box::new(RecordingPairingListener::default()),
+            ),
+            pairing.stop(),
+        );
+        started.expect("the pairing server starts")
+    });
+
+    assert!(
+        std::net::TcpStream::connect(("127.0.0.1", session.port)).is_err(),
+        "the stop was overtaken: port {} is still listening with no screen behind it",
+        session.port
+    );
+}
+
+#[test]
+fn setting_the_epg_window_moves_both_bounds() {
+    // One window, one call, one transaction (PRD §6.6) — the pair the user chose is the pair
+    // they read back.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let settings = harness.core.settings();
+
+    rt.block_on(settings.set_epg_window(24, 6)).unwrap();
+
+    let snapshot = rt.block_on(settings.snapshot()).unwrap();
+    assert_eq!(snapshot.epg_window_ahead_hours, 24);
+    assert_eq!(snapshot.epg_window_behind_hours, 6);
 }
 
 #[test]

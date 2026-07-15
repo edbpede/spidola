@@ -104,6 +104,21 @@ impl Source {
             | Self::Xtream { common, .. } => common,
         }
     }
+
+    /// The same source, carrying `id`.
+    ///
+    /// The identity is the one thing a source's definition cannot know about itself — it is
+    /// minted by the insert that persists it. This is how the caller that composed a definition
+    /// names the row it just became, without asking storage to describe work it did itself.
+    #[must_use]
+    pub fn with_id(mut self, id: SourceId) -> Self {
+        match &mut self {
+            Self::M3uUrl { id: identity, .. }
+            | Self::M3uFile { id: identity, .. }
+            | Self::Xtream { id: identity, .. } => *identity = id,
+        }
+        self
+    }
 }
 
 #[cfg(test)]
