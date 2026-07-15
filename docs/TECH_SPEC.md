@@ -277,7 +277,9 @@ License engineering: every file carries an SPDX header (AGPL-3.0-or-later for pr
 
 ## 13. Versioning and release
 
-Semantic versioning on the app; the core carries an independent schema version (DB) and boundary version (FFI) checked in the startup handshake. DB migrations are forward-only; a downgraded app refusing a newer schema fails with a clear message rather than guessing. Release cadence follows the PRD milestones, with each release documented by a changelog generated from conventional commits. Architecture-level decisions made or changed after this document are captured by amending this document by PR like any code.
+Semantic versioning on the app; the core carries an independent schema version (DB) and boundary version (FFI) checked in the startup handshake. DB migrations are forward-only; a downgraded app refusing a newer schema fails with a clear message rather than guessing.
+
+**Until 1.0 ships, no compatibility is owed to existing data (decided).** The app is unreleased: there are no users, and every database in existence holds a fixture catalog someone can re-import. So a change that orphans stored data — a renamed settings key, a reshaped row — is accepted rather than migrated, and no effort is spent on shims that would exist only to preserve a developer's fixture. This is a rule about *data*, not about the machinery: schema changes still land as numbered forward-only migrations (§4.4), the handshake still refuses a newer schema legibly, and the boundary version still moves when the exported surface changes shape — those exist to make the *next* change safe, and Phase 7's exit criteria test them against a deliberately stale shell. The rule expires at 1.0, when the first real database stops being disposable. Release cadence follows the PRD milestones, with each release documented by a changelog generated from conventional commits. Architecture-level decisions made or changed after this document are captured by amending this document by PR like any code.
 
 ## 14. Appendix — decision log
 
