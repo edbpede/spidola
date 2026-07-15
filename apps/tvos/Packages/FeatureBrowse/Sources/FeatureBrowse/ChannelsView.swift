@@ -37,10 +37,10 @@ public struct ChannelsView: View {
   @ViewBuilder private var content: some View {
     switch model.state {
     case .loading:
-      ProgressView("Loading channels…")
+      ProgressView(String(localized: "Loading channels…", bundle: .module))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     case .empty:
-      CenteredNotice(text: "No channels here.")
+      CenteredNotice(text: String(localized: "No channels here.", bundle: .module))
     case .failed(let error):
       actionableError(error, retry: { Task { await model.load() } }, goBack: {})
     case .ready(let rows):
@@ -70,15 +70,26 @@ public struct ChannelsView: View {
       open(row)
     }
     .focused($focused, equals: row.id)
+    // The star is the only thing marking a favorite, and a glyph has no voice. Only favorites get
+    // a value: in a list where most channels are not one, saying so on every row would bury the
+    // handful that are under the ones that aren't.
+    .accessibilityLabel(Self.label(for: row.channel))
+    .accessibilityValue(row.isFavorite ? String(localized: "Favorite", bundle: .module) : "")
     .accessibilityIdentifier("channel-\(row.channel.name)")
     .contextMenu {
-      Button("Open") { open(row) }
-      Button(row.isFavorite ? "Remove favorite" : "Add favorite") {
+      Button(String(localized: "Open", bundle: .module)) { open(row) }
+      Button(
+        row.isFavorite
+          ? String(localized: "Remove favorite", bundle: .module)
+          : String(localized: "Add favorite", bundle: .module)
+      ) {
         Task { await model.toggleFavorite(row) }
       }
-      Button("Hide channel", role: .destructive) { Task { await model.hide(row) } }
+      Button(String(localized: "Hide channel", bundle: .module), role: .destructive) {
+        Task { await model.hide(row) }
+      }
       // Per-channel engine override lands with the player contract in Phase 5.
-      Button("Player: Default") {}
+      Button(String(localized: "Player: Default", bundle: .module)) {}
         .disabled(true)
     }
     .onAppear { Task { await model.loadMoreIfNeeded(after: row) } }
@@ -87,5 +98,14 @@ public struct ChannelsView: View {
   private func open(_ row: ChannelRow) {
     guard let offset = model.offset(of: row) else { return }
     navigator.openChannel(PlayableChannel(row.channel), model.zapContext, offset)
+  }
+
+  /// Name and group as one phrase. Naming a row at all replaces everything it would otherwise say
+  /// for itself, and the group is half of how a viewer tells two channels with near-identical
+  /// names apart — dropping it to make room for the favorite value would trade one loss for
+  /// another.
+  private static func label(for channel: Channel) -> String {
+    channel.groupTitle.map { String(localized: "\(channel.name), \($0)", bundle: .module) }
+      ?? channel.name
   }
 }

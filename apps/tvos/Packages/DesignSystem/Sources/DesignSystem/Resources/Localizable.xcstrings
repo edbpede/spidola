@@ -1,0 +1,28 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%@, %@": {
+      "comment": "Screen-reader label for a poster: its title, then its subtitle. Both values are supplied by the caller. Reorder with %1$@ and %2$@ where the language wants them the other way round.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "%@. %@": {
+      "comment": "Screen-reader label for an error: what failed, then what happened. Both values are supplied by the caller. Reorder with %1$@ and %2$@ where the language wants them the other way round.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

@@ -35,7 +35,7 @@ public struct PairingView: View {
     content
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background(SpidolaPalette.studio)
-      .navigationTitle("Use my phone")
+      .navigationTitle(String(localized: "Use my phone", bundle: .module))
       // The server's lifetime is this task's: cancelling it on disappear terminates the event
       // stream, which stops the server (TECH_SPEC §12). Nothing else needs to remember to.
       .task { await model.run() }
@@ -55,13 +55,13 @@ public struct PairingView: View {
   @ViewBuilder private var content: some View {
     switch model.state {
     case .starting:
-      ProgressView("Starting…")
+      ProgressView(String(localized: "Starting…", bundle: .module))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     case .waiting(let session):
       waiting(session)
     case .received:
       // Momentary: `onChange` is already navigating to the pre-filled form.
-      ProgressView("Got it…")
+      ProgressView(String(localized: "Got it…", bundle: .module))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     case .failed(let error):
       actionableError(
@@ -75,25 +75,29 @@ public struct PairingView: View {
   private func waiting(_ session: PairingSession) -> some View {
     HStack(alignment: .top, spacing: SpidolaSpacing.xl) {
       VStack(alignment: .leading, spacing: SpidolaSpacing.l) {
-        step(number: "1", text: "On your phone, open this address:")
+        step(
+          number: "1", text: String(localized: "On your phone, open this address:", bundle: .module)
+        )
         Text(session.url)
           .font(SpidolaType.title)
           .foregroundStyle(SpidolaPalette.testCardAmber)
-          .accessibilityLabel("Address")
+          .accessibilityLabel(String(localized: "Address", bundle: .module))
           .accessibilityValue(spelledOut(session.url))
-        step(number: "2", text: "Then type this code:")
+        step(number: "2", text: String(localized: "Then type this code:", bundle: .module))
         Text(session.token)
           .font(SpidolaType.display)
           .foregroundStyle(SpidolaPalette.broadcastWhite)
           // Tabular by default across the scale (PRD §8.3), which is what keeps a code from
           // shifting under its own digits as someone reads it aloud.
-          .accessibilityLabel("Code")
+          .accessibilityLabel(String(localized: "Code", bundle: .module))
           .accessibilityValue(spelledOut(session.token))
-        Text("Your phone must be on the same network as this TV.")
-          .font(SpidolaType.caption)
-          .foregroundStyle(SpidolaPalette.staticGray)
+        Text(
+          String(localized: "Your phone must be on the same network as this TV.", bundle: .module)
+        )
+        .font(SpidolaType.caption)
+        .foregroundStyle(SpidolaPalette.staticGray)
         Spacer(minLength: 0)
-        Button("Cancel") { onCancel() }
+        Button(String(localized: "Cancel", bundle: .module)) { onCancel() }
           .buttonStyle(.plain)
           .padding(.horizontal, SpidolaSpacing.l)
           .padding(.vertical, SpidolaSpacing.m)

@@ -93,6 +93,16 @@
         }
       }
     },
+    "Balanced": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balanced"
+          }
+        }
+      }
+    },
     "Bigger rows, easier to read.": {
       "localizations": {
         "en": {
@@ -283,6 +293,16 @@
         }
       }
     },
+    "Fastest start": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fastest start"
+          }
+        }
+      }
+    },
     "Forget everything you've watched so far.": {
       "localizations": {
         "en": {
@@ -419,16 +439,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Loading…"
-          }
-        }
-      }
-    },
-    "Low latency": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Low latency"
           }
         }
       }
@@ -663,6 +673,16 @@
         }
       }
     },
+    "Smoothest playback": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smoothest playback"
+          }
+        }
+      }
+    },
     "Solid": {
       "localizations": {
         "en": {
@@ -683,16 +703,6 @@
         }
       }
     },
-    "Stable": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Stable"
-          }
-        }
-      }
-    },
     "Start faster, or ride out a patchy connection.": {
       "localizations": {
         "en": {
@@ -703,12 +713,12 @@
         }
       }
     },
-    "Starts faster and stays closer to live. Needs a steady connection.": {
+    "Starts quickest and stays closest to live. Needs a steady connection.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Starts faster and stays closer to live. Needs a steady connection."
+            "value": "Starts quickest and stays closest to live. Needs a steady connection."
           }
         }
       }
@@ -789,6 +799,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "The usual amount. Leave this on."
+          }
+        }
+      }
+    },
+    "The usual trade-off. Leave this on.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The usual trade-off. Leave this on."
           }
         }
       }

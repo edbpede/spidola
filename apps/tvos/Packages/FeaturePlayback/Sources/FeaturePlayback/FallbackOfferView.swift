@@ -32,11 +32,21 @@ struct FallbackOfferView: View {
         .foregroundStyle(SpidolaPalette.staticGray)
 
       HStack(spacing: SpidolaSpacing.m) {
-        Button("Try other player") { onTry(remember) }
+        Button(String(localized: "Try other player", bundle: .module)) { onTry(remember) }
           .focused($focused, equals: .tryOther)
-        Button(remember ? "Remember for this channel" : "Just this once") { remember.toggle() }
-          .focused($focused, equals: .remember)
-        Button("Go back") { onBack() }
+        Button(
+          remember
+            ? String(localized: "Remember for this channel", bundle: .module)
+            : String(localized: "Just this once", bundle: .module)
+        ) { remember.toggle() }
+        .focused($focused, equals: .remember)
+        // Alone among these three, this button's title states the choice in force rather than what
+        // pressing it does — which a viewer reads from its place beside "Try other player", and a
+        // listener arriving at it cold cannot. The hint is where that goes.
+        .accessibilityHint(
+          String(localized: "Changes whether this choice sticks for this channel.", bundle: .module)
+        )
+        Button(String(localized: "Go back", bundle: .module)) { onBack() }
           .focused($focused, equals: .back)
       }
       .font(SpidolaType.body)
@@ -62,8 +72,11 @@ struct PlaybackErrorView: View {
     ActionableErrorView(
       failureClass: error.failureClass,
       message: error.message,
-      primary: SpidolaErrorButton(title: "Try again", action: onRetry),
-      others: [SpidolaErrorButton(title: "Go back", action: onBack)])
+      primary: SpidolaErrorButton(
+        title: String(localized: "Try again", bundle: .module), action: onRetry),
+      others: [
+        SpidolaErrorButton(title: String(localized: "Go back", bundle: .module), action: onBack)
+      ])
   }
 }
 
@@ -73,7 +86,7 @@ struct SeekHintView: View {
   var body: some View {
     VStack {
       Spacer()
-      Text("This channel is live — there's nothing to skip to.")
+      Text(String(localized: "This channel is live — there's nothing to skip to.", bundle: .module))
         .font(SpidolaType.caption)
         .foregroundStyle(SpidolaPalette.staticGray)
         .padding(.horizontal, SpidolaSpacing.m)

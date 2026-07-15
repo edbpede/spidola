@@ -34,13 +34,13 @@ public struct SearchView: View {
     .padding(.vertical, SpidolaSpacing.safeVertical)
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     .background(SpidolaPalette.studio)
-    .navigationTitle("Search")
+    .navigationTitle(String(localized: "Search", bundle: .module))
     .task { await model.loadSources() }
     .onAppear { focused = .field }
   }
 
   private var searchField: some View {
-    TextField("Search channels", text: $model.query)
+    TextField(String(localized: "Search channels", bundle: .module), text: $model.query)
       .textFieldStyle(.plain)
       .font(SpidolaType.title)
       .foregroundStyle(SpidolaPalette.broadcastWhite)
@@ -55,7 +55,10 @@ public struct SearchView: View {
   private var filters: some View {
     ScrollView(.horizontal, showsIndicators: false) {
       HStack(spacing: SpidolaSpacing.s) {
-        filterChip("All sources", selected: model.sourceFilter == nil, focus: .allSources) {
+        filterChip(
+          String(localized: "All sources", bundle: .module),
+          selected: model.sourceFilter == nil, focus: .allSources
+        ) {
           model.sourceFilter = nil
           model.scheduleSearch()
         }
@@ -83,16 +86,25 @@ public struct SearchView: View {
       .font(SpidolaType.caption)
       .focused($focused, equals: focus)
       .spidolaFocusRing(isFocused: focused == focus)
+      // Which filter is in force is carried by the amber fill and nothing else, and a colour does
+      // not survive being read aloud — leaving a listener to guess which of these results they are
+      // hearing.
+      .accessibilityValue(
+        selected
+          ? String(localized: "Selected", bundle: .module)
+          : String(localized: "Not selected", bundle: .module)
+      )
   }
 
   @ViewBuilder private var results: some View {
     switch model.state {
     case .idle:
-      CenteredHint(text: "Type to search across your channels.")
+      CenteredHint(
+        text: String(localized: "Type to search across your channels.", bundle: .module))
     case .loading:
-      CenteredHint(text: "Searching…")
+      CenteredHint(text: String(localized: "Searching…", bundle: .module))
     case .empty:
-      CenteredHint(text: "No channels match “\(model.query)”.")
+      CenteredHint(text: String(localized: "No channels match “\(model.query)”.", bundle: .module))
     case .failed(let error):
       actionableError(error, retry: { model.scheduleSearch() }, goBack: {})
     case .results(let results):
@@ -104,7 +116,7 @@ public struct SearchView: View {
     ScrollView {
       LazyVStack(spacing: SpidolaSpacing.s) {
         if results.fuzzy {
-          Text("Showing closest matches")
+          Text(String(localized: "Showing closest matches", bundle: .module))
             .font(SpidolaType.caption)
             .foregroundStyle(SpidolaPalette.staticGray)
         }

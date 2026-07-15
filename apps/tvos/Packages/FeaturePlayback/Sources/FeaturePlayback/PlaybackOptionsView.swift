@@ -20,18 +20,23 @@ struct PlaybackOptionsView: View {
     HStack {
       Spacer()
       VStack(alignment: .leading, spacing: SpidolaSpacing.l) {
-        section("Audio") {
+        section(String(localized: "Audio", bundle: .module)) {
           ForEach(model.tracks.tracks(of: .audio)) { track in
             optionRow(
               title: label(for: track),
               isOn: model.tracks.selectedAudio == track.id
             ) { model.select(track: track.id) }
           }
-          if model.tracks.tracks(of: .audio).isEmpty { emptyRow("Only one audio track") }
+          if model.tracks.tracks(of: .audio).isEmpty {
+            emptyRow(String(localized: "Only one audio track", bundle: .module))
+          }
         }
 
-        section("Subtitles") {
-          optionRow(title: "Off", isOn: model.tracks.selectedSubtitle == nil) {
+        section(String(localized: "Subtitles", bundle: .module)) {
+          optionRow(
+            title: String(localized: "Off", bundle: .module),
+            isOn: model.tracks.selectedSubtitle == nil
+          ) {
             model.clearSubtitle()
           }
           ForEach(model.tracks.tracks(of: .subtitle)) { track in
@@ -42,8 +47,8 @@ struct PlaybackOptionsView: View {
           }
         }
 
-        section("Picture") {
-          optionRow(title: model.aspect.label, isOn: false) { model.cycleAspect() }
+        section(String(localized: "Picture", bundle: .module)) {
+          optionRow(title: model.aspect.label, isOn: nil) { model.cycleAspect() }
         }
       }
       .padding(SpidolaSpacing.xl)
@@ -61,24 +66,41 @@ struct PlaybackOptionsView: View {
       Text(title)
         .font(SpidolaType.caption)
         .foregroundStyle(SpidolaPalette.staticGray)
+        // The header names the group its rows belong to, so a listener can skim the panel the way
+        // a viewer skims it rather than hearing every track before learning it was the audio list.
+        .accessibilityAddTraits(.isHeader)
       content()
     }
   }
 
+  /// `isOn` is `nil` for a row that cycles rather than picks — the aspect row, whose title is
+  /// already the value in force. "Not selected" there would describe a choice the row does not
+  /// offer.
   private func optionRow(
-    title: String, isOn: Bool, action: @escaping () -> Void
+    title: String, isOn: Bool?, action: @escaping () -> Void
   ) -> some View {
     Button(action: action) {
       HStack {
         Text(title)
         Spacer(minLength: 0)
-        if isOn {
+        if isOn == true {
           Image(systemName: "checkmark")
             .foregroundStyle(SpidolaPalette.testCardAmber)
         }
       }
     }
     .font(SpidolaType.body)
+    // The checkmark is the only thing marking the track in force, and a glyph has no voice: a
+    // listener would hear every track read out identically and none of them as the one playing.
+    .accessibilityLabel(title)
+    .accessibilityValue(selection(isOn))
+  }
+
+  private func selection(_ isOn: Bool?) -> String {
+    guard let isOn else { return "" }
+    return isOn
+      ? String(localized: "Selected", bundle: .module)
+      : String(localized: "Not selected", bundle: .module)
   }
 
   private func emptyRow(_ text: String) -> some View {

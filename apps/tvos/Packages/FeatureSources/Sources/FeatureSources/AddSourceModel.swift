@@ -15,9 +15,9 @@ public enum AddSourceMode: Sendable, CaseIterable {
 
   public var title: String {
     switch self {
-    case .url: "Playlist URL"
-    case .file: "Paste a playlist"
-    case .xtream: "Xtream account"
+    case .url: String(localized: "Playlist URL", bundle: .module)
+    case .file: String(localized: "Paste a playlist", bundle: .module)
+    case .xtream: String(localized: "Xtream account", bundle: .module)
     }
   }
 }
@@ -147,13 +147,13 @@ public final class AddSourceModel {
     case .m3uUrl(let url):
       mode = .url
       self.url = url
-      name = Self.hostLabel(of: url) ?? "Playlist"
+      name = Self.hostLabel(of: url) ?? String(localized: "Playlist", bundle: .module)
     case .xtream(let server, let username, let password):
       mode = .xtream
       self.server = server
       self.username = username
       self.password = password
-      name = Self.hostLabel(of: server) ?? "Xtream account"
+      name = Self.hostLabel(of: server) ?? String(localized: "Xtream account", bundle: .module)
     @unknown default:
       // A newer core sent a kind this build cannot fill in. Leaving the form untouched is the
       // honest response: the screen still works by hand (TECH_SPEC §5).

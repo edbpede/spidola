@@ -34,7 +34,7 @@ struct QrCode: View {
         // The code failed to render but the URL and token beside it did not — this screen still
         // works by typing, so it says the picture is missing rather than pretending the whole
         // screen failed.
-        Text("Can't draw the code — type the address instead.")
+        Text(String(localized: "Can't draw the code — type the address instead.", bundle: .module))
           .font(SpidolaType.caption)
           .foregroundStyle(SpidolaPalette.studio)
           .multilineTextAlignment(.center)

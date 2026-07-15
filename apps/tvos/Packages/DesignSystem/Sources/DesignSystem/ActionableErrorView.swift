@@ -80,6 +80,8 @@ public struct ActionableErrorView: View {
     .background(SpidolaPalette.studio)
     .onAppear { focused = primary.id }
     .accessibilityElement(children: .contain)
-    .accessibilityLabel("\(failureClass). \(message)")
+    // The words are the caller's; only the punctuation joining them is this layer's, so the format
+    // goes through the catalog and a language that wants the halves the other way round can say so.
+    .accessibilityLabel(String(localized: "\(failureClass). \(message)", bundle: .module))
   }
 }

@@ -9,6 +9,10 @@ import PackageDescription
 // root (doctrine §3.1), so this slice holds engine identities and never links a decoder.
 let package = Package(
   name: "FeaturePlayback",
+  // English-first, with the string infrastructure in place from day one (PRD §6.10). Declaring the
+  // default localization is what makes `String(localized:bundle: .module)` resolve against the
+  // catalog rather than silently echoing its key back.
+  defaultLocalization: "en",
   platforms: [.tvOS(.v18)],
   products: [
     .library(name: "FeaturePlayback", targets: ["FeaturePlayback"])
@@ -21,7 +25,8 @@ let package = Package(
   targets: [
     .target(
       name: "FeaturePlayback",
-      dependencies: ["CoreKit", "DesignSystem", "PlayerContract"]
+      dependencies: ["CoreKit", "DesignSystem", "PlayerContract"],
+      resources: [.process("Resources")]
     ),
     .testTarget(
       name: "FeaturePlaybackTests",

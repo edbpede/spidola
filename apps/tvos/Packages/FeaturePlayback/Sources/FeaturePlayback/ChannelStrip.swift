@@ -101,7 +101,7 @@ struct ChannelStrip: View {
   private var accessibilityLabel: String {
     var parts = [channel.name]
     if let group = channel.group { parts.append(group) }
-    if isLive { parts.append("Live") }
+    if isLive { parts.append(String(localized: "Live", bundle: .module)) }
     if let position { parts.append(position) }
     return parts.joined(separator: ", ")
   }
@@ -119,7 +119,7 @@ struct LiveMarker: View {
       Circle()
         .fill(SpidolaPalette.testCardAmber)
         .frame(width: Self.dot, height: Self.dot)
-      Text("LIVE")
+      Text(String(localized: "LIVE", bundle: .module))
         .font(SpidolaType.caption)
         .tracking(Self.tracking)
         .foregroundStyle(SpidolaPalette.testCardAmber)
