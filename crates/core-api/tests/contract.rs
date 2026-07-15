@@ -963,7 +963,8 @@ fn an_xtream_stream_is_playable_only_through_the_resolver() {
     let dir = tempfile::tempdir().unwrap();
     let db_path = dir.path().join("spidola.sqlite");
     let secrets = FakeSecrets::default();
-    let core = open_core(&rt, &db_path, RecordingSink::default(), secrets.clone());
+    let sink = RecordingSink::default();
+    let core = open_core(&rt, &db_path, sink.clone(), secrets.clone());
 
     let base = spawn_xtream_stub(1);
     let source = rt
@@ -995,8 +996,10 @@ fn an_xtream_stream_is_playable_only_through_the_resolver() {
     );
     assert!(
         playable.contains("/live/") && playable.ends_with("4242.ts"),
-        "the resolved URL must still name the same stream: {playable}"
+        "the resolved URL must still name the same stream"
     );
+
+    assert_xtream_recent_replays(&rt, &core, id, &stored);
 
     // Resolving must not leak it into the diagnostics the user can export.
     assert!(
@@ -1005,6 +1008,76 @@ fn an_xtream_stream_is_playable_only_through_the_resolver() {
             .iter()
             .any(|l| l.contains(XTREAM_PASSWORD)),
         "resolving a stream leaked the password into the log export"
+    );
+    assert!(
+        !sink
+            .records
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|record| record.message.contains(XTREAM_PASSWORD)),
+        "resolving a stream leaked the password into the host log sink"
+    );
+}
+
+fn assert_xtream_recent_replays(rt: &Runtime, core: &Arc<Core>, source_id: i64, stored: &str) {
+    let identity = 4242;
+    rt.block_on(core.recents().record(
+        source_id,
+        identity,
+        "Recent Xtream channel".to_owned(),
+        stored.to_owned(),
+        None,
+    ))
+    .expect("the Xtream recent records");
+    let recent = rt
+        .block_on(core.recents().list(1))
+        .expect("the recent list remains readable")
+        .into_iter()
+        .next()
+        .expect("the recorded recent is listed");
+    assert!(
+        recent.source_id == source_id && recent.identity == identity,
+        "the recent must retain its stable playback identity"
+    );
+    assert!(
+        recent.locator != stored && recent.locator.starts_with("spidola-sealed://v1/"),
+        "the listed recent locator must remain an opaque envelope"
+    );
+    assert!(
+        !recent.locator.contains(XTREAM_PASSWORD),
+        "the listed recent locator must not expose the account secret"
+    );
+
+    let recent_locator = recent.locator.clone();
+    let recent_playable = rt
+        .block_on(core.sources().resolve_playback(
+            recent.source_id,
+            recent.identity,
+            recent.locator,
+        ))
+        .expect("a listed Xtream recent resolves");
+    let recent_playable_locator = recent_playable.locator();
+    assert!(
+        recent_playable_locator.contains(XTREAM_USER)
+            && recent_playable_locator.contains(XTREAM_PASSWORD),
+        "the replayed URL must carry the credentials an engine needs"
+    );
+    assert!(
+        recent_playable_locator.contains("/live/") && recent_playable_locator.ends_with("4242.ts"),
+        "the replayed URL must still name the same stream"
+    );
+
+    let mut damaged = recent_locator;
+    damaged.push('A');
+    let damaged_result = rt.block_on(core.sources().resolve_playback(
+        recent.source_id,
+        recent.identity,
+        damaged,
+    ));
+    assert!(
+        matches!(damaged_result, Err(ApiError::StorageCorrupt)),
+        "a damaged recent envelope must fail closed"
     );
 }
 

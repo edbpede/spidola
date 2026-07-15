@@ -59,6 +59,16 @@ impl CatalogCipher {
         StreamLocator::parse(&self.seal(locator.as_str(), LOCATOR_AAD)?).map_err(ApiError::from)
     }
 
+    /// Opens a locator envelope, or returns a plaintext non-envelope unchanged. Xtream catalog
+    /// rows are legitimately plaintext and credential-free, while history rows are sealed.
+    pub(crate) fn open_locator(&self, locator: &StreamLocator) -> Result<StreamLocator, ApiError> {
+        if locator.as_str().starts_with(ENVELOPE_PREFIX) {
+            self.open_sealed_locator(locator)
+        } else {
+            Ok(locator.clone())
+        }
+    }
+
     /// Opens a required locator envelope. M3U catalog/history values written under schema 2 are
     /// always sealed; accepting plaintext here would let a database edit remove the prefix and
     /// silently downgrade integrity protection.
@@ -260,6 +270,35 @@ mod tests {
         assert!(sealed.as_str().starts_with(ENVELOPE_PREFIX));
         assert!(!sealed.as_str().contains("password"));
         assert_eq!(cipher.open_sealed_locator(&sealed).unwrap(), raw);
+    }
+
+    #[test]
+    fn locator_opening_accepts_plaintext_and_valid_envelopes() {
+        let cipher = CatalogCipher::new(Arc::new(MemorySecrets::default()));
+        let raw = StreamLocator::parse("http://host/live/4242.ts").unwrap();
+        let sealed = cipher.seal_locator(&raw).unwrap();
+
+        assert_eq!(cipher.open_locator(&raw).unwrap(), raw);
+        assert_eq!(cipher.open_locator(&sealed).unwrap(), raw);
+    }
+
+    #[test]
+    fn locator_opening_fails_closed_for_tampering_and_wrong_aad() {
+        let cipher = CatalogCipher::new(Arc::new(MemorySecrets::default()));
+        let raw = StreamLocator::parse("http://host/live/4242.ts").unwrap();
+        let sealed = cipher.seal_locator(&raw).unwrap();
+
+        let mut damaged = sealed.as_str().to_owned();
+        damaged.push('A');
+        let damaged = StreamLocator::parse(&damaged).unwrap();
+        assert_eq!(cipher.open_locator(&damaged), Err(ApiError::StorageCorrupt));
+
+        let wrong_aad = cipher.seal_value(raw.as_str()).unwrap();
+        let wrong_aad = StreamLocator::parse(&wrong_aad).unwrap();
+        assert_eq!(
+            cipher.open_locator(&wrong_aad),
+            Err(ApiError::StorageCorrupt)
+        );
     }
 
     #[test]

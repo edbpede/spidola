@@ -339,6 +339,7 @@ impl SourceService {
                 secret,
                 ..
             } => {
+                let parsed = self.cipher.open_locator(&parsed)?;
                 xtream::resolve_playable(
                     &XtreamSource {
                         id: SourceId::new(source_id),
