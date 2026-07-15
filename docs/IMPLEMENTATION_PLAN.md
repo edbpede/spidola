@@ -256,11 +256,21 @@ coherently in each platform's tooling. Physical-device validation is deferred an
     - Screen-reader labels ship on the settings slices; the sweep over the older slices, and the
       contrast audit, remain
   - [ ] String extraction complete; localization infrastructure live; English strings copy-edited per PRD §8.6 voice
-    - **Infrastructure is live on both** (`Localizable.xcstrings`, `strings.xml`), English-first, and
-      the settings slices go through it. The sweep over the older slices remains and is small
-      (~12 hardcoded strings per shell). One known cross-slice gap: `ActionableError`'s strings are
-      hardcoded English inside each shell's corekit, so error text is unlocalized everywhere it
-      appears — pre-existing, and it belongs with the sweep
+    - **Infrastructure is live on both** (`Localizable.xcstrings`, `strings.xml`), English-first.
+      Android's `feature:settings` and `feature:sources` are fully resourced (47 entries, plurals
+      where counts appear). The tvOS sweep over the older slices remains and is small
+    - **Two view-model channels are deliberately left in English** and are not a sweep:
+      `AddSourceViewModel.validation` and `SourcesViewModel.status` carry sentences, and the latter
+      interpolates, so resourcing them means restructuring a view-model API to carry resource ids
+      plus args — a design change, decided separately
+    - **`ActionableError` cannot be localized by a sweep, and this is the reason:**
+      `ApiError::InvalidInput` carries `reason: String` — **English prose generated in Rust** — which
+      the shells put straight into the message. Resourcing the shell wrappers would localize every
+      arm *except the one that varies*, which is worse than not doing it, because it would look
+      done. Fully localizing means the core returns an **error code plus structured data** and the
+      shell renders the sentence: a TECH_SPEC §5 boundary change across both shells, three slices
+      each, and the core's taxonomy. The same question as the buffering enum — who owns the
+      vocabulary — and it needs answering before the work is scoped
 
 **Exit criteria:** all PRD P0 features function on both platforms; secrets provably never touch SQLite or logs; the app passes a full screen-reader walkthrough.
 
@@ -273,6 +283,14 @@ coherently in each platform's tooling. Physical-device validation is deferred an
 - [ ] **Release engineering**
   - [ ] Signed store pipelines; Android direct-release fat APK with checksums attached to GitHub releases
   - [ ] Third-party notices generated into About; final cargo-deny/REUSE audit; LGPL build flags for mpv/FFmpeg committed and verified
+  - [ ] **Close the license-gate gap: cargo-deny only audits the Rust graph.** The JVM/Gradle graph
+        (Media3, Compose, Hilt, JNA, zxing) and the SPM graph (MPVKit) have no automated license
+        gate — `android.yml` and `apple.yml` run no license step at all, so `deny.toml`'s allow-list
+        has never applied to them and a shell dependency's license is a reviewer's job. Found in
+        Phase 6 when zxing was added and `cargo deny check` was (wrongly) treated as evidence about
+        it. Add an allow-list-or-fail gate per graph — `app.cash.licensee` is the Gradle analogue —
+        so "all bundled components must be AGPL-compatible" (PRD §10) is enforced rather than
+        asserted (TECH_SPEC §12)
   - [ ] Conventional-commit changelog generation
 - [ ] **Store submission (PRD §10 posture)**
   - [ ] Reserve the app name in App Store Connect (create the app record) — the definitive "Spidola" availability test (PRD §13); maintainer action

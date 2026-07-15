@@ -46,6 +46,10 @@ dependencies {
     implementation(libs.kotlinx.collections.immutable)
     implementation(libs.kotlinx.coroutines)
 
+    // Encodes the pairing URL to a bit matrix. The drawing is ours (a Compose Canvas), so this
+    // brings in an encoder and nothing else — no rendering library, no Android dependency.
+    implementation(libs.zxing.core)
+
     testImplementation(libs.junit5.api)
     testRuntimeOnly(libs.junit5.engine)
     testImplementation(libs.kotlinx.coroutines.test)

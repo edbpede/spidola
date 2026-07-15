@@ -269,7 +269,17 @@ class PlaybackViewModel(
             setting { access.bufferingProfile() }
                 ?.let { key -> BufferingProfile.entries.firstOrNull { it.name.equals(key, ignoreCase = true) } }
                 ?: BufferingProfile.BALANCED
-        return StreamRequest(locator = target.locator, buffering = profile)
+        // The stored locator is not always playable: an Xtream catalog holds a credential-free one
+        // so the password never reaches SQLite (TECH_SPEC §12), and this is where the credential
+        // goes back. Resolved per play and never stored — the point of a credential-free catalog is
+        // that the playable form does not outlive its use.
+        //
+        // Falling back to the stored locator is deliberate. For an M3U source the two are
+        // identical, so the fallback is exact; for an Xtream source the engine then fails with its
+        // own EngineError — the loud, actionable path (PRD §6.3) — instead of this returning a
+        // request whose failure the viewer has no explanation for.
+        val locator = setting { access.resolveStream(target.sourceId, target.locator) } ?: target.locator
+        return StreamRequest(locator = locator, buffering = profile)
     }
 
     /**

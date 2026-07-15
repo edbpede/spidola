@@ -99,6 +99,21 @@ interface PlaybackAccess {
 
     suspend fun setBufferingProfile(profile: String)
 
+    /**
+     * The playable URL for a channel's stored locator. Call immediately before handing a stream to
+     * an engine, and never store the result.
+     *
+     * Not a formality: an Xtream catalog stores a **credential-free** locator so the account's
+     * password never reaches SQLite (TECH_SPEC §12), which means the locator on a [PlayableChannel]
+     * is not playable on its own — this is what puts the credential back. Kind-agnostic, so the zap
+     * path never branches on where a channel came from: an M3U locator is already playable and
+     * returns unchanged.
+     */
+    suspend fun resolveStream(
+        sourceId: Long,
+        locator: String,
+    ): String
+
     suspend fun recordRecent(channel: PlayableChannel)
 }
 

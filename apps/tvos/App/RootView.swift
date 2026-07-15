@@ -26,6 +26,7 @@ enum Route: Hashable {
   case search
   case manageSources
   case addSource
+  case pairing
   case settings
   /// A picker for one closed-set setting. The payload is the field itself, so the settings slice
   /// gets one picker screen instead of nine, and the app stays a route table rather than learning
@@ -43,6 +44,15 @@ struct RootView: View {
   let registry: EngineRegistry
 
   @State private var path: [Route] = []
+
+  /// What a phone sent, waiting to pre-fill the add-source form.
+  ///
+  /// Held here rather than in the `Route` on purpose: an Xtream submission carries a password, and
+  /// `Route` is a `Hashable` value designed to be cheap to compare, copy, and — for anyone who
+  /// later reaches for `NavigationPath`'s codable restoration — write to disk. A credential has no
+  /// business in a type shaped for that. This is plain in-memory state, cleared the moment the form
+  /// that consumes it goes away (TECH_SPEC §12).
+  @State private var pairedSubmission: PairingSubmission?
 
   var body: some View {
     NavigationStack(path: $path) {
@@ -89,9 +99,14 @@ struct RootView: View {
           path.append(.channel(channel, context, offset))
         })
     case .manageSources:
-      SourcesView(access: core, onAddSource: { path.append(.addSource) })
+      SourcesView(
+        access: core,
+        onAddSource: { path.append(.addSource) },
+        onPair: { path.append(.pairing) })
     case .addSource:
-      AddSourceView(access: core, onFinished: popToManageSources)
+      AddSourceView(access: core, prefill: pairedSubmission, onFinished: popToManageSources)
+    case .pairing:
+      PairingView(access: core, onSubmission: openPrefilledAddSource, onCancel: popPairing)
     case .settings:
       SettingsView(access: core, navigator: settingsNavigator)
     case .settingsOptions(let field):
@@ -115,9 +130,27 @@ struct RootView: View {
     if let last = path.last, case .settingsOptions = last { path.removeLast() }
   }
 
+  /// Replaces the pairing screen with a pre-filled add-source form, for the person at the TV to
+  /// confirm (PRD §6.1). It never adds the source itself: anything on the LAN could have posted
+  /// this, and the confirmation is what makes that safe.
+  private func openPrefilledAddSource(_ submission: PairingSubmission) {
+    pairedSubmission = submission
+    if path.last == .pairing { path.removeLast() }
+    path.append(.addSource)
+  }
+
   /// Returns from the add-source screen to the sources list, which reloads on reappear.
   private func popToManageSources() {
     if path.last == .addSource { path.removeLast() }
+    // A submission carries an Xtream password. It is spent the moment the form is built, so drop
+    // it as soon as that form is gone rather than leaving a credential in the navigation shell for
+    // the rest of the session (TECH_SPEC §12).
+    pairedSubmission = nil
+  }
+
+  /// Leaves the pairing screen. Its `.task` is cancelled on the way out, which stops the server.
+  private func popPairing() {
+    if path.last == .pairing { path.removeLast() }
   }
 
   /// Leaves playback for the screen it was opened from.

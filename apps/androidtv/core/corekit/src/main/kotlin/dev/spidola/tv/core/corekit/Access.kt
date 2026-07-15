@@ -12,6 +12,8 @@ import uniffi.core_api.Handshake
 import uniffi.core_api.InterfaceDensity
 import uniffi.core_api.LogLevel
 import uniffi.core_api.MediaKind
+import uniffi.core_api.PairingSession
+import uniffi.core_api.PairingSubmission
 import uniffi.core_api.Recent
 import uniffi.core_api.SearchPage
 import uniffi.core_api.Source
@@ -34,6 +36,22 @@ interface SourcesAccess {
     ): Source
 
     suspend fun addM3uFile(name: String): Source
+
+    /**
+     * Adds an Xtream Codes account. The core **verifies it before storing**, so a wrong password
+     * comes back as [uniffi.core_api.ApiException.Unauthorized] from this call — it belongs on the
+     * add screen as a sentence, not on the next refresh as a mystery.
+     *
+     * [password] is in flight to the host secure store and nowhere else: hand it to this call and
+     * hold it in no field, no log, and no saved state (TECH_SPEC §12). What reaches SQLite is an
+     * opaque key, never the credential.
+     */
+    suspend fun addXtream(
+        name: String,
+        server: String,
+        username: String,
+        password: String,
+    ): Source
 
     suspend fun rename(
         id: Long,
@@ -115,6 +133,44 @@ interface BrowseAccess {
     )
 
     suspend fun recordRecent(channel: PlayableChannel)
+}
+
+/**
+ * One event from a running LAN pairing session. [Started] arrives once, immediately; [Submitted]
+ * arrives each time a phone posts something the core accepted.
+ */
+sealed interface PairingEvent {
+    /** The server is up; [session] is what the pairing screen renders. */
+    data class Started(
+        val session: PairingSession,
+    ) : PairingEvent
+
+    /** A phone submitted a source, ready to pre-fill the add-source flow. */
+    data class Submitted(
+        val submission: PairingSubmission,
+    ) : PairingEvent
+}
+
+/**
+ * The narrow core surface the **pairing** screen needs (PRD §6.1): run a LAN server so a phone can
+ * hand this TV a source, rather than making someone type a URL with a D-pad.
+ *
+ * Expressed as a [Flow] rather than start/stop calls because **the collector's lifetime is the
+ * security model**: the server exists only while the pairing screen is on screen, so tying it to a
+ * flow's collection makes "the screen went away" and "the server stopped" the same event. A shell
+ * that forgets to stop it is not expressible.
+ */
+interface PairingAccess {
+    /**
+     * Runs the pairing server for as long as this flow is collected, stopping it when collection
+     * ends.
+     *
+     * [host] is the TV's LAN address to advertise, and **the shell must supply it**: the core infers
+     * it from the route out of the host, which is right on a plain LAN and wrong behind a
+     * full-tunnel VPN or on a multi-homed device. `null` asks for that inference and fails loudly
+     * rather than advertising an address that would not answer.
+     */
+    fun pair(host: String?): Flow<PairingEvent>
 }
 
 /** The narrow core surface the **search** slice needs: the ranked, paged query plus the source

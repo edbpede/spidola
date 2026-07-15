@@ -6,17 +6,28 @@ import DesignSystem
 import SwiftUI
 import core_api
 
-/// The add-source screen: choose URL or paste, enter the details, and watch a live import with a
-/// cancel button and a diagnostics summary (PRD §6.1). Xtream accounts and LAN pairing land in
-/// Phase 6.
+/// The add-source screen: choose a playlist URL, pasted text, or an Xtream account, enter the
+/// details, and watch a live import with a cancel button and a diagnostics summary (PRD §6.1).
+///
+/// It is also where a phone's pairing submission lands, pre-filled and waiting to be confirmed —
+/// the same screen and the same "Add source" button, because a submission is an input method, not
+/// a fourth kind of source.
 public struct AddSourceView: View {
   @State private var model: AddSourceModel
   private let onFinished: @MainActor () -> Void
 
   @FocusState private var focused: Field?
 
-  public init(access: any SourcesAccess, onFinished: @escaping @MainActor () -> Void) {
-    _model = State(initialValue: AddSourceModel(access: access))
+  /// - Parameter prefill: what a phone sent, if this screen was reached through pairing. Applied
+  ///   once, when the form is first built; the person at the TV confirms or edits it.
+  public init(
+    access: any SourcesAccess,
+    prefill: PairingSubmission? = nil,
+    onFinished: @escaping @MainActor () -> Void
+  ) {
+    let model = AddSourceModel(access: access)
+    if let prefill { model.prefill(from: prefill) }
+    _model = State(initialValue: model)
     self.onFinished = onFinished
   }
 
@@ -41,7 +52,9 @@ public struct AddSourceView: View {
         error,
         retry: { model.submit() },
         goBack: onFinished,
-        fixInput: { model.mode = model.mode })  // returns to the form (state resets on next submit)
+        // `Unauthorized` prescribes `fixInput`, and a rejected Xtream password is the likeliest
+        // failure this screen has — so "Edit" must actually put the fields back on screen.
+        fixInput: { model.returnToForm() })
     }
   }
 
@@ -62,6 +75,13 @@ public struct AddSourceView: View {
             .focused($focused, equals: .tls)
         case .file:
           field("Paste playlist text", text: $model.pastedContent, field: .content)
+        case .xtream:
+          field("Server address", text: $model.server, field: .server)
+          field("Username", text: $model.username, field: .username)
+          secureField("Password", text: $model.password, field: .password)
+          Text("Spidola checks these with your provider before saving them.")
+            .font(SpidolaType.caption)
+            .foregroundStyle(SpidolaPalette.staticGray)
         }
         if let message = model.validationMessage {
           Text(message)
@@ -106,6 +126,20 @@ public struct AddSourceView: View {
 
   private func field(_ label: String, text: Binding<String>, field: Field) -> some View {
     TextField(label, text: text)
+      .textFieldStyle(.plain)
+      .font(SpidolaType.body)
+      .foregroundStyle(SpidolaPalette.broadcastWhite)
+      .padding(SpidolaSpacing.m)
+      .background(SpidolaPalette.set)
+      .focused($focused, equals: field)
+      .spidolaFocusRing(isFocused: focused == field)
+      .accessibilityIdentifier("add-source-\(field)")
+  }
+
+  /// A masked field. `SecureField` is what keeps a password off a living-room screen — the one
+  /// place in this app where someone else is quite likely to be watching.
+  private func secureField(_ label: String, text: Binding<String>, field: Field) -> some View {
+    SecureField(label, text: text)
       .textFieldStyle(.plain)
       .font(SpidolaType.body)
       .foregroundStyle(SpidolaPalette.broadcastWhite)
@@ -180,5 +214,6 @@ public struct AddSourceView: View {
   private enum Field: Hashable {
     case mode(AddSourceMode)
     case name, url, userAgent, content, tls, submit, cancel, done
+    case server, username, password
   }
 }

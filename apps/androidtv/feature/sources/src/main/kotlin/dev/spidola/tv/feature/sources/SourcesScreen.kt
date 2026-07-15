@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -51,6 +52,7 @@ import uniffi.core_api.Source
 fun SourcesScreen(
     access: SourcesAccess,
     onAddSource: () -> Unit,
+    onPairPhone: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: SourcesViewModel = viewModel(factory = SourcesViewModel.factory(access)),
 ) {
@@ -65,16 +67,17 @@ fun SourcesScreen(
 
     Box(modifier = modifier.fillMaxSize().background(SpidolaPalette.Studio)) {
         when (val current = state) {
-            LoadState.Loading -> Centered("Loading sources…")
+            LoadState.Loading -> Centered(stringResource(R.string.sources_loading))
             is LoadState.Failed ->
                 ActionableErrorContent(current.error, onRetry = viewModel::load, onGoBack = onAddSource)
-            LoadState.Empty -> EmptySources(status, onAddSource)
+            LoadState.Empty -> EmptySources(status, onAddSource, onPairPhone)
             is LoadState.Ready -> {
                 SourceList(
                     sources = current.value,
                     refreshing = refreshing,
                     status = status,
                     onAddSource = onAddSource,
+                    onPairPhone = onPairPhone,
                     expandedId = expandedId,
                     onToggleExpanded = { id -> expandedId = if (expandedId == id) null else id },
                     renamingId = renamingId,
@@ -112,6 +115,7 @@ private fun SourceList(
     refreshing: Set<Long>,
     status: String?,
     onAddSource: () -> Unit,
+    onPairPhone: () -> Unit,
     expandedId: Long?,
     onToggleExpanded: (Long) -> Unit,
     renamingId: Long?,
@@ -138,7 +142,18 @@ private fun SourceList(
             }
         }
         item {
-            SpidolaRow(title = "Add a source", onClick = onAddSource, modifier = Modifier.testTag("sources-add"))
+            SpidolaRow(
+                title = stringResource(R.string.sources_add),
+                onClick = onAddSource,
+                modifier = Modifier.testTag("sources-add"),
+            )
+        }
+        item {
+            SpidolaRow(
+                title = stringResource(R.string.pairing_title),
+                onClick = onPairPhone,
+                modifier = Modifier.testTag("sources-pair"),
+            )
         }
         items(sources, key = { it.id }) { source ->
             SourceItem(
@@ -178,11 +193,11 @@ private fun SourceItem(
     val autoRefresh = AutoRefreshOption.from(source.common.autoRefreshSecs)
     SpidolaRow(
         title = source.name,
-        subtitle = "${source.kindLabel} · ${autoRefresh.label}",
+        subtitle = stringResource(R.string.sources_subtitle, source.kindLabel, stringResource(autoRefresh.label)),
         accessory =
             when {
-                isRefreshing -> RowAccessory.Label("Refreshing…")
-                !source.common.enabled -> RowAccessory.Label("Disabled")
+                isRefreshing -> RowAccessory.Label(stringResource(R.string.sources_refreshing))
+                !source.common.enabled -> RowAccessory.Label(stringResource(R.string.sources_disabled))
                 else -> RowAccessory.None
             },
         onClick = onToggleExpanded,
@@ -193,26 +208,43 @@ private fun SourceItem(
     val actionModifier = Modifier.padding(start = SpidolaSpacing.l)
     if (renaming) {
         RenameField(renameText, onRenameTextChange)
-        SpidolaRow(title = "Save name", onClick = onCommitRename, modifier = actionModifier)
+        SpidolaRow(
+            title = stringResource(R.string.sources_save_name),
+            onClick = onCommitRename,
+            modifier = actionModifier,
+        )
     } else {
-        SpidolaRow(title = "Rename", onClick = onStartRename, modifier = actionModifier)
+        SpidolaRow(
+            title = stringResource(R.string.sources_rename),
+            onClick = onStartRename,
+            modifier = actionModifier,
+        )
     }
     SpidolaRow(
-        title = if (source.common.enabled) "Disable" else "Enable",
+        title = stringResource(if (source.common.enabled) R.string.sources_disable else R.string.sources_enable),
         onClick = { viewModel.setEnabled(source.id, !source.common.enabled) },
         modifier = actionModifier,
     )
     if (source.isRefreshable) {
-        SpidolaRow(title = "Refresh now", onClick = { viewModel.refresh(source) }, modifier = actionModifier)
         SpidolaRow(
-            title = "Auto-refresh: ${autoRefresh.label}",
+            title = stringResource(R.string.sources_refresh_now),
+            onClick = { viewModel.refresh(source) },
+            modifier = actionModifier,
+        )
+        SpidolaRow(
+            title = stringResource(R.string.sources_auto_refresh, stringResource(autoRefresh.label)),
             onClick = { viewModel.setAutoRefresh(source.id, autoRefresh.next()) },
             modifier = actionModifier,
         )
     }
     SpidolaRow(
-        title = if (confirmDelete) "Confirm delete" else "Delete",
-        accessory = if (confirmDelete) RowAccessory.Label("Can't be undone") else RowAccessory.None,
+        title = stringResource(if (confirmDelete) R.string.sources_delete_confirm else R.string.sources_delete),
+        accessory =
+            if (confirmDelete) {
+                RowAccessory.Label(stringResource(R.string.sources_delete_warning))
+            } else {
+                RowAccessory.None
+            },
         onClick = onDeleteClick,
         modifier = actionModifier,
     )
@@ -246,6 +278,7 @@ private fun RenameField(
 private fun EmptySources(
     status: String?,
     onAddSource: () -> Unit,
+    onPairPhone: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -262,11 +295,22 @@ private fun EmptySources(
             }
         }
         item {
-            SpidolaRow(title = "Add a source", onClick = onAddSource, modifier = Modifier.testTag("sources-add"))
+            SpidolaRow(
+                title = stringResource(R.string.sources_add),
+                onClick = onAddSource,
+                modifier = Modifier.testTag("sources-add"),
+            )
+        }
+        item {
+            SpidolaRow(
+                title = stringResource(R.string.pairing_title),
+                onClick = onPairPhone,
+                modifier = Modifier.testTag("sources-pair"),
+            )
         }
         item {
             Text(
-                text = "No sources yet.",
+                text = stringResource(R.string.sources_empty),
                 style = MaterialTheme.typography.bodyLarge,
                 color = SpidolaPalette.Static,
                 modifier = Modifier.padding(SpidolaSpacing.m),

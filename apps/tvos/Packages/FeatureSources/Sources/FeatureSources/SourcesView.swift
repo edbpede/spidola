@@ -18,6 +18,7 @@ private struct SourceTarget: Identifiable {
 public struct SourcesView: View {
   @State private var model: SourcesModel
   private let onAddSource: @MainActor () -> Void
+  private let onPair: @MainActor () -> Void
 
   @FocusState private var focused: Focus?
   @State private var renameTarget: SourceTarget?
@@ -25,9 +26,14 @@ public struct SourcesView: View {
   @State private var deleteTarget: SourceTarget?
   @State private var renameText = ""
 
-  public init(access: any SourcesAccess, onAddSource: @escaping @MainActor () -> Void) {
+  public init(
+    access: any SourcesAccess,
+    onAddSource: @escaping @MainActor () -> Void,
+    onPair: @escaping @MainActor () -> Void
+  ) {
     _model = State(initialValue: SourcesModel(access: access))
     self.onAddSource = onAddSource
+    self.onPair = onPair
   }
 
   public var body: some View {
@@ -93,6 +99,19 @@ public struct SourcesView: View {
         .focused($focused, equals: .add)
         .accessibilityIdentifier("sources-add")
 
+        SpidolaRow(
+          title: "Use my phone",
+          subtitle: "Send a playlist or account from your phone instead of typing it here.",
+          accessory: .symbol("iphone"),
+          isFocused: focused == .pair
+        ) {
+          onPair()
+        }
+        .focused($focused, equals: .pair)
+        .accessibilityLabel("Use my phone")
+        .accessibilityValue("Send a playlist or account from your phone instead of typing it here.")
+        .accessibilityIdentifier("sources-pair")
+
         if sources.isEmpty {
           Text("No sources yet.")
             .font(SpidolaType.body)
@@ -156,6 +175,7 @@ public struct SourcesView: View {
 
   private enum Focus: Hashable {
     case add
+    case pair
     case source(Int64)
   }
 }

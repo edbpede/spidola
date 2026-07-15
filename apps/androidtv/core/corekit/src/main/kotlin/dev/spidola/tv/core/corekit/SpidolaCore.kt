@@ -4,9 +4,11 @@
 package dev.spidola.tv.core.corekit
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.withContext
 import uniffi.core_api.ApiException
 import uniffi.core_api.AppSettings
@@ -23,6 +25,8 @@ import uniffi.core_api.InterfaceDensity
 import uniffi.core_api.LogLevel
 import uniffi.core_api.LogSink
 import uniffi.core_api.MediaKind
+import uniffi.core_api.PairingListener
+import uniffi.core_api.PairingSubmission
 import uniffi.core_api.Recent
 import uniffi.core_api.SearchPage
 import uniffi.core_api.SecretStore
@@ -121,7 +125,8 @@ class SpidolaCore private constructor(
     SearchAccess,
     HomeAccess,
     PlaybackAccess,
-    SettingsAccess {
+    SettingsAccess,
+    PairingAccess {
     /** The startup handshake (core / schema / boundary versions), checked before first use. */
     override fun handshake(): Handshake = core.handshake()
 
@@ -143,6 +148,13 @@ class SpidolaCore private constructor(
     ): Source = addM3uUrl(name, url, null, false)
 
     override suspend fun addM3uFile(name: String): Source = core.sources().addM3uFile(name)
+
+    override suspend fun addXtream(
+        name: String,
+        server: String,
+        username: String,
+        password: String,
+    ): Source = core.sources().addXtream(name, server, username, password)
 
     override suspend fun rename(
         id: Long,
@@ -193,6 +205,28 @@ class SpidolaCore private constructor(
                 }
             val handle = start(listener)
             awaitClose { handle.cancel() }
+        }
+
+    // ---- Pairing ----
+
+    override fun pair(host: String?): Flow<PairingEvent> =
+        callbackFlow {
+            val listener =
+                object : PairingListener {
+                    override fun onSubmission(submission: PairingSubmission) {
+                        trySend(PairingEvent.Submitted(submission))
+                    }
+                }
+            send(PairingEvent.Started(core.pairing().start(host, listener)))
+            // Nothing terminates this stream from the core's side: the server runs until the screen
+            // that is collecting it goes away.
+            awaitClose()
+        }.onCompletion {
+            // The stop must outrun the cancellation that triggered it. By the time completion runs
+            // the collecting scope is already cancelled, so a plain suspend call here would be
+            // dropped — and the server's lifetime is the security model, so a skipped stop leaves a
+            // listener on the LAN. `stop` is idempotent, so a failed `start` completing here is fine.
+            withContext(NonCancellable) { core.pairing().stop() }
         }
 
     // ---- Catalog / browse ----
@@ -355,6 +389,11 @@ class SpidolaCore private constructor(
     override suspend fun bufferingProfile(): String? = core.settings().snapshot().buffering.stored()
 
     override suspend fun setBufferingProfile(profile: String) = core.settings().setBuffering(profile.toCoreBuffering())
+
+    override suspend fun resolveStream(
+        sourceId: Long,
+        locator: String,
+    ): String = core.sources().resolveStream(sourceId, locator)
 
     // ---- Settings ----
 

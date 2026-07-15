@@ -24,6 +24,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import uniffi.core_api.ApiException
 import uniffi.core_api.MediaKind
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -58,6 +59,53 @@ class PlaybackViewModelTest {
             advanceUntilIdle()
             assertEquals(listOf("exoplayer"), harness.built.map { it.value })
         }
+
+    // endregion
+
+    // region Play-time stream resolution
+
+    @Test
+    fun `plays the resolved locator rather than the stored one`() =
+        runTest(dispatcher) {
+            // An Xtream catalog stores a credential-free locator (TECH_SPEC §12), so the row the
+            // viewer picked is not playable on its own. Without this the engine is handed an
+            // address that cannot open, and it looks like a broken stream rather than a missing
+            // step.
+            val harness = Harness()
+            harness.viewModel().start()
+            advanceUntilIdle()
+            assertEquals(
+                listOf("resolved://http://host.example/10.ts"),
+                harness.engines.first().loaded.map { it.locator },
+                "the engine must be loaded with the resolver's URL, not the stored locator",
+            )
+            assertEquals(
+                listOf("http://host.example/10.ts"),
+                harness.access.resolvedCalls,
+                "resolution must be asked for once per load, not cached",
+            )
+        }
+
+    @Test
+    fun `falls back to the stored locator when resolution fails`() =
+        runTest(dispatcher) {
+            // For an M3U source the two are identical, so the fallback is exact; for an Xtream
+            // source the engine then fails with its own EngineError — the loud, actionable path
+            // (PRD §6.3) — rather than this silently loading nothing.
+            val harness = Harness()
+            harness.access.resolveFailure = ApiException.Internal()
+            harness.viewModel().start()
+            advanceUntilIdle()
+            assertEquals(
+                listOf("http://host.example/10.ts"),
+                harness.engines.first().loaded.map { it.locator },
+                "a failed resolution must still hand the engine the stored locator",
+            )
+        }
+
+    // endregion
+
+    // region Engine selection, continued
 
     @Test
     fun `honours a channel override over a source override`() =
@@ -369,8 +417,28 @@ private class FakePlaybackAccess : PlaybackAccess {
     val recorded = mutableListOf<PlayableChannel>()
     var buffering: String? = null
 
+    /** Locators the view model asked to have resolved, in order. */
+    val resolvedCalls = mutableListOf<String>()
+
+    /** Makes resolution fail, standing in for a source deleted or a secret gone from the keystore. */
+    var resolveFailure: ApiException? = null
+
     /** Forces the window's current row to a different identity, as a refresh would. */
     var windowIdentityOverride: Long? = null
+
+    /**
+     * Stands in for the core's play-time credential resolution. Prefixed rather than echoed so a
+     * test can tell a resolved locator from a stored one — the only way to prove the view model
+     * plays what the resolver returned rather than what the catalog holds.
+     */
+    override suspend fun resolveStream(
+        sourceId: Long,
+        locator: String,
+    ): String {
+        resolveFailure?.let { throw it }
+        resolvedCalls += locator
+        return "resolved://$locator"
+    }
 
     override suspend fun zapWindow(
         context: ZapContext,

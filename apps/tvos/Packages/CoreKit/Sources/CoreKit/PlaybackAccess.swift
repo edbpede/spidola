@@ -71,6 +71,16 @@ public protocol PlaybackAccess: Sendable {
   func bufferingProfile() async throws -> String?
   func setBufferingProfile(_ profile: String) async throws
 
+  /// The playable URL for a channel's stored locator. Call this immediately before handing a
+  /// stream to an engine, and never store the result.
+  ///
+  /// Not a formality: an Xtream catalog stores a **credential-free** locator so the account's
+  /// password never reaches SQLite (TECH_SPEC §12), which means the locator on a `PlayableChannel`
+  /// is not playable on its own — this is what puts the credential back. Kind-agnostic, so the zap
+  /// path never branches on where a channel came from: an M3U locator is already playable and
+  /// returns unchanged.
+  func resolveStream(sourceId: Int64, locator: String) async throws -> String
+
   func recordRecent(_ channel: PlayableChannel) async throws
 }
 

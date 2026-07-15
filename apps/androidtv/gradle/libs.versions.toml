@@ -35,6 +35,11 @@ immutable = "0.4.0"
 # UniFFI Kotlin bindings load the core through JNA (TECH_SPEC §5).
 jna = "5.17.0"
 coil = "3.1.0"
+# QR encoding for the LAN pairing screen. Apache-2.0 (verified in the zxing-parent POM), which
+# `deny.toml` allows; pure Java with no runtime transitive dependencies. Android-only: tvOS encodes
+# with CoreImage's built-in CIQRCodeGenerator, so this asymmetry is an implementation detail rather
+# than a product divergence (PRD §7).
+zxing = "3.5.4"
 junit5 = "5.11.4"
 mockk = "1.14.0"
 turbine = "1.2.0"
@@ -62,6 +67,7 @@ kotlinx-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-androi
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "immutable" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 detekt-compose = { module = "io.nlopez.compose.rules:detekt", version.ref = "detektCompose" }

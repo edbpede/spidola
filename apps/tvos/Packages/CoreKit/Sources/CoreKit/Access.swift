@@ -11,6 +11,15 @@ public protocol SourcesAccess: Sendable {
   func addM3uUrl(name: String, url: String, userAgent: String?, acceptInvalidTls: Bool)
     async throws -> Source
   func addM3uFile(name: String) async throws -> Source
+  /// Adds an Xtream Codes account, **verifying it before storing**: a wrong password comes back
+  /// as `Unauthorized` from this call rather than as a mystery on the next refresh, which is what
+  /// lets the add screen say so while the person is still standing there. No catalog is fetched —
+  /// `importURL` does that next, exactly as it does for a playlist URL.
+  ///
+  /// `password` is in flight to the host secure store and nowhere else: hand it straight to this
+  /// call, never log it, never keep it (TECH_SPEC §12). What reaches SQLite is an opaque key.
+  func addXtream(name: String, server: String, username: String, password: String) async throws
+    -> Source
   func rename(id: Int64, name: String) async throws
   func setEnabled(id: Int64, enabled: Bool) async throws
   func setAutoRefresh(id: Int64, secs: UInt32?) async throws
@@ -21,6 +30,38 @@ public protocol SourcesAccess: Sendable {
   /// Imports an M3U-from-file source from already-read `content` (picked file or pasted text),
   /// streaming progress then one terminal event.
   func importContent(id: Int64, content: String) -> AsyncStream<ImportEvent>
+}
+
+/// One event from a live pairing session. `started` arrives once, then a `submission` per phone;
+/// `failed` is terminal.
+public enum PairingEvent: Sendable {
+  /// The server is up — render this URL, port, and token.
+  case started(PairingSession)
+  /// A phone submitted details, ready to pre-fill the add-source flow.
+  case submission(PairingSubmission)
+  /// The server could not start. Terminal.
+  case failed(ApiError)
+}
+
+/// The narrow core surface the **pairing** screen needs: bring the LAN server up, hear what a
+/// phone sends, and take it down again (PRD §6.1, TECH_SPEC §12).
+///
+/// Modelled as a stream rather than a start/stop pair because the server's lifetime *is* the
+/// security model — it exists only while its screen is visible. Tying it to a stream makes the
+/// consuming task's lifetime enforce that: when the screen goes away its task ends, the stream
+/// terminates, and the server comes down whether or not anyone remembered to say so.
+/// `stopPairing` is still here because the core asks for the stop to be *prompt and awaited*, not
+/// because it is the only thing standing between a closed screen and a listener on the LAN.
+public protocol PairingAccess: Sendable {
+  /// Starts the server advertising `host` — the TV's own LAN address, which **the shell must
+  /// supply**. The core infers it from the route out of the host, which is right on a plain LAN
+  /// and wrong behind a full-tunnel VPN, where the route is the tunnel and the LAN address sits on
+  /// an interface the probe never sees (`core-pair`'s docs carry the measurements). `nil` asks for
+  /// that inference and fails loudly rather than advertising an address no phone can dial.
+  func pairing(host: String?) -> AsyncStream<PairingEvent>
+
+  /// Stops the server now, without waiting for the stream's termination to get around to it.
+  func stopPairing() async
 }
 
 /// The narrow core surface the **browse** slice needs: the source → type → category → channel

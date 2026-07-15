@@ -220,7 +220,19 @@ public final class PlaybackModel {
       (try? await access.bufferingProfile())
       .flatMap { $0 }
       .flatMap(BufferingProfile.init(rawValue:)) ?? .balanced
-    return StreamRequest(locator: target.locator, buffering: profile)
+    // The stored locator is not always playable: an Xtream catalog holds a credential-free one so
+    // the password never reaches SQLite (TECH_SPEC §12), and this is where the credential goes
+    // back. Resolved per play and never stored — the whole point of a credential-free catalog is
+    // that the playable form does not outlive its use.
+    //
+    // Falling back to the stored locator when resolution fails is deliberate. For an M3U source the
+    // two are identical, so the fallback is exact; for an Xtream source the engine then fails with
+    // its own `EngineError` — the loud, actionable path (PRD §6.3) — instead of this returning a
+    // request the viewer never sees the reason for.
+    let locator =
+      (try? await access.resolveStream(sourceId: target.sourceId, locator: target.locator))
+      ?? target.locator
+    return StreamRequest(locator: locator, buffering: profile)
   }
 
   /// Drains the engine's state machine onto the model. One task per engine; cancelled on dispose,

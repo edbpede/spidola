@@ -25,7 +25,7 @@ public enum ImportEvent: Sendable {
 /// core's task handle. UniFFI async methods arrive back on the caller's continuation; callback
 /// events are trampolined to the caller's isolation by the stream.
 public final class SpidolaCore: CatalogAccess, SourcesAccess, BrowseAccess, SearchAccess,
-  HomeAccess, PlaybackAccess, SettingsAccess
+  HomeAccess, PlaybackAccess, SettingsAccess, PairingAccess
 {
   private let core: Core
 
@@ -60,6 +60,13 @@ public final class SpidolaCore: CatalogAccess, SourcesAccess, BrowseAccess, Sear
 
   public func addM3uFile(name: String) async throws -> Source {
     try await core.sources().addM3uFile(name: name)
+  }
+
+  public func addXtream(
+    name: String, server: String, username: String, password: String
+  ) async throws -> Source {
+    try await core.sources().addXtream(
+      name: name, server: server, username: username, password: password)
   }
 
   public func rename(id: Int64, name: String) async throws {
@@ -101,6 +108,44 @@ public final class SpidolaCore: CatalogAccess, SourcesAccess, BrowseAccess, Sear
       let handle = start(listener)
       continuation.onTermination = { _ in handle.cancel() }
     }
+  }
+
+  // MARK: - Pairing
+
+  /// Brings the LAN pairing server up and streams its session and submissions.
+  ///
+  /// Termination is the point: when the consuming task ends — the pairing screen closing — the
+  /// stream's `onTermination` stops the server. "Alive only while its screen is visible"
+  /// (TECH_SPEC §12) therefore holds by construction rather than by a screen remembering to say
+  /// so. The `start` runs in its own task because it must not block the caller before the first
+  /// event, and its failure is delivered as `.failed` rather than thrown, so one arm handles a
+  /// server that never came up and one that came up and later fell over.
+  public func pairing(host: String?) -> AsyncStream<PairingEvent> {
+    AsyncStream { continuation in
+      let listener = PairingListenerAdapter(continuation: continuation)
+      let task = Task { [core] in
+        do {
+          let session = try await core.pairing().start(host: host, listener: listener)
+          continuation.yield(.started(session))
+        } catch let error as ApiError {
+          continuation.yield(.failed(error))
+          continuation.finish()
+        } catch {
+          continuation.yield(.failed(.Internal))
+          continuation.finish()
+        }
+      }
+      continuation.onTermination = { [core] _ in
+        task.cancel()
+        // Detached because termination is synchronous and the core's stop is not. Dropping the
+        // server would close the socket anyway; awaiting it here is what makes the stop prompt.
+        Task { await core.pairing().stop() }
+      }
+    }
+  }
+
+  public func stopPairing() async {
+    await core.pairing().stop()
   }
 
   // MARK: - Catalog / browse
@@ -308,6 +353,10 @@ public final class SpidolaCore: CatalogAccess, SourcesAccess, BrowseAccess, Sear
   public func setBufferingProfile(_ profile: String) async throws {
     try await core.settings().setBuffering(profile: .init(playbackKey: profile))
   }
+
+  public func resolveStream(sourceId: Int64, locator: String) async throws -> String {
+    try await core.sources().resolveStream(sourceId: sourceId, locator: locator)
+  }
 }
 
 /// Bridges the UniFFI `ImportListener` callback (which may arrive on any core thread) onto the
@@ -331,6 +380,22 @@ private final class ImportListenerAdapter: ImportListener {
   func onFailed(error: ApiError) {
     continuation.yield(.failed(error))
     continuation.finish()
+  }
+}
+
+/// Bridges the UniFFI `PairingListener` callback (which arrives on the pairing server's connection
+/// task — any core thread, TECH_SPEC §5) onto the pairing `AsyncStream`. The continuation is
+/// `Sendable` and never blocks, which matters here: a phone is waiting on a response behind this
+/// call.
+private final class PairingListenerAdapter: PairingListener {
+  private let continuation: AsyncStream<PairingEvent>.Continuation
+
+  init(continuation: AsyncStream<PairingEvent>.Continuation) {
+    self.continuation = continuation
+  }
+
+  func onSubmission(submission: PairingSubmission) {
+    continuation.yield(.submission(submission))
   }
 }
 
