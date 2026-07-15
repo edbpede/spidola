@@ -74,6 +74,16 @@
         }
       }
     },
+    "Channels": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Channels"
+          }
+        }
+      }
+    },
     "Clear recently watched": {
       "localizations": {
         "en": {
@@ -144,6 +154,16 @@
         }
       }
     },
+    "Live": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live"
+          }
+        }
+      }
+    },
     "Loading categories…": {
       "localizations": {
         "en": {
@@ -170,6 +190,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Loading…"
+          }
+        }
+      }
+    },
+    "Movies": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Movies"
           }
         }
       }
@@ -254,6 +284,26 @@
         }
       }
     },
+    "Playlist URL": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playlist URL"
+          }
+        }
+      }
+    },
+    "Playlist file": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playlist file"
+          }
+        }
+      }
+    },
     "Recently watched": {
       "localizations": {
         "en": {
@@ -294,12 +344,32 @@
         }
       }
     },
+    "Series": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Series"
+          }
+        }
+      }
+    },
     "Settings": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Settings"
+          }
+        }
+      }
+    },
+    "Source": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source"
           }
         }
       }
@@ -360,6 +430,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Welcome to Spidola"
+          }
+        }
+      }
+    },
+    "Xtream account": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Xtream account"
           }
         }
       }

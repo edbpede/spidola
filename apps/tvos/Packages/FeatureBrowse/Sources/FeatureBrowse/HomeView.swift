@@ -149,7 +149,7 @@ public struct HomeView: View {
         ForEach(sources.filter { $0.common.enabled }, id: \.id) { source in
           SpidolaRow(
             title: source.name,
-            subtitle: source.kindLabel,
+            subtitle: source.localizedKindLabel,
             isFocused: focused == .source(source.id)
           ) {
             navigator.openSource(source.id, source.name)

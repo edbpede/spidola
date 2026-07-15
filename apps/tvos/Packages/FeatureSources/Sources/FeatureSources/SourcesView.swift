@@ -148,18 +148,24 @@ public struct SourcesView: View {
   }
 
   private func sourceRow(_ source: Source) -> some View {
-    SpidolaRow(
+    // Resolved once out here: the trailing word and the announcement must report the same state
+    // rather than each derive one.
+    let state = state(for: source)
+    return SpidolaRow(
       title: source.name,
       subtitle: subtitle(for: source),
-      accessory: model.refreshingIds.contains(source.id)
-        ? .text(String(localized: "Refreshing…", bundle: .module))
-        : (source.common.enabled
-          ? .none : .text(String(localized: "Disabled", bundle: .module))),
+      accessory: state.map { RowAccessory.text($0) } ?? .none,
       isFocused: focused == .source(source.id)
     ) {
       // Selecting a source opens its actions; the context menu holds the same set.
     }
     .focused($focused, equals: .source(source.id))
+    // The row is named by its source and valued by everything else it shows. "Disabled" left to
+    // ride in on the name lands next to VoiceOver's own word for a dimmed button, and a listener
+    // hearing "Acme, Playlist URL, Disabled, button" cannot tell whether the source is switched off
+    // or the row is unavailable — one is a setting they chose, the other a dead end (PRD §6.10).
+    .accessibilityLabel(source.name)
+    .accessibilityValue(accessibilityValue(for: source, state: state))
     .accessibilityIdentifier("manage-source-\(source.name)")
     .contextMenu {
       Button(String(localized: "Rename", bundle: .module)) {
@@ -189,7 +195,24 @@ public struct SourcesView: View {
 
   private func subtitle(for source: Source) -> String {
     let refresh = AutoRefreshOption.from(seconds: source.common.autoRefreshSecs).label
-    return "\(source.kindLabel) · \(refresh)"
+    return "\(source.localizedKindLabel) · \(refresh)"
+  }
+
+  /// The one word this row adds when the source is doing something or switched off, and `nil` when
+  /// it is simply itself — a source that is enabled and idle has no state worth a word.
+  private func state(for source: Source) -> String? {
+    if model.refreshingIds.contains(source.id) {
+      return String(localized: "Refreshing…", bundle: .module)
+    }
+    return source.common.enabled ? nil : String(localized: "Disabled", bundle: .module)
+  }
+
+  /// Everything the row shows that is not the source's name: what kind it is, how often it
+  /// refreshes, and what it is doing now. Naming the row leaves the subtitle out of the
+  /// announcement unless it is said here, and a source list that reads out only names is a list of
+  /// names.
+  private func accessibilityValue(for source: Source, state: String?) -> String {
+    [subtitle(for: source), state].compactMap { $0 }.joined(separator: ", ")
   }
 
   private var autoRefreshBinding: Binding<Bool> {

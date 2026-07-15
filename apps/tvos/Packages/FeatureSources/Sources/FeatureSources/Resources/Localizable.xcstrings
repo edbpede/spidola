@@ -407,6 +407,16 @@
         }
       }
     },
+    "Playlist file": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Playlist file"
+          }
+        }
+      }
+    },
     "Refresh now": {
       "localizations": {
         "en": {
@@ -473,6 +483,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Server address"
+          }
+        }
+      }
+    },
+    "Source": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source"
           }
         }
       }

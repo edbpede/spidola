@@ -35,6 +35,7 @@ struct ChannelStrip: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(accessibilityLabel)
+    .accessibilityValue(accessibilityValue)
   }
 
   /// The band: logo, name, and the live marker. Now/next EPG joins it in Phase 8 — the row is laid
@@ -87,9 +88,14 @@ struct ChannelStrip: View {
 
   /// Position in the ring, shown only when the ring's length is known — a search ring is paged
   /// without a count, and "3 of ?" is worse than nothing.
+  ///
+  /// Widened to `Int` before interpolating so the extracted key is a plain `%lld / %lld`, and said
+  /// through the catalog rather than by raw interpolation so that the separator — which a listener
+  /// hears spoken — is a translator's to place rather than frozen into Swift. Android's own strip
+  /// says it as a `%1$d / %2$d` resource, so the two screens count the same by construction.
   private var position: String? {
     guard let window, let total = window.total else { return nil }
-    return "\(window.offset + 1) / \(total)"
+    return String(localized: "\(Int(window.offset) + 1) / \(Int(total))", bundle: .module)
   }
 
   private func positionLabel(_ text: String) -> some View {
@@ -98,9 +104,18 @@ struct ChannelStrip: View {
       .foregroundStyle(SpidolaPalette.staticGray)
   }
 
+  /// The strip is named by the channel it is tuned to; that the channel is live and where it sits
+  /// in the ring are the tuner's state, not part of its name. Said as one phrase, "BBC One, News,
+  /// Live, 3 / 12" gives a listener nothing to tell the channel's own words from the strip's
+  /// reading of them — the split is what makes the name announce as a name (PRD §6.10).
   private var accessibilityLabel: String {
     var parts = [channel.name]
     if let group = channel.group { parts.append(group) }
+    return parts.joined(separator: ", ")
+  }
+
+  private var accessibilityValue: String {
+    var parts: [String] = []
     if isLive { parts.append(String(localized: "Live", bundle: .module)) }
     if let position { parts.append(position) }
     return parts.joined(separator: ", ")

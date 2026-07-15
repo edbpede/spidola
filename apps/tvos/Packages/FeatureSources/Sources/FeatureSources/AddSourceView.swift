@@ -196,6 +196,7 @@ public struct AddSourceView: View {
       Image(systemName: "checkmark.circle.fill")
         .font(.system(size: 56))
         .foregroundStyle(SpidolaPalette.streamGreen)
+        .accessibilityHidden(true)
       // Widened to `Int` before interpolating so the extracted keys are plain `%lld`, and
       // pluralised through the catalog: an import of exactly one channel is ordinary, and
       // "Added 1 channels" is the kind of seam that makes an app feel machine-made.

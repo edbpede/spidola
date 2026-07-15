@@ -48,7 +48,7 @@ struct PlaybackOptionsView: View {
         }
 
         section(String(localized: "Picture", bundle: .module)) {
-          optionRow(title: model.aspect.label, isOn: nil) { model.cycleAspect() }
+          optionRow(title: model.aspect.localizedLabel, isOn: nil) { model.cycleAspect() }
         }
       }
       .padding(SpidolaSpacing.xl)
@@ -110,11 +110,23 @@ struct PlaybackOptionsView: View {
   }
 
   /// Prefers the stream's language tag, since "English" beats "Track 2" from the couch.
+  ///
+  /// An engine reports an empty label for a track the stream named in no way at all, leaving this
+  /// slice — the one with a catalog — to number it. Falling through to a blank row would offer the
+  /// viewer a track they cannot tell from the one above it.
   private func label(for track: MediaTrack) -> String {
     if let language = track.language, !language.isEmpty {
       return track.label.isEmpty ? language : "\(track.label) · \(language)"
     }
-    return track.label
+    guard track.label.isEmpty else { return track.label }
+    return track.localizedFallbackLabel(position: position(of: track))
+  }
+
+  /// The track's place in the menu it is being shown in, counted from one, which is the number the
+  /// viewer is looking at.
+  private func position(of track: MediaTrack) -> Int {
+    let siblings = model.tracks.tracks(of: track.kind)
+    return (siblings.firstIndex { $0.id == track.id } ?? 0) + 1
   }
 
   private static let panelWidth: CGFloat = 640

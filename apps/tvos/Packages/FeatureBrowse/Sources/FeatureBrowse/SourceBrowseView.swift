@@ -92,7 +92,7 @@ public struct SourceBrowseView: View {
     HStack(spacing: SpidolaSpacing.m) {
       ForEach(content.kinds, id: \.self) { kind in
         let isSelected = kind == content.kind
-        Button(kind.label) { Task { await model.select(kind: kind) } }
+        Button(kind.localizedLabel) { Task { await model.select(kind: kind) } }
           .buttonStyle(.plain)
           .padding(.horizontal, SpidolaSpacing.l)
           .padding(.vertical, SpidolaSpacing.s)

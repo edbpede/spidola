@@ -70,11 +70,16 @@ final class MPVTrackListTests: XCTestCase {
     XCTAssertEqual(MPVTrackList.parse(json: json).available.first?.label, "AAC")
   }
 
-  func testFallsBackToPositionalLabelWhenStreamDeclaresNothing() {
+  /// A stream that declares no title, no language, and no codec leaves the engine with no words of
+  /// its own to report, and it reports none. Naming that track belongs to the playback slice, which
+  /// numbers it by position through its catalog — an engine-side "Subtitle 7" would be
+  /// untranslatable and would spell mpv's own track id into a menu that has to read the same when
+  /// the other engine opens the same stream (TECH_SPEC §8).
+  func testLabelIsEmptyWhenStreamDeclaresNothing() {
     let json = """
       [{"id":7,"type":"sub"}]
       """
-    XCTAssertEqual(MPVTrackList.parse(json: json).available.first?.label, "Subtitle 7")
+    XCTAssertEqual(MPVTrackList.parse(json: json).available.first?.label, "")
   }
 
   /// An unreadable track menu must not cost the viewer a channel that would otherwise play — the

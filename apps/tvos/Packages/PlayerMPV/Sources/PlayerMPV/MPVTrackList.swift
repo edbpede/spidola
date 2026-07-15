@@ -50,7 +50,7 @@ enum MPVTrackList {
       guard let kind = kind(forMPVType: entry.type) else { continue }
       let id = TrackID(rawValue: String(entry.id))
       available.append(
-        MediaTrack(id: id, kind: kind, label: label(for: entry, kind: kind), language: entry.lang))
+        MediaTrack(id: id, kind: kind, label: label(for: entry), language: entry.lang))
 
       guard entry.selected == true else { continue }
       switch kind {
@@ -80,10 +80,15 @@ enum MPVTrackList {
   /// the codec — so the menu reads "English" or "AAC" instead of the untranslatable "Track 2".
   /// `EngineError`-style couch language is not applied here because these are the stream's own
   /// words, not ours to rewrite.
-  private static func label(for entry: Entry, kind: TrackKind) -> String {
+  ///
+  /// A stream that declares none of the three leaves us with nothing to report, and an empty label
+  /// says exactly that. Naming that track is the playback slice's job: the words would have to be
+  /// translated and this package has no catalog, and a name invented here from an mpv track id
+  /// would read differently on the other engine for the same stream (TECH_SPEC §8).
+  private static func label(for entry: Entry) -> String {
     if let title = entry.title, !title.isEmpty { return title }
     if let lang = entry.lang, !lang.isEmpty { return lang }
     if let codec = entry.codec, !codec.isEmpty { return codec.uppercased() }
-    return kind == .audio ? "Audio \(entry.id)" : "Subtitle \(entry.id)"
+    return ""
   }
 }
