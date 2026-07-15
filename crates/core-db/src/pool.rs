@@ -14,7 +14,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
-use rusqlite::{Connection, OpenFlags};
+use rusqlite::{Connection, OpenFlags, OptionalExtension};
 
 use crate::error::{DbError, DbResult};
 use crate::migrations;
@@ -22,6 +22,7 @@ use crate::migrations;
 /// Default upper bound on cached reader connections. Readers beyond this open transiently
 /// and are dropped on return rather than pooled.
 const MAX_READERS: usize = 4;
+const M3U_SCRUB_MARKER: &str = "security.m3u_scrub.v2";
 
 /// A pooled SQLite database: one writer, a bounded set of readers, migrated to head.
 pub struct Db {
@@ -51,6 +52,7 @@ impl Db {
         let mut writer = Connection::open(path).map_err(DbError::Connection)?;
         configure_writer(&writer)?;
         migrations::apply(&mut writer)?;
+        scrub_legacy_m3u_pages(&writer)?;
         Ok(Self::from_parts(writer, open_reader))
     }
 
@@ -170,6 +172,36 @@ fn configure_writer(conn: &Connection) -> DbResult<()> {
     .map_err(DbError::Connection)
 }
 
+/// Completes migration 002's forensic scrub with a durable retry marker.
+///
+/// `rusqlite_migration` commits `user_version = 2` before `VACUUM` can run (SQLite forbids VACUUM
+/// inside the migration transaction). The marker therefore stays `pending` until every cleanup
+/// step succeeds. A crash or disk-full error at any point makes the next open retry instead of
+/// permanently skipping the scrub because the schema version already advanced.
+fn scrub_legacy_m3u_pages(conn: &Connection) -> DbResult<()> {
+    let state = conn
+        .query_row(
+            "SELECT value FROM settings WHERE key = ?1",
+            [M3U_SCRUB_MARKER],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()?;
+    if state.as_deref() == Some("complete") {
+        return Ok(());
+    }
+    conn.execute_batch(
+        "PRAGMA wal_checkpoint(TRUNCATE);
+         VACUUM;
+         PRAGMA wal_checkpoint(TRUNCATE);",
+    )?;
+    conn.execute(
+        "INSERT INTO settings(key, value) VALUES (?1, 'complete')
+         ON CONFLICT(key) DO UPDATE SET value = 'complete'",
+        [M3U_SCRUB_MARKER],
+    )?;
+    Ok(())
+}
+
 fn configure_reader(conn: &Connection) -> DbResult<()> {
     conn.execute_batch(
         "PRAGMA foreign_keys = ON;
@@ -226,5 +258,64 @@ mod tests {
         }
         let cached = db.readers.lock().unwrap().len();
         assert!(cached <= MAX_READERS);
+    }
+
+    #[test]
+    fn schema_two_cutover_scrubs_legacy_m3u_credentials_from_sqlite_and_wal() {
+        const CREDENTIAL: &str = "legacy-m3u-secret-6f91c2";
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("legacy.sqlite");
+        {
+            let mut conn = Connection::open(&path).unwrap();
+            configure_writer(&conn).unwrap();
+            migrations::apply_to_version(&mut conn, 1).unwrap();
+            conn.execute(
+                "INSERT INTO sources(id, kind, name, url) VALUES (1, 'm3u-url', 'Legacy', ?1)",
+                [format!("http://host/list.m3u?password={CREDENTIAL}")],
+            )
+            .unwrap();
+            conn.execute(
+                "INSERT INTO channels(source_id, identity, name, locator, kind) \
+                 VALUES (1, 1, 'Legacy', ?1, 'live')",
+                [format!("http://host/live/{CREDENTIAL}/1.ts")],
+            )
+            .unwrap();
+            conn.execute(
+                "INSERT INTO playback_history(source_id, identity, name, locator, played_at_unix) \
+                 VALUES (1, 1, 'Legacy', ?1, 1)",
+                [format!("http://host/live/{CREDENTIAL}/1.ts")],
+            )
+            .unwrap();
+            // Simulate a crash after migration 002 committed its schema/user_version but before
+            // the out-of-transaction VACUUM. The next open must key off the durable pending marker,
+            // not the already-advanced schema version.
+            migrations::apply(&mut conn).unwrap();
+        }
+
+        let db = Db::open(&path).unwrap();
+        assert_eq!(
+            db.writer()
+                .query_row(
+                    "SELECT value FROM settings WHERE key = ?1",
+                    [M3U_SCRUB_MARKER],
+                    |row| row.get::<_, String>(0),
+                )
+                .unwrap(),
+            "complete"
+        );
+        drop(db);
+        let mut bytes = Vec::new();
+        for entry in std::fs::read_dir(dir.path()).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_file() {
+                bytes.extend(std::fs::read(path).unwrap());
+            }
+        }
+        assert!(
+            !bytes
+                .windows(CREDENTIAL.len())
+                .any(|window| window == CREDENTIAL.as_bytes()),
+            "migration left an M3U credential in SQLite or its WAL"
+        );
     }
 }

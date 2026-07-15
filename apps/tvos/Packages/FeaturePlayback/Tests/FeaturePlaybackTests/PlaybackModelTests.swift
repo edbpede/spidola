@@ -23,7 +23,7 @@ final class PlaybackModelTests: XCTestCase {
 
   // MARK: - Play-time stream resolution
 
-  func testPlaysTheResolvedLocatorRatherThanTheStoredOne() async {
+  func testPlaysTheResolvedLocatorAndRequestOverridesRatherThanStoredEnvelopes() async {
     // An Xtream catalog stores a credential-free locator (TECH_SPEC §12), so the row the viewer
     // picked is not playable on its own. Without this the engine is handed an address that cannot
     // open, and the failure looks like a broken stream rather than a missing step.
@@ -36,19 +36,31 @@ final class PlaybackModelTests: XCTestCase {
     XCTAssertEqual(
       harness.access.resolvedCalls, ["http://host.example/10.ts"],
       "resolution must be asked for exactly once per load, not cached")
+    XCTAssertEqual(harness.engines.first?.loaded.first?.userAgent, "Resolved-Agent")
+    XCTAssertEqual(
+      harness.engines.first?.loaded.first?.headers,
+      [StreamHeader(name: "Referer", value: "https://portal.example/session")])
   }
 
-  func testFallsBackToTheStoredLocatorWhenResolutionFails() async {
-    // For an M3U source the two are identical, so the fallback is exact; for an Xtream source the
-    // engine then fails with its own EngineError — the loud, actionable path (PRD §6.3) — rather
-    // than this silently loading nothing.
+  func testResolutionFailureNeverLoadsTheOpaqueStoredLocator() async {
     let harness = Harness()
     harness.access.resolveFailure = FakeResolveError.unavailable
     let model = harness.model()
     await model.start()
-    XCTAssertEqual(
-      harness.engines.first?.loaded.map(\.locator), ["http://host.example/10.ts"],
-      "a failed resolution must still hand the engine the stored locator")
+    XCTAssertTrue(harness.engines.isEmpty, "no engine may receive an opaque envelope")
+    guard case .failed = model.state else {
+      return XCTFail("resolution failure must be visible")
+    }
+  }
+
+  func testResolvedStreamDiagnosticsRedactEveryCredentialBearingValue() {
+    let secret = "credential-value"
+    let resolved = ResolvedPlaybackStream(
+      locator: "https://stream.example/\(secret)",
+      userAgent: "Bearer-\(secret)",
+      headers: [ResolvedPlaybackHeader(name: "Authorization", value: secret)])
+
+    XCTAssertFalse(String(reflecting: resolved).contains(secret))
   }
 
   func testHonoursChannelOverrideOverSource() async {
@@ -376,10 +388,15 @@ private final class FakePlaybackAccess: PlaybackAccess {
   /// Stands in for the core's play-time credential resolution. Prefixed rather than echoed so a
   /// test can tell a resolved locator from a stored one, which is the only way to prove the model
   /// plays what the resolver returned instead of what the catalog holds.
-  func resolveStream(sourceId: Int64, locator: String) async throws -> String {
+  func resolvePlayback(_ channel: PlayableChannel) async throws -> ResolvedPlaybackStream {
     if let resolveFailure { throw resolveFailure }
-    resolvedCalls.append(locator)
-    return "resolved://\(locator)"
+    resolvedCalls.append(channel.locator)
+    return ResolvedPlaybackStream(
+      locator: "resolved://\(channel.locator)",
+      userAgent: "Resolved-Agent",
+      headers: [
+        ResolvedPlaybackHeader(name: "Referer", value: "https://portal.example/session")
+      ])
   }
 
   func bufferingProfile() async throws -> String? { buffering }

@@ -22,6 +22,7 @@ import dev.spidola.tv.core.playercontract.EngineRegistry
 import dev.spidola.tv.core.playercontract.EngineSelection
 import dev.spidola.tv.core.playercontract.PlaybackEngine
 import dev.spidola.tv.core.playercontract.PlaybackState
+import dev.spidola.tv.core.playercontract.StreamHeader
 import dev.spidola.tv.core.playercontract.StreamRequest
 import dev.spidola.tv.core.playercontract.TrackId
 import dev.spidola.tv.core.playercontract.TrackSelection
@@ -30,6 +31,7 @@ import dev.spidola.tv.core.playercontract.failure
 import dev.spidola.tv.core.playercontract.failureClass
 import dev.spidola.tv.core.playercontract.isShowingVideo
 import dev.spidola.tv.core.playercontract.offersOtherPlayer
+import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -223,6 +225,18 @@ class PlaybackViewModel(
         }
 
         val resolved = resolveEngine(target, engineOverride)
+        val streamRequest =
+            try {
+                request(target)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ApiException) {
+                Log.e(LOG_TAG, "stream address resolution failed", e)
+                _state.update {
+                    it.copy(playback = PlaybackState.Failed(EngineError.Unknown("stream address unavailable")))
+                }
+                return
+            }
         val built = registry.make(resolved)
         if (built == null) {
             // Only reachable when the platform default itself is not registered — a wiring bug.
@@ -243,7 +257,7 @@ class PlaybackViewModel(
         observe(built, resolved)
         loadStartedAt = TimeSource.Monotonic.markNow()
         Log.i(LOG_TAG, "load channel ${target.identity} on ${resolved.value}")
-        built.load(request(target))
+        built.load(streamRequest)
         built.play()
     }
 
@@ -274,12 +288,15 @@ class PlaybackViewModel(
         // goes back. Resolved per play and never stored — the point of a credential-free catalog is
         // that the playable form does not outlive its use.
         //
-        // Falling back to the stored locator is deliberate. For an M3U source the two are
-        // identical, so the fallback is exact; for an Xtream source the engine then fails with its
-        // own EngineError — the loud, actionable path (PRD §6.3) — instead of this returning a
-        // request whose failure the viewer has no explanation for.
-        val locator = setting { access.resolveStream(target.sourceId, target.locator) } ?: target.locator
-        return StreamRequest(locator = locator, buffering = profile)
+        // Resolution is mandatory: the stored value may be an encrypted M3U envelope or an Xtream
+        // reference, neither of which is a playable fallback. Let the API error stop the load.
+        val resolved = access.resolvePlayback(target)
+        return StreamRequest(
+            locator = resolved.locator,
+            headers = resolved.headers.map { StreamHeader(it.name, it.value) }.toPersistentList(),
+            userAgent = resolved.userAgent,
+            buffering = profile,
+        )
     }
 
     /**

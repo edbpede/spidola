@@ -13,7 +13,9 @@ import kotlinx.collections.immutable.persistentListOf
 data class StreamHeader(
     val name: String,
     val value: String,
-)
+) {
+    override fun toString(): String = "StreamHeader(name=$name, value=[REDACTED])"
+}
 
 /**
  * How much latency the viewer trades for resilience. Engine-neutral by construction: the settings
@@ -47,7 +49,11 @@ data class StreamRequest(
     val userAgent: String? = null,
     /** The latency/resilience trade-off to apply. */
     val buffering: BufferingProfile = BufferingProfile.BALANCED,
-)
+) {
+    override fun toString(): String =
+        "StreamRequest(locator=[REDACTED], headers=$headers, " +
+            "userAgent=${if (userAgent == null) "null" else "[REDACTED]"}, buffering=$buffering)"
+}
 
 /** How video fills the screen. Cycled by the playback UI; every engine honours the same set. */
 enum class AspectMode(

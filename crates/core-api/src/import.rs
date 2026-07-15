@@ -26,6 +26,7 @@ use tracing::{debug, info, info_span, warn};
 use crate::error::ApiError;
 use crate::events::{CancelToken, ImportListener, ImportOutcome, ImportProgress, ImportStage};
 use crate::logging::targets;
+use crate::storage_crypto::CatalogCipher;
 
 /// Bounded channel depth bridging the async fetch and the blocking staging worker.
 const CHUNK_CHANNEL_DEPTH: usize = 8;
@@ -47,6 +48,7 @@ enum StagingResult {
 /// boundary — every failure path ends in exactly one terminal `listener` call.
 pub(crate) async fn run_import(
     db: Arc<Db>,
+    cipher: Arc<CatalogCipher>,
     source_id: SourceId,
     url: String,
     user_agent: Option<String>,
@@ -60,6 +62,7 @@ pub(crate) async fn run_import(
     });
     match import_inner(
         &db,
+        &cipher,
         source_id,
         &url,
         user_agent,
@@ -83,6 +86,7 @@ pub(crate) async fn run_import(
 /// panics across the boundary — every failure path ends in exactly one terminal `listener` call.
 pub(crate) async fn run_import_content(
     db: Arc<Db>,
+    cipher: Arc<CatalogCipher>,
     source_id: SourceId,
     content: Vec<u8>,
     token: CancelToken,
@@ -92,7 +96,7 @@ pub(crate) async fn run_import_content(
         stage: ImportStage::Downloading,
         channels_seen: 0,
     });
-    match import_content_inner(&db, source_id, &content, &token, &listener).await {
+    match import_content_inner(&db, &cipher, source_id, &content, &token, &listener).await {
         Ok(StagingResult::Completed(outcome)) => listener.on_complete(outcome),
         Ok(StagingResult::Cancelled) => listener.on_failed(ApiError::Cancelled),
         Err(error) => listener.on_failed(error),
@@ -101,6 +105,7 @@ pub(crate) async fn run_import_content(
 
 async fn import_content_inner(
     db: &Arc<Db>,
+    cipher: &Arc<CatalogCipher>,
     source_id: SourceId,
     content: &[u8],
     token: &CancelToken,
@@ -112,9 +117,12 @@ async fn import_content_inner(
     let (tx, rx) = mpsc::channel::<Vec<u8>>(CHUNK_CHANNEL_DEPTH);
     let worker = {
         let db = Arc::clone(db);
+        let cipher = Arc::clone(cipher);
         let token = token.clone();
         let listener = Arc::clone(listener);
-        tokio::task::spawn_blocking(move || run_staging(&db, source_id, rx, &token, &listener))
+        tokio::task::spawn_blocking(move || {
+            run_staging(&db, &cipher, source_id, rx, &token, &listener)
+        })
     };
     for chunk in content.chunks(CONTENT_CHUNK_SIZE) {
         if token.is_cancelled() {
@@ -137,6 +145,7 @@ async fn import_content_inner(
 
 async fn import_inner(
     db: &Arc<Db>,
+    cipher: &Arc<CatalogCipher>,
     source_id: SourceId,
     url: &str,
     user_agent: Option<String>,
@@ -164,9 +173,12 @@ async fn import_inner(
     let (tx, rx) = mpsc::channel::<Vec<u8>>(CHUNK_CHANNEL_DEPTH);
     let worker = {
         let db = Arc::clone(db);
+        let cipher = Arc::clone(cipher);
         let token = token.clone();
         let listener = Arc::clone(listener);
-        tokio::task::spawn_blocking(move || run_staging(&db, source_id, rx, &token, &listener))
+        tokio::task::spawn_blocking(move || {
+            run_staging(&db, &cipher, source_id, rx, &token, &listener)
+        })
     };
 
     while let Some(chunk) = response
@@ -196,6 +208,7 @@ async fn import_inner(
 /// and checking cancellation at each batch boundary.
 fn run_staging(
     db: &Db,
+    cipher: &CatalogCipher,
     source_id: SourceId,
     mut rx: mpsc::Receiver<Vec<u8>>,
     token: &CancelToken,
@@ -212,6 +225,7 @@ fn run_staging(
     let mut parser = M3uParser::new();
     let mut sink = ProgressSink {
         staging: &mut staging,
+        cipher,
         listener,
         token,
         channels_seen: 0,
@@ -274,6 +288,7 @@ fn run_staging(
 /// progress update per batch. Checks cancellation before staging each batch.
 struct ProgressSink<'a, 'l> {
     staging: &'a mut Staging,
+    cipher: &'l CatalogCipher,
     listener: &'l Arc<dyn ImportListener>,
     token: &'l CancelToken,
     channels_seen: u64,
@@ -282,7 +297,7 @@ struct ProgressSink<'a, 'l> {
 }
 
 impl ChannelSink for ProgressSink<'_, '_> {
-    type Error = core_db::DbError;
+    type Error = ApiError;
 
     fn accept(&mut self, batch: Vec<ParsedChannel>) -> Result<(), Self::Error> {
         if self.cancelled || self.token.is_cancelled() {
@@ -291,12 +306,25 @@ impl ChannelSink for ProgressSink<'_, '_> {
         }
         let mut mapped = Vec::with_capacity(batch.len());
         for parsed in batch {
+            let identity = self
+                .cipher
+                .m3u_identity(parsed.tvg_id(), &parsed.url, &parsed.name)?;
             match map_parsed(parsed) {
-                Some(channel) => mapped.push(channel),
+                Some(mut channel) => {
+                    channel.identity = identity;
+                    channel.locator = self.cipher.seal_locator(&channel.locator)?;
+                    if let Some(user_agent) = &mut channel.overrides.user_agent {
+                        *user_agent = self.cipher.seal_value(user_agent)?;
+                    }
+                    for (_, value) in &mut channel.overrides.headers {
+                        *value = self.cipher.seal_value(value)?;
+                    }
+                    mapped.push(channel);
+                }
                 None => self.invalid += 1, // invalid locator: skip-and-count, never fail (§4.2)
             }
         }
-        self.staging.stage(&mapped)?;
+        self.staging.stage(&mapped).map_err(ApiError::from)?;
         self.channels_seen += mapped.len() as u64;
         self.listener.on_progress(ImportProgress {
             stage: ImportStage::Downloading,
@@ -306,9 +334,10 @@ impl ChannelSink for ProgressSink<'_, '_> {
     }
 }
 
-/// Maps a raw parsed channel to a domain import row, deriving the stable identity and
-/// validating the locator (parse, don't validate). Returns `None` if the URL is not a valid
-/// locator. Shared with `xtask`'s Phase 1 verifier so the mapping lives in exactly one place.
+/// Maps a raw parsed channel to a domain import row, deriving the deterministic fixture identity
+/// and validating the locator (parse, don't validate). Returns `None` if the URL is not a valid
+/// locator. Shared with `xtask`'s Phase 1 verifier; the real M3U import sink replaces this public
+/// hash with a catalog-keyed identity before persistence.
 #[must_use]
 pub fn map_parsed(parsed: ParsedChannel) -> Option<NewChannel> {
     let locator = StreamLocator::parse(&parsed.url).ok()?;
@@ -338,8 +367,8 @@ pub fn map_parsed(parsed: ParsedChannel) -> Option<NewChannel> {
 }
 
 /// Maps the parser's only propagating failure (a sink/DB error) onto the FFI taxonomy.
-fn map_parse_error(error: ParseError<core_db::DbError>) -> ApiError {
+fn map_parse_error(error: ParseError<ApiError>) -> ApiError {
     match error {
-        ParseError::Sink(db) => ApiError::from(db),
+        ParseError::Sink(error) => error,
     }
 }

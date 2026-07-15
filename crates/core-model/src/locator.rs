@@ -18,7 +18,7 @@ use crate::error::ModelError;
 ///
 /// Constructed only through [`StreamLocator::parse`]; the inner string cannot be set
 /// directly, so an unvalidated locator does not exist.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(try_from = "String", into = "String")]
 pub struct StreamLocator {
     raw: String,
@@ -78,9 +78,12 @@ impl From<StreamLocator> for String {
     }
 }
 
-impl std::fmt::Display for StreamLocator {
+impl std::fmt::Debug for StreamLocator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.raw)
+        f.debug_struct("StreamLocator")
+            .field("scheme", &self.scheme)
+            .field("raw", &"[redacted]")
+            .finish()
     }
 }
 

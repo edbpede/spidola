@@ -332,6 +332,7 @@ checksum = "cc14f565cf027a105f7a44ccf9e5b424348421a1d8952a8fc9d499d313107789"
 name = "core-api"
 version = "0.0.0"
 dependencies = [
+ "base64",
  "core-db",
  "core-fetch",
  "core-model",
@@ -340,12 +341,14 @@ dependencies = [
  "core-search",
  "core-xtream",
  "rand 0.9.5",
+ "ring",
  "tempfile",
  "thiserror",
  "tokio",
  "tracing",
  "tracing-subscriber",
  "uniffi",
+ "zeroize",
 ]
 
 [[package]]

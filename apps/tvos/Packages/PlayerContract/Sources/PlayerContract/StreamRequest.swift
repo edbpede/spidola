@@ -3,13 +3,17 @@
 
 /// A stream header override applied at playback time. Token-bearing values arrive from the
 /// host-secrets callback at play time and are never persisted here (TECH_SPEC §12).
-public struct StreamHeader: Sendable, Equatable, Hashable {
+public struct StreamHeader: Sendable, Equatable, Hashable, CustomDebugStringConvertible {
   public let name: String
   public let value: String
 
   public init(name: String, value: String) {
     self.name = name
     self.value = value
+  }
+
+  public var debugDescription: String {
+    "StreamHeader(name: \(name), value: [REDACTED])"
   }
 }
 
@@ -36,7 +40,7 @@ public enum BufferingProfile: String, Sendable, Equatable, Hashable, CaseIterabl
 
 /// Everything an engine needs to open a stream. Flat, owned, and engine-neutral: the same value
 /// loads on any engine, which is what lets "Try other player" re-issue the identical request.
-public struct StreamRequest: Sendable, Equatable, Hashable {
+public struct StreamRequest: Sendable, Equatable, Hashable, CustomDebugStringConvertible {
   /// The stream URL, already validated by the core's locator type.
   public let locator: String
   /// Per-channel/source header overrides.
@@ -56,6 +60,13 @@ public struct StreamRequest: Sendable, Equatable, Hashable {
     self.headers = headers
     self.userAgent = userAgent
     self.buffering = buffering
+  }
+
+  public var debugDescription: String {
+    let redactedUserAgent = userAgent == nil ? "nil" : "[REDACTED]"
+    return
+      "StreamRequest(locator: [REDACTED], headers: \(headers), "
+      + "userAgent: \(redactedUserAgent), buffering: \(buffering))"
   }
 }
 

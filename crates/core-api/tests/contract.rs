@@ -25,9 +25,10 @@ use std::time::Duration;
 
 use core_api::{
     ApiError, AppSettings, BufferingProfile, Core, CoreConfig, ImportListener, ImportOutcome,
-    ImportProgress, LogLevel, LogRecord, LogSink, PairingListener, PairingSubmission, SecretStore,
-    Source, SubtitleSize,
+    ImportProgress, LogLevel, LogRecord, LogSink, PairingListener, PairingSubmission,
+    ResolvedStream, SecretStore, Source, SubtitleSize,
 };
+use core_model::channel::channel_identity;
 use tokio::runtime::Runtime;
 
 /// Contract tests exercise process-global state (the logging pipeline installs once and its
@@ -54,6 +55,7 @@ fn serial() -> MutexGuard<'static, ()> {
 #[derive(Clone, Default)]
 struct FakeSecrets {
     store: Arc<Mutex<std::collections::HashMap<String, String>>>,
+    refuse_sets: Arc<AtomicBool>,
     refuse_deletes: Arc<AtomicBool>,
 }
 
@@ -62,6 +64,9 @@ impl SecretStore for FakeSecrets {
         Ok(self.store.lock().unwrap().get(&key).cloned())
     }
     fn set(&self, key: String, value: String) -> Result<(), ApiError> {
+        if self.refuse_sets.load(Ordering::SeqCst) {
+            return Err(ApiError::Internal);
+        }
         self.store.lock().unwrap().insert(key, value);
         Ok(())
     }
@@ -72,6 +77,32 @@ impl SecretStore for FakeSecrets {
         self.store.lock().unwrap().remove(&key);
         Ok(())
     }
+}
+
+#[test]
+fn an_m3u_source_is_not_created_when_the_secure_store_refuses_its_url() {
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("spidola.sqlite");
+    let secrets = FakeSecrets::default();
+    secrets.refuse_sets.store(true, Ordering::SeqCst);
+    let core = open_core(&rt, &db_path, RecordingSink::default(), secrets.clone());
+
+    let result = rt.block_on(core.sources().add_m3u_url(
+        "Secure playlist".to_owned(),
+        "http://host.example/list.m3u?token=secret".to_owned(),
+        None,
+        false,
+    ));
+    assert!(
+        result.is_err(),
+        "a failed secure-store write must fail closed"
+    );
+    assert!(
+        rt.block_on(core.sources().list()).unwrap().is_empty(),
+        "the database must not reference a URL that was never stored"
+    );
 }
 
 /// Makes every subsequent `sources` insert on the database at `db_path` fail.
@@ -229,6 +260,7 @@ fn spawn_xtream_stub(connections: usize) -> String {
 /// database file and the log export cannot produce a false negative.
 const XTREAM_USER: &str = "contract-user";
 const XTREAM_PASSWORD: &str = "Sp1dola-Contract-Passphrase-8f3ac1";
+const M3U_CREDENTIAL: &str = "Sp1dola-M3U-Credential-b71de4";
 
 /// A synthetic M3U with `count` uniquely-identified channels.
 fn playlist(count: usize) -> Vec<u8> {
@@ -745,6 +777,183 @@ fn secrets_never_reach_sqlite_or_the_log_stream() {
 }
 
 #[test]
+fn credential_bearing_m3u_urls_never_reach_sqlite_or_the_log_stream() {
+    // Real M3U providers commonly put the same account token in both the playlist address and
+    // every channel locator. Those values must remain usable for refresh/playback while resting
+    // only in the host secure store or as authenticated ciphertext on disk.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("spidola.sqlite");
+    let sink = RecordingSink::default();
+    let secrets = FakeSecrets::default();
+    let core = open_core(&rt, &db_path, sink.clone(), secrets.clone());
+
+    let stream_url = format!("http://stream.example/live/{M3U_CREDENTIAL}/1.ts");
+    let playlist = format!(
+        "#EXTM3U\n#EXTINF:-1 group-title=\"News\",Secure One\n\
+         #EXTVLCOPT:http-user-agent=Bearer-{M3U_CREDENTIAL}\n\
+         #EXTVLCOPT:http-referrer=http://portal.example/{M3U_CREDENTIAL}\n\
+         {stream_url}\n"
+    );
+    let source_url = format!(
+        "{}?account={M3U_CREDENTIAL}",
+        spawn_stub(playlist.into_bytes(), vec![(4096, Duration::ZERO)])
+    );
+    let sources = core.sources();
+    let source = rt
+        .block_on(sources.add_m3u_url(
+            "Credential playlist".to_owned(),
+            source_url,
+            Some(format!("Provider-Agent-{M3U_CREDENTIAL}")),
+            false,
+        ))
+        .expect("source is accepted");
+    let source_id = match source {
+        Source::M3uUrl { id, .. } => id,
+        other => panic!("expected an M3U source, got {other:?}"),
+    };
+
+    let (terminal_tx, terminal_rx) = channel();
+    let _refresh = sources.refresh(
+        source_id,
+        Box::new(CollectingListener {
+            progress: Arc::new(Mutex::new(Vec::new())),
+            first_progress: Arc::new(Mutex::new(None)),
+            terminal: terminal_tx,
+        }),
+    );
+    assert!(
+        matches!(
+            terminal_rx.recv_timeout(Duration::from_secs(30)).unwrap(),
+            Terminal::Complete(ImportOutcome { inserted: 1, .. })
+        ),
+        "the credential-bearing playlist must still import"
+    );
+
+    let channel = rt
+        .block_on(core.catalog().channels(source_id, 0, 1))
+        .expect("catalog remains readable")
+        .channels
+        .into_iter()
+        .next()
+        .expect("one channel imported");
+    assert!(
+        !channel.locator.contains(M3U_CREDENTIAL),
+        "the FFI/navigation locator must remain an opaque envelope"
+    );
+    assert_ne!(
+        channel.identity,
+        channel_identity(None, &stream_url, "Secure One").to_storage(),
+        "the persisted identity must not be a public offline verifier for the credential URL"
+    );
+    assert!(
+        channel
+            .overrides
+            .headers
+            .iter()
+            .all(|header| !header.value.contains(M3U_CREDENTIAL))
+            && channel
+                .overrides
+                .user_agent
+                .as_deref()
+                .is_none_or(|value| !value.contains(M3U_CREDENTIAL)),
+        "credential-bearing header values must remain opaque across persistence and FFI"
+    );
+    let playable = rt
+        .block_on(sources.resolve_playback(
+            channel.source_id,
+            channel.identity,
+            channel.locator.clone(),
+        ))
+        .expect("the resolver opens the stored envelopes");
+    assert_resolved_m3u_request(&playable);
+    rt.block_on(core.recents().record(
+        channel.source_id,
+        channel.identity,
+        channel.name,
+        channel.locator,
+        None,
+    ))
+    .expect("history records without persisting plaintext");
+
+    assert_m3u_secret_boundary(&core, &sink, &secrets, dir.path(), source_id, &rt);
+}
+
+fn assert_resolved_m3u_request(playable: &ResolvedStream) {
+    let locator = playable.locator();
+    assert!(
+        locator.contains(M3U_CREDENTIAL),
+        "the engine still needs the original playable locator"
+    );
+    let user_agent = playable.user_agent();
+    assert_eq!(
+        user_agent.as_deref(),
+        Some(format!("Bearer-{M3U_CREDENTIAL}").as_str()),
+        "the engine must receive the opened per-channel user-agent"
+    );
+    let headers = playable.headers();
+    assert_eq!(headers.len(), 1);
+    assert_eq!(headers[0].name(), "Referer");
+    assert!(headers[0].value().contains(M3U_CREDENTIAL));
+    assert!(
+        !format!("{playable:?}").contains(M3U_CREDENTIAL),
+        "ephemeral resolved values must remain redacted in diagnostics"
+    );
+}
+
+fn assert_m3u_secret_boundary(
+    core: &Arc<Core>,
+    sink: &RecordingSink,
+    secrets: &FakeSecrets,
+    db_dir: &std::path::Path,
+    source_id: i64,
+    rt: &Runtime,
+) {
+    let on_disk = everything_on_disk(db_dir);
+    assert!(
+        !contains_bytes(&on_disk, M3U_CREDENTIAL.as_bytes()),
+        "an M3U credential reached SQLite or its WAL"
+    );
+    assert!(
+        secrets
+            .store
+            .lock()
+            .unwrap()
+            .values()
+            .any(|value| value.contains(M3U_CREDENTIAL)),
+        "the credential-bearing source address must rest in the host secure store"
+    );
+    assert!(
+        !core
+            .export_logs()
+            .iter()
+            .any(|line| line.contains(M3U_CREDENTIAL)),
+        "an M3U credential reached the diagnostics log export"
+    );
+    assert!(
+        !sink
+            .records
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|record| record.message.contains(M3U_CREDENTIAL)),
+        "an M3U credential reached the host log sink"
+    );
+    rt.block_on(core.sources().delete(source_id))
+        .expect("source and its secure values delete together");
+    assert!(
+        secrets
+            .store
+            .lock()
+            .unwrap()
+            .values()
+            .all(|value| !value.contains(M3U_CREDENTIAL)),
+        "deleting an M3U source must remove its URL and user-agent secrets"
+    );
+}
+
+#[test]
 fn an_xtream_stream_is_playable_only_through_the_resolver() {
     // The other half of the credential-free-catalog bargain: if nothing puts the password back at
     // play time, an Xtream channel imports, browses, and favorites perfectly — and then cannot be
@@ -754,7 +963,8 @@ fn an_xtream_stream_is_playable_only_through_the_resolver() {
     let dir = tempfile::tempdir().unwrap();
     let db_path = dir.path().join("spidola.sqlite");
     let secrets = FakeSecrets::default();
-    let core = open_core(&rt, &db_path, RecordingSink::default(), secrets.clone());
+    let sink = RecordingSink::default();
+    let core = open_core(&rt, &db_path, sink.clone(), secrets.clone());
 
     let base = spawn_xtream_stub(1);
     let source = rt
@@ -786,8 +996,10 @@ fn an_xtream_stream_is_playable_only_through_the_resolver() {
     );
     assert!(
         playable.contains("/live/") && playable.ends_with("4242.ts"),
-        "the resolved URL must still name the same stream: {playable}"
+        "the resolved URL must still name the same stream"
     );
+
+    assert_xtream_recent_replays(&rt, &core, id, &stored);
 
     // Resolving must not leak it into the diagnostics the user can export.
     assert!(
@@ -797,19 +1009,92 @@ fn an_xtream_stream_is_playable_only_through_the_resolver() {
             .any(|l| l.contains(XTREAM_PASSWORD)),
         "resolving a stream leaked the password into the log export"
     );
+    assert!(
+        !sink
+            .records
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|record| record.message.contains(XTREAM_PASSWORD)),
+        "resolving a stream leaked the password into the host log sink"
+    );
+}
+
+fn assert_xtream_recent_replays(rt: &Runtime, core: &Arc<Core>, source_id: i64, stored: &str) {
+    let identity = 4242;
+    rt.block_on(core.recents().record(
+        source_id,
+        identity,
+        "Recent Xtream channel".to_owned(),
+        stored.to_owned(),
+        None,
+    ))
+    .expect("the Xtream recent records");
+    let recent = rt
+        .block_on(core.recents().list(1))
+        .expect("the recent list remains readable")
+        .into_iter()
+        .next()
+        .expect("the recorded recent is listed");
+    assert!(
+        recent.source_id == source_id && recent.identity == identity,
+        "the recent must retain its stable playback identity"
+    );
+    assert!(
+        recent.locator != stored && recent.locator.starts_with("spidola-sealed://v1/"),
+        "the listed recent locator must remain an opaque envelope"
+    );
+    assert!(
+        !recent.locator.contains(XTREAM_PASSWORD),
+        "the listed recent locator must not expose the account secret"
+    );
+
+    let recent_locator = recent.locator.clone();
+    let recent_playable = rt
+        .block_on(core.sources().resolve_playback(
+            recent.source_id,
+            recent.identity,
+            recent.locator,
+        ))
+        .expect("a listed Xtream recent resolves");
+    let recent_playable_locator = recent_playable.locator();
+    assert!(
+        recent_playable_locator.contains(XTREAM_USER)
+            && recent_playable_locator.contains(XTREAM_PASSWORD),
+        "the replayed URL must carry the credentials an engine needs"
+    );
+    assert!(
+        recent_playable_locator.contains("/live/") && recent_playable_locator.ends_with("4242.ts"),
+        "the replayed URL must still name the same stream"
+    );
+
+    let mut damaged = recent_locator;
+    damaged.push('A');
+    let damaged_result = rt.block_on(core.sources().resolve_playback(
+        recent.source_id,
+        recent.identity,
+        damaged,
+    ));
+    assert!(
+        matches!(damaged_result, Err(ApiError::StorageCorrupt)),
+        "a damaged recent envelope must fail closed"
+    );
 }
 
 #[test]
 fn an_m3u_locator_resolves_unchanged_so_the_zap_path_needs_no_per_kind_branch() {
     // Kind-agnostic by contract: the shell asks for a playable URL and gets one, whatever the
-    // source is. An M3U URL is already playable and must come back untouched.
+    // source is. The M3U URL is sealed in the catalog and must open to the original value.
     let _serial = serial();
     let rt = Runtime::new().unwrap();
     let harness = build_core(&rt);
+    let stream = "http://host.example/live/7.ts".to_owned();
+    let playlist = format!("#EXTM3U\n#EXTINF:-1,Seven\n{stream}\n");
+    let source_url = spawn_stub(playlist.into_bytes(), vec![(4096, Duration::ZERO)]);
     let source = rt
         .block_on(harness.core.sources().add_m3u_url(
             "Playlist".to_owned(),
-            "http://host.example/list.m3u".to_owned(),
+            source_url,
             None,
             false,
         ))
@@ -818,12 +1103,34 @@ fn an_m3u_locator_resolves_unchanged_so_the_zap_path_needs_no_per_kind_branch() 
         Source::M3uUrl { id, .. } => *id,
         other => panic!("expected an M3U source, got {other:?}"),
     };
-    let stream = "http://host.example/live/7.ts".to_owned();
+
+    let (terminal_tx, terminal_rx) = channel();
+    let _refresh = harness.core.sources().refresh(
+        id,
+        Box::new(CollectingListener {
+            progress: Arc::new(Mutex::new(Vec::new())),
+            first_progress: Arc::new(Mutex::new(None)),
+            terminal: terminal_tx,
+        }),
+    );
+    assert!(matches!(
+        terminal_rx.recv_timeout(Duration::from_secs(30)).unwrap(),
+        Terminal::Complete(ImportOutcome { inserted: 1, .. })
+    ));
+    let stored = rt
+        .block_on(harness.core.catalog().channels(id, 0, 1))
+        .expect("catalog remains readable")
+        .channels
+        .into_iter()
+        .next()
+        .expect("one channel imported")
+        .locator;
+    assert_ne!(stored, stream, "the catalog locator must remain sealed");
     assert_eq!(
-        rt.block_on(harness.core.sources().resolve_stream(id, stream.clone()))
+        rt.block_on(harness.core.sources().resolve_stream(id, stored))
             .expect("an M3U locator resolves"),
         stream,
-        "an already-playable locator must pass through unchanged"
+        "the authenticated catalog envelope must open to the original locator"
     );
 }
 

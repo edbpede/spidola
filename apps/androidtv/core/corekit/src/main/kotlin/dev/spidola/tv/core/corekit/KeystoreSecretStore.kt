@@ -8,6 +8,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import android.util.Log
+import uniffi.core_api.ApiException
 import uniffi.core_api.SecretStore
 import java.security.GeneralSecurityException
 import java.security.KeyStore
@@ -46,16 +47,24 @@ class KeystoreSecretStore(context: Context) : SecretStore {
     ) {
         synchronized(lock) {
             try {
-                prefs.edit().putString(key, encrypt(value)).apply()
-            } catch (e: GeneralSecurityException) {
-                Log.e(TAG, "secret could not be sealed; not persisted", e)
+                executeSecretMutation {
+                    prefs.edit().putString(key, encrypt(value)).commit()
+                }
+            } catch (e: ApiException.Internal) {
+                Log.e(TAG, "secret could not be sealed or persisted", e)
+                throw e
             }
         }
     }
 
     override fun delete(key: String) {
         synchronized(lock) {
-            prefs.edit().remove(key).apply()
+            try {
+                executeSecretMutation { prefs.edit().remove(key).commit() }
+            } catch (e: ApiException.Internal) {
+                Log.e(TAG, "secret could not be removed", e)
+                throw e
+            }
         }
     }
 
@@ -100,5 +109,14 @@ class KeystoreSecretStore(context: Context) : SecretStore {
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         const val GCM_IV_BYTES = 12
         const val GCM_TAG_BITS = 128
+    }
+}
+
+/** Executes one durable secure-store mutation and maps platform refusal to the FFI error contract. */
+internal fun executeSecretMutation(mutation: () -> Boolean) {
+    try {
+        if (!mutation()) throw ApiException.Internal()
+    } catch (e: GeneralSecurityException) {
+        throw ApiException.Internal().also { it.initCause(e) }
     }
 }

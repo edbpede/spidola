@@ -165,7 +165,15 @@ public final class PlaybackModel {
     let resolved = await resolveEngine(target, override: engineOverride)
     guard isCurrent(generation) else { return }
 
-    let streamRequest = await request(for: target)
+    let streamRequest: StreamRequest
+    do {
+      streamRequest = try await request(for: target)
+    } catch {
+      guard isCurrent(generation) else { return }
+      logger.error("stream address resolution failed")
+      state = .failed(.unknown(detail: "stream address unavailable"))
+      return
+    }
     guard isCurrent(generation) else { return }
 
     guard let built = registry.make(resolved) else {
@@ -215,7 +223,7 @@ public final class PlaybackModel {
       registered: registry.registered)
   }
 
-  private func request(for target: PlayableChannel) async -> StreamRequest {
+  private func request(for target: PlayableChannel) async throws -> StreamRequest {
     let profile =
       (try? await access.bufferingProfile())
       .flatMap { $0 }
@@ -225,14 +233,14 @@ public final class PlaybackModel {
     // back. Resolved per play and never stored — the whole point of a credential-free catalog is
     // that the playable form does not outlive its use.
     //
-    // Falling back to the stored locator when resolution fails is deliberate. For an M3U source the
-    // two are identical, so the fallback is exact; for an Xtream source the engine then fails with
-    // its own `EngineError` — the loud, actionable path (PRD §6.3) — instead of this returning a
-    // request the viewer never sees the reason for.
-    let locator =
-      (try? await access.resolveStream(sourceId: target.sourceId, locator: target.locator))
-      ?? target.locator
-    return StreamRequest(locator: locator, buffering: profile)
+    // Resolution is mandatory: the stored value may be an encrypted M3U envelope or an Xtream
+    // reference, neither of which is a playable fallback.
+    let resolved = try await access.resolvePlayback(target)
+    return StreamRequest(
+      locator: resolved.locator,
+      headers: resolved.headers.map { StreamHeader(name: $0.name, value: $0.value) },
+      userAgent: resolved.userAgent,
+      buffering: profile)
   }
 
   /// Drains the engine's state machine onto the model. One task per engine; cancelled on dispose,

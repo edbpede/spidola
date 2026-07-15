@@ -37,6 +37,8 @@ import uniffi.core_api.SecretStore
 import uniffi.core_api.Source
 import uniffi.core_api.uniffiEnsureInitialized
 
+private const val RESOLVED_DIAGNOSTIC_SECRET = "ffi-diagnostic-secret"
+
 private fun fail(message: String): Nothing {
     System.err.println("HARNESS FAIL: $message")
     exitProcess(1)
@@ -156,7 +158,13 @@ private fun playlist(count: Int): String =
         append("#EXTM3U\n")
         for (i in 0 until count) {
             append("#EXTINF:-1 tvg-id=\"id$i\" group-title=\"News\",Channel $i\n")
-            append("http://host.example/live/$i.ts\n")
+            if (i == 0) {
+                append("#EXTVLCOPT:http-user-agent=Bearer-$RESOLVED_DIAGNOSTIC_SECRET\n")
+                append("#EXTVLCOPT:http-referrer=https://portal.example/$RESOLVED_DIAGNOSTIC_SECRET\n")
+                append("http://host.example/live/$RESOLVED_DIAGNOSTIC_SECRET/$i.ts\n")
+            } else {
+                append("http://host.example/live/$i.ts\n")
+            }
         }
     }
 
@@ -217,6 +225,25 @@ fun main() {
         ensure(sink.targets().contains("spidola::import")) {
             "log sink never saw import records"
         }
+
+        // The raw generated boundary objects must not reveal plaintext through default native
+        // diagnostics before CoreKit has a chance to adapt them.
+        val first = core.catalog().channels(id, 0u, 1u).channels.single()
+        val resolved = core.sources().resolvePlayback(id, first.identity, first.locator)
+        val resolvedHeaders = resolved.headers()
+        ensure(resolved.locator().contains(RESOLVED_DIAGNOSTIC_SECRET)) {
+            "resolved locator did not cross the generated boundary"
+        }
+        ensure(resolved.userAgent()?.contains(RESOLVED_DIAGNOSTIC_SECRET) == true) {
+            "resolved user-agent did not cross the generated boundary"
+        }
+        ensure(resolvedHeaders.single().value().contains(RESOLVED_DIAGNOSTIC_SECRET)) {
+            "resolved header did not cross the generated boundary"
+        }
+        ensure(
+            RESOLVED_DIAGNOSTIC_SECRET !in resolved.toString() &&
+                RESOLVED_DIAGNOSTIC_SECRET !in resolvedHeaders.single().toString(),
+        ) { "generated Kotlin diagnostics exposed a resolved credential" }
 
         // 4) Cancel a slow import mid-stream; nothing partial is committed.
         val slowBody = playlist(6000).toByteArray()

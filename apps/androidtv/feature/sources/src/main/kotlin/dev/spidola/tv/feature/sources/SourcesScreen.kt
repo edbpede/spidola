@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,11 +56,16 @@ fun SourcesScreen(
     onAddSource: () -> Unit,
     onPairPhone: () -> Unit,
     modifier: Modifier = Modifier,
+    isActive: Boolean = true,
     viewModel: SourcesViewModel = viewModel(factory = SourcesViewModel.factory(access)),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
     val status by viewModel.status.collectAsStateWithLifecycle()
+
+    LaunchedEffect(isActive) {
+        if (isActive) viewModel.load()
+    }
 
     var expandedId by remember { mutableStateOf<Long?>(null) }
     var renamingId by remember { mutableStateOf<Long?>(null) }

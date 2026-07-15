@@ -5,8 +5,8 @@
 //!
 //! Each variant carries **only** the fields that kind possesses, so illegal combinations
 //! (an Xtream password on a file source, a server URL on an M3U file) cannot be
-//! constructed (TECH_SPEC §4.1). Secrets never live here: the Xtream variant holds a
-//! [`SecretRef`] (opaque host-secrets key), never the password itself (§12).
+//! constructed (TECH_SPEC §4.1). Secrets never live here: credential-bearing source values
+//! are named by a [`SecretRef`] (opaque host-secrets key), never stored inline (§12).
 
 use serde::{Deserialize, Serialize};
 
@@ -23,10 +23,10 @@ pub enum Source {
         id: SourceId,
         /// Common per-source settings.
         common: SourceCommon,
-        /// The playlist URL.
-        url: StreamLocator,
-        /// Optional per-source user-agent override for fetching.
-        user_agent: Option<String>,
+        /// Opaque host-secrets key naming the credential-bearing playlist URL.
+        url_secret: SecretRef,
+        /// Whether the derived secure-store entry for a user-agent exists.
+        has_user_agent: bool,
         /// Opt-in "accept invalid TLS" escape hatch, off by default (`core-fetch::tls`).
         accept_invalid_tls: bool,
     },
@@ -140,8 +140,8 @@ mod tests {
         let src = Source::M3uUrl {
             id: SourceId::new(7),
             common: common(),
-            url: StreamLocator::parse("https://a.example/list.m3u").unwrap(),
-            user_agent: None,
+            url_secret: SecretRef::new("m3u-url/test/url"),
+            has_user_agent: false,
             accept_invalid_tls: false,
         };
         assert_eq!(src.id(), SourceId::new(7));

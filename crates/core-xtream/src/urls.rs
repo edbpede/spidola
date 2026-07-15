@@ -401,11 +401,7 @@ mod tests {
         let parsed = Url::parse(url.as_str()).unwrap();
         let segments: Vec<&str> = parsed.path_segments().unwrap().collect();
         // Exactly `{kind}/{user}/{pass}/{file}` — the credentials did not restructure it.
-        assert_eq!(
-            segments.len(),
-            4,
-            "password broke out of its segment: {url}"
-        );
+        assert_eq!(segments.len(), 4, "password broke out of its segment");
         assert_eq!(segments[0], "live");
         assert_eq!(segments[3], "7.ts");
         // Percent-decoding the credential segments must return exactly what went in. Note
@@ -510,7 +506,7 @@ mod tests {
         );
         // This is the value that reaches SQLite and the FFI (§12): prove it is clean even
         // under the type that *does* render itself.
-        let rendered = format!("{locator:?} {locator}");
+        let rendered = format!("{locator:?}");
         assert!(!rendered.contains("alice"));
     }
 
@@ -525,7 +521,7 @@ mod tests {
         for original in cases {
             let locator = original.to_catalog_locator(&server).unwrap();
             let recovered = StreamRef::from_catalog_locator(&locator)
-                .unwrap_or_else(|| panic!("failed to recover {original:?} from {locator}"));
+                .unwrap_or_else(|| panic!("failed to recover {original:?} from catalog locator"));
             assert_eq!(recovered, original, "round trip lost information");
         }
     }

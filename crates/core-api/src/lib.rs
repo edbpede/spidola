@@ -24,6 +24,7 @@ pub mod runtime;
 pub mod secrets;
 pub mod services;
 pub mod settings;
+mod storage_crypto;
 pub mod xtream;
 
 use std::path::Path;
@@ -36,7 +37,8 @@ pub use events::{ImportListener, ImportOutcome, ImportProgress, ImportStage, Tas
 pub use logging::{LogConfig, LogHandle, LogLevel, LogRecord, LogSink, RingBuffer, RingLayer};
 pub use records::{
     BrowseGroup, BrowseGroupPage, Channel, ChannelOverrides, ChannelPage, Favorite, HeaderField,
-    MediaKind, Recent, SearchPage, Source, SourceCommon, SourceKind,
+    MediaKind, Recent, ResolvedHeader, ResolvedStream, SearchPage, Source, SourceCommon,
+    SourceKind,
 };
 pub use runtime::CoreRuntime;
 pub use secrets::SecretStore;
@@ -49,6 +51,7 @@ pub use settings::{
 };
 
 use crate::logging::targets;
+use crate::storage_crypto::CatalogCipher;
 
 uniffi::setup_scaffolding!();
 
@@ -56,9 +59,9 @@ uniffi::setup_scaffolding!();
 /// [`Handshake`] lets an older shell refuse a newer core legibly rather than crash (TECH_SPEC
 /// §5, §13).
 ///
-/// `2` — Phase 6: added the Xtream and pairing services, and replaced `SettingsService`'s
-/// opaque key/value methods with the typed [`settings`] surface.
-pub const BOUNDARY_VERSION: u32 = 2;
+/// `4` — resolved stream locators and request overrides became opaque play-time objects so
+/// generated shell diagnostics cannot reflect plaintext credentials.
+pub const BOUNDARY_VERSION: u32 = 4;
 
 /// The core's build-time git revision, for the diagnostics screen (PRD §6.9). Resolved by
 /// `build.rs`; `"unknown"` in a source tree without git metadata (a release tarball build),
@@ -96,6 +99,7 @@ pub struct Handshake {
 pub struct Core {
     rt: Arc<CoreRuntime>,
     db: Arc<Db>,
+    cipher: Arc<CatalogCipher>,
     log: LogHandle,
     // One shared `SourceService` for the process, so its in-flight-refresh registry is the same
     // instance every `sources()` call hands out. A best-effort `delete` can then find and cancel a
@@ -149,7 +153,13 @@ impl Core {
             );
         }
         let secrets: Arc<dyn SecretStore> = Arc::from(secrets);
-        let source_service = SourceService::new(Arc::clone(&rt), Arc::clone(&db), secrets);
+        let cipher = CatalogCipher::new(Arc::clone(&secrets));
+        let source_service = SourceService::new(
+            Arc::clone(&rt),
+            Arc::clone(&db),
+            Arc::clone(&secrets),
+            Arc::clone(&cipher),
+        );
         let pairing_service = PairingService::new(Arc::clone(&rt));
         // Claim the process-global host-sink slot last: it fails if a live `Core` already owns it,
         // and installing only after the fallible steps above means a transient runtime/db failure
@@ -159,6 +169,7 @@ impl Core {
         Ok(Arc::new(Self {
             rt,
             db,
+            cipher,
             log,
             source_service,
             pairing_service,
@@ -206,7 +217,11 @@ impl Core {
     /// The recently-watched service (list, purge, off-switch).
     #[must_use]
     pub fn recents(&self) -> Arc<RecentsService> {
-        RecentsService::new(Arc::clone(&self.rt), Arc::clone(&self.db))
+        RecentsService::new(
+            Arc::clone(&self.rt),
+            Arc::clone(&self.db),
+            Arc::clone(&self.cipher),
+        )
     }
 
     /// The pairing service (start/stop the LAN server, PRD §6.1).

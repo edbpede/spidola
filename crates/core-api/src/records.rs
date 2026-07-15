@@ -15,6 +15,8 @@
 //! stores, so a shell can round-trip a channel's identity straight back into the favorites
 //! API without a lossy `u64`/`ULong` hop on Kotlin.
 
+use std::sync::Arc;
+
 use core_model::channel::{
     Channel as DomainChannel, ChannelOverrides as DomainOverrides, MediaKind as DomainMediaKind,
 };
@@ -24,6 +26,7 @@ use core_model::ids::{CategoryId, ChannelIdentity};
 use core_model::source::{
     Source as DomainSource, SourceCommon as DomainCommon, SourceKind as DomainSourceKind,
 };
+use zeroize::Zeroize;
 
 /// What a channel plays. The shell reserves an "unknown future variant" arm (TECH_SPEC §5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -98,8 +101,9 @@ impl From<DomainCommon> for SourceCommon {
     }
 }
 
-/// A configured content source. Mirrors `core_model::source::Source` as a flat enum; the
-/// Xtream password is never here — only its opaque host-secrets key (TECH_SPEC §12).
+/// A configured content source. Mirrors `core_model::source::Source` as a flat enum. Secret
+/// values and their opaque keys stay inside the core; the shell receives only display/settings
+/// metadata (TECH_SPEC §12).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum Source {
     /// An M3U/M3U8 playlist fetched from a URL.
@@ -108,10 +112,8 @@ pub enum Source {
         id: i64,
         /// Common per-source settings.
         common: SourceCommon,
-        /// The playlist URL.
-        url: String,
-        /// Optional per-source user-agent override for fetching.
-        user_agent: Option<String>,
+        /// Whether a secure per-source user-agent override is configured.
+        has_user_agent: bool,
         /// Opt-in "accept invalid TLS" escape hatch, off by default.
         accept_invalid_tls: bool,
     },
@@ -143,14 +145,13 @@ impl From<DomainSource> for Source {
             DomainSource::M3uUrl {
                 id,
                 common,
-                url,
-                user_agent,
+                has_user_agent,
                 accept_invalid_tls,
+                ..
             } => Self::M3uUrl {
                 id: id.value(),
                 common: common.into(),
-                url: url.to_string(),
-                user_agent,
+                has_user_agent,
                 accept_invalid_tls,
             },
             DomainSource::M3uFile { id, common } => Self::M3uFile {
@@ -166,7 +167,7 @@ impl From<DomainSource> for Source {
             } => Self::Xtream {
                 id: id.value(),
                 common: common.into(),
-                server: server.to_string(),
+                server: server.as_str().to_owned(),
                 username,
                 secret_ref: secret.as_str().to_owned(),
             },
@@ -174,14 +175,24 @@ impl From<DomainSource> for Source {
     }
 }
 
-/// A single per-channel HTTP header override. Token-bearing values must be sourced via the
-/// host-secrets callback, never persisted (TECH_SPEC §12).
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+/// A single per-channel HTTP header override. Catalog records carry authenticated envelopes;
+/// [`ResolvedHeader`] exposes the plaintext value only at play time (TECH_SPEC §12).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
 pub struct HeaderField {
     /// Header name.
     pub name: String,
     /// Header value.
     pub value: String,
+}
+
+impl std::fmt::Debug for HeaderField {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("HeaderField")
+            .field("name", &self.name)
+            .field("value", &"[REDACTED]")
+            .finish()
+    }
 }
 
 /// Per-channel overrides applied at fetch/playback time.
@@ -193,6 +204,120 @@ pub struct ChannelOverrides {
     pub headers: Vec<HeaderField>,
     /// Opaque preferred-engine key resolved by the shell's selection policy (TECH_SPEC §8).
     pub preferred_engine: Option<String>,
+}
+
+/// One plaintext HTTP header exposed only as an opaque play-time object. Generated Swift/Kotlin
+/// representations therefore cannot print its value by reflecting a record's stored fields.
+#[derive(uniffi::Object)]
+pub struct ResolvedHeader {
+    name: String,
+    value: String,
+}
+
+impl ResolvedHeader {
+    pub(crate) fn new(name: String, value: String) -> Arc<Self> {
+        Arc::new(Self { name, value })
+    }
+}
+
+impl std::fmt::Debug for ResolvedHeader {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("ResolvedHeader")
+            .field("name", &self.name)
+            .field("value", &"[REDACTED]")
+            .finish()
+    }
+}
+
+impl Drop for ResolvedHeader {
+    fn drop(&mut self) {
+        self.name.zeroize();
+        self.value.zeroize();
+    }
+}
+
+#[uniffi::export]
+impl ResolvedHeader {
+    /// Header name. Returned only when the shell constructs the engine request.
+    #[must_use]
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+
+    /// Plaintext header value. Never persist or log the returned string.
+    #[must_use]
+    pub fn value(&self) -> String {
+        self.value.clone()
+    }
+}
+
+/// Everything the shell needs to construct an engine request after the core has opened the
+/// catalog's authenticated envelopes. This opaque object is ephemeral: never persist or log it.
+#[derive(uniffi::Object)]
+pub struct ResolvedStream {
+    /// Playable locator with any source credentials restored.
+    locator: String,
+    /// Plaintext per-channel user-agent, if present.
+    user_agent: Option<String>,
+    /// Plaintext per-channel HTTP headers.
+    headers: Vec<Arc<ResolvedHeader>>,
+}
+
+impl ResolvedStream {
+    pub(crate) fn new(
+        locator: String,
+        user_agent: Option<String>,
+        headers: Vec<Arc<ResolvedHeader>>,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            locator,
+            user_agent,
+            headers,
+        })
+    }
+}
+
+impl std::fmt::Debug for ResolvedStream {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("ResolvedStream")
+            .field("locator", &"[REDACTED]")
+            .field(
+                "user_agent",
+                &self.user_agent.as_ref().map(|_| "[REDACTED]"),
+            )
+            .field("headers", &self.headers)
+            .finish()
+    }
+}
+
+impl Drop for ResolvedStream {
+    fn drop(&mut self) {
+        self.locator.zeroize();
+        self.user_agent.zeroize();
+    }
+}
+
+#[uniffi::export]
+impl ResolvedStream {
+    /// Playable locator with source credentials restored. Never persist or log it.
+    #[must_use]
+    pub fn locator(&self) -> String {
+        self.locator.clone()
+    }
+
+    /// Plaintext per-channel user-agent, if present. Never persist or log it.
+    #[must_use]
+    pub fn user_agent(&self) -> Option<String> {
+        self.user_agent.clone()
+    }
+
+    /// Opaque plaintext header handles for immediate engine construction.
+    #[must_use]
+    pub fn headers(&self) -> Vec<Arc<ResolvedHeader>> {
+        self.headers.clone()
+    }
 }
 
 impl From<DomainOverrides> for ChannelOverrides {
@@ -243,7 +368,7 @@ impl From<DomainChannel> for Channel {
             name: channel.name,
             group_title: channel.group_title,
             logo: channel.logo,
-            locator: channel.locator.to_string(),
+            locator: channel.locator.as_str().to_owned(),
             kind: channel.kind.into(),
             category_id: channel.category.map(CategoryId::value),
             overrides: channel.overrides.into(),
@@ -340,7 +465,7 @@ impl From<DomainHistory> for Recent {
             source_id: entry.source_id.value(),
             identity: entry.identity.to_storage(),
             name: entry.name,
-            locator: entry.locator.to_string(),
+            locator: entry.locator.as_str().to_owned(),
             played_at_unix: entry.played_at_unix,
             position_secs: entry.position_secs,
         }

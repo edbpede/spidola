@@ -41,8 +41,8 @@ enum class AddSourceMode(
 /**
  * The immutable form the screen owns and hands to [AddSourceViewModel.submit].
  *
- * [password] is in flight to `addXtream` and nowhere else: the form holds it only between the
- * keystroke and the submit, and the screen keeps it out of saved state (TECH_SPEC §12).
+ * Credential-bearing fields are in flight to the core and nowhere else: the form holds them only
+ * between the keystroke and the submit, and the screen keeps them out of saved state (TECH_SPEC §12).
  */
 data class AddSourceForm(
     val mode: AddSourceMode,

@@ -2040,6 +2040,319 @@ public func FfiConverterTypeRecentsService_lower(_ value: RecentsService) -> UIn
 
 
 /**
+ * One plaintext HTTP header exposed only as an opaque play-time object. Generated Swift/Kotlin
+ * representations therefore cannot print its value by reflecting a record's stored fields.
+ */
+public protocol ResolvedHeaderProtocol: AnyObject, Sendable {
+    
+    /**
+     * Header name. Returned only when the shell constructs the engine request.
+     */
+    func name()  -> String
+    
+    /**
+     * Plaintext header value. Never persist or log the returned string.
+     */
+    func value()  -> String
+    
+}
+/**
+ * One plaintext HTTP header exposed only as an opaque play-time object. Generated Swift/Kotlin
+ * representations therefore cannot print its value by reflecting a record's stored fields.
+ */
+open class ResolvedHeader: ResolvedHeaderProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_core_api_fn_clone_resolvedheader(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_core_api_fn_free_resolvedheader(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Header name. Returned only when the shell constructs the engine request.
+     */
+open func name() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_core_api_fn_method_resolvedheader_name(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Plaintext header value. Never persist or log the returned string.
+     */
+open func value() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_core_api_fn_method_resolvedheader_value(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeResolvedHeader: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = ResolvedHeader
+
+    public static func lift(_ handle: UInt64) throws -> ResolvedHeader {
+        return ResolvedHeader(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: ResolvedHeader) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ResolvedHeader {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: ResolvedHeader, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeResolvedHeader_lift(_ handle: UInt64) throws -> ResolvedHeader {
+    return try FfiConverterTypeResolvedHeader.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeResolvedHeader_lower(_ value: ResolvedHeader) -> UInt64 {
+    return FfiConverterTypeResolvedHeader.lower(value)
+}
+
+
+
+
+
+
+/**
+ * Everything the shell needs to construct an engine request after the core has opened the
+ * catalog's authenticated envelopes. This opaque object is ephemeral: never persist or log it.
+ */
+public protocol ResolvedStreamProtocol: AnyObject, Sendable {
+    
+    /**
+     * Opaque plaintext header handles for immediate engine construction.
+     */
+    func headers()  -> [ResolvedHeader]
+    
+    /**
+     * Playable locator with source credentials restored. Never persist or log it.
+     */
+    func locator()  -> String
+    
+    /**
+     * Plaintext per-channel user-agent, if present. Never persist or log it.
+     */
+    func userAgent()  -> String?
+    
+}
+/**
+ * Everything the shell needs to construct an engine request after the core has opened the
+ * catalog's authenticated envelopes. This opaque object is ephemeral: never persist or log it.
+ */
+open class ResolvedStream: ResolvedStreamProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_core_api_fn_clone_resolvedstream(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_core_api_fn_free_resolvedstream(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Opaque plaintext header handles for immediate engine construction.
+     */
+open func headers() -> [ResolvedHeader]  {
+    return try!  FfiConverterSequenceTypeResolvedHeader.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_core_api_fn_method_resolvedstream_headers(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Playable locator with source credentials restored. Never persist or log it.
+     */
+open func locator() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_core_api_fn_method_resolvedstream_locator(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Plaintext per-channel user-agent, if present. Never persist or log it.
+     */
+open func userAgent() -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_core_api_fn_method_resolvedstream_user_agent(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeResolvedStream: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = ResolvedStream
+
+    public static func lift(_ handle: UInt64) throws -> ResolvedStream {
+        return ResolvedStream(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: ResolvedStream) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ResolvedStream {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: ResolvedStream, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeResolvedStream_lift(_ handle: UInt64) throws -> ResolvedStream {
+    return try FfiConverterTypeResolvedStream.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeResolvedStream_lower(_ value: ResolvedStream) -> UInt64 {
+    return FfiConverterTypeResolvedStream.lower(value)
+}
+
+
+
+
+
+
+/**
  * Runs channel searches against the FTS5 index.
  */
 public protocol SearchServiceProtocol: AnyObject, Sendable {
@@ -2888,14 +3201,27 @@ public protocol SourceServiceProtocol: AnyObject, Sendable {
     func rename(id: Int64, name: String) async throws 
     
     /**
+     * Resolves a channel's playable locator and its per-channel HTTP overrides together,
+     * immediately before engine construction. The shell passes only stable identity plus the
+     * opaque stored locator; plaintext header values never enter navigation state.
+     *
+     * A recent whose channel no longer exists still resolves its snapshotted locator, but has no
+     * current catalog overrides to apply. That is the only honest fallback because history does
+     * not persist a second copy of override material.
+     *
+     * # Errors
+     * Returns the same failures as [`Self::resolve_stream`], plus [`ApiError::StorageCorrupt`] if
+     * the current channel row or an authenticated override envelope is corrupt.
+     */
+    func resolvePlayback(sourceId: Int64, identity: Int64, locator: String) async throws  -> ResolvedStream
+    
+    /**
      * The playable URL for a channel's stored locator — call this immediately before handing a
      * stream to an engine.
      *
-     * **Kind-agnostic by design.** An M3U locator is already playable and comes back unchanged;
+     * **Kind-agnostic by design.** An M3U locator is an authenticated envelope and is opened here;
      * an Xtream locator is stored credential-free (§12, `core_xtream::urls`) and gets its
-     * credentials put back here, read from the host store. The shell therefore does not need to
-     * know which kind of source a channel came from — it asks for a playable URL and gets one,
-     * which is what keeps the zap path (PRD §8.4) free of per-kind branching.
+     * credentials put back here from the host store. The shell therefore does not branch on kind.
      *
      * The returned string carries credentials for an Xtream source. It is bound for the engine
      * and nowhere else: it must not be logged, persisted, or held past the play call. Resolve
@@ -3186,14 +3512,41 @@ open func rename(id: Int64, name: String)async throws   {
 }
     
     /**
+     * Resolves a channel's playable locator and its per-channel HTTP overrides together,
+     * immediately before engine construction. The shell passes only stable identity plus the
+     * opaque stored locator; plaintext header values never enter navigation state.
+     *
+     * A recent whose channel no longer exists still resolves its snapshotted locator, but has no
+     * current catalog overrides to apply. That is the only honest fallback because history does
+     * not persist a second copy of override material.
+     *
+     * # Errors
+     * Returns the same failures as [`Self::resolve_stream`], plus [`ApiError::StorageCorrupt`] if
+     * the current channel row or an authenticated override envelope is corrupt.
+     */
+open func resolvePlayback(sourceId: Int64, identity: Int64, locator: String)async throws  -> ResolvedStream  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_sourceservice_resolve_playback(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterInt64.lower(identity),FfiConverterString.lower(locator)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_u64,
+            completeFunc: ffi_core_api_rust_future_complete_u64,
+            freeFunc: ffi_core_api_rust_future_free_u64,
+            liftFunc: FfiConverterTypeResolvedStream_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
      * The playable URL for a channel's stored locator — call this immediately before handing a
      * stream to an engine.
      *
-     * **Kind-agnostic by design.** An M3U locator is already playable and comes back unchanged;
+     * **Kind-agnostic by design.** An M3U locator is an authenticated envelope and is opened here;
      * an Xtream locator is stored credential-free (§12, `core_xtream::urls`) and gets its
-     * credentials put back here, read from the host store. The shell therefore does not need to
-     * know which kind of source a channel came from — it asks for a playable URL and gets one,
-     * which is what keeps the zap path (PRD §8.4) free of per-kind branching.
+     * credentials put back here from the host store. The shell therefore does not branch on kind.
      *
      * The returned string carries credentials for an Xtream source. It is bound for the engine
      * and nowhere else: it must not be logged, persisted, or held past the play call. Resolve
@@ -4317,8 +4670,8 @@ public func FfiConverterTypeHandshake_lower(_ value: Handshake) -> RustBuffer {
 
 
 /**
- * A single per-channel HTTP header override. Token-bearing values must be sourced via the
- * host-secrets callback, never persisted (TECH_SPEC §12).
+ * A single per-channel HTTP header override. Catalog records carry authenticated envelopes;
+ * [`ResolvedHeader`] exposes the plaintext value only at play time (TECH_SPEC §12).
  */
 public struct HeaderField: Equatable, Hashable {
     /**
@@ -5710,8 +6063,9 @@ public func FfiConverterTypePairingSubmission_lower(_ value: PairingSubmission) 
 
 
 /**
- * A configured content source. Mirrors `core_model::source::Source` as a flat enum; the
- * Xtream password is never here — only its opaque host-secrets key (TECH_SPEC §12).
+ * A configured content source. Mirrors `core_model::source::Source` as a flat enum. Secret
+ * values and their opaque keys stay inside the core; the shell receives only display/settings
+ * metadata (TECH_SPEC §12).
  */
 
 public enum Source: Equatable, Hashable {
@@ -5727,11 +6081,8 @@ public enum Source: Equatable, Hashable {
          * Common per-source settings.
          */common: SourceCommon, 
         /**
-         * The playlist URL.
-         */url: String, 
-        /**
-         * Optional per-source user-agent override for fetching.
-         */userAgent: String?, 
+         * Whether a secure per-source user-agent override is configured.
+         */hasUserAgent: Bool, 
         /**
          * Opt-in "accept invalid TLS" escape hatch, off by default.
          */acceptInvalidTls: Bool
@@ -5788,7 +6139,7 @@ public struct FfiConverterTypeSource: FfiConverterRustBuffer {
         let variant: Int32 = try readInt(&buf)
         switch variant {
         
-        case 1: return .m3uUrl(id: try FfiConverterInt64.read(from: &buf), common: try FfiConverterTypeSourceCommon.read(from: &buf), url: try FfiConverterString.read(from: &buf), userAgent: try FfiConverterOptionString.read(from: &buf), acceptInvalidTls: try FfiConverterBool.read(from: &buf)
+        case 1: return .m3uUrl(id: try FfiConverterInt64.read(from: &buf), common: try FfiConverterTypeSourceCommon.read(from: &buf), hasUserAgent: try FfiConverterBool.read(from: &buf), acceptInvalidTls: try FfiConverterBool.read(from: &buf)
         )
         
         case 2: return .m3uFile(id: try FfiConverterInt64.read(from: &buf), common: try FfiConverterTypeSourceCommon.read(from: &buf)
@@ -5805,12 +6156,11 @@ public struct FfiConverterTypeSource: FfiConverterRustBuffer {
         switch value {
         
         
-        case let .m3uUrl(id,common,url,userAgent,acceptInvalidTls):
+        case let .m3uUrl(id,common,hasUserAgent,acceptInvalidTls):
             writeInt(&buf, Int32(1))
             FfiConverterInt64.write(id, into: &buf)
             FfiConverterTypeSourceCommon.write(common, into: &buf)
-            FfiConverterString.write(url, into: &buf)
-            FfiConverterOptionString.write(userAgent, into: &buf)
+            FfiConverterBool.write(hasUserAgent, into: &buf)
             FfiConverterBool.write(acceptInvalidTls, into: &buf)
             
         
@@ -6962,6 +7312,31 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeResolvedHeader: FfiConverterRustBuffer {
+    typealias SwiftType = [ResolvedHeader]
+
+    public static func write(_ value: [ResolvedHeader], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeResolvedHeader.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ResolvedHeader] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ResolvedHeader]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeResolvedHeader.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeBrowseGroup: FfiConverterRustBuffer {
     typealias SwiftType = [BrowseGroup]
 
@@ -7230,6 +7605,21 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_taskhandle_cancel() != 14297) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_core_api_checksum_method_resolvedheader_name() != 49329) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_resolvedheader_value() != 53982) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_resolvedstream_headers() != 26209) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_resolvedstream_locator() != 23415) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_resolvedstream_user_agent() != 30647) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_core_api_checksum_method_catalogservice_channel() != 27235) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7362,7 +7752,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_sourceservice_rename() != 38453) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_core_api_checksum_method_sourceservice_resolve_stream() != 516) {
+    if (uniffi_core_api_checksum_method_sourceservice_resolve_playback() != 8813) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_sourceservice_resolve_stream() != 35996) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_sourceservice_set_auto_refresh() != 59646) {

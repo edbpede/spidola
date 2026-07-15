@@ -18,7 +18,7 @@ final class SpidolaUITests: XCTestCase {
     // Home: the fixture source is the first focusable element.
     let source = app.buttons["source-Fixture Catalog"]
     XCTAssertTrue(source.waitForExistence(timeout: 30))
-    XCTAssertTrue(source.hasFocus)
+    assertFocused(source)
     XCUIRemote.shared.press(.select)
 
     // Categories: the fixture playlist has one group.
@@ -29,16 +29,35 @@ final class SpidolaUITests: XCTestCase {
     // Channels: the first channel is focused; D-pad down moves to the second.
     let firstChannel = app.buttons["channel-Channel 1"]
     XCTAssertTrue(firstChannel.waitForExistence(timeout: 10))
-    XCTAssertTrue(firstChannel.hasFocus)
+    assertFocused(firstChannel)
 
     XCUIRemote.shared.press(.down)
     let secondChannel = app.buttons["channel-Channel 2"]
     XCTAssertTrue(secondChannel.waitForExistence(timeout: 5))
-    XCTAssertTrue(secondChannel.hasFocus)
+    assertFocused(secondChannel)
 
     let focusedState = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
     focusedState.name = "Channel 2 focused with Test-Card Amber treatment"
     focusedState.lifetime = .keepAlways
     add(focusedState)
+  }
+
+  private func assertFocused(
+    _ element: XCUIElement,
+    timeout: TimeInterval = 5,
+    file: StaticString = #filePath,
+    line: UInt = #line
+  ) {
+    let expectation = XCTNSPredicateExpectation(
+      predicate: NSPredicate(format: "hasFocus == true"),
+      object: element
+    )
+    XCTAssertEqual(
+      XCTWaiter.wait(for: [expectation], timeout: timeout),
+      .completed,
+      "Expected element to receive tvOS focus",
+      file: file,
+      line: line
+    )
   }
 }

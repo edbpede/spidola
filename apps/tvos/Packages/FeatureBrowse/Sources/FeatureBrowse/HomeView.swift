@@ -187,6 +187,14 @@ public struct HomeView: View {
       }
       .padding(.horizontal, SpidolaSpacing.safeHorizontal)
     }
+    .onAppear {
+      guard focused == nil else { return }
+      if let source = sources.first(where: { $0.common.enabled }) {
+        focused = .source(source.id)
+      } else {
+        focused = .search
+      }
+    }
   }
 
   private static func poster(_ channel: PlayableChannel) -> PosterItem {

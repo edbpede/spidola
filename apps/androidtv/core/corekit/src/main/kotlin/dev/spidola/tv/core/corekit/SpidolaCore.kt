@@ -381,10 +381,14 @@ class SpidolaCore private constructor(
 
     override suspend fun setBufferingProfile(profile: String) = core.settings().setBuffering(profile.toCoreBuffering())
 
-    override suspend fun resolveStream(
-        sourceId: Long,
-        locator: String,
-    ): String = core.sources().resolveStream(sourceId, locator)
+    override suspend fun resolvePlayback(channel: PlayableChannel): ResolvedPlaybackStream {
+        val resolved = core.sources().resolvePlayback(channel.sourceId, channel.identity, channel.locator)
+        return ResolvedPlaybackStream(
+            locator = resolved.locator(),
+            userAgent = resolved.userAgent(),
+            headers = resolved.headers().map { ResolvedPlaybackHeader(it.name(), it.value()) },
+        )
+    }
 
     // ---- Settings ----
 

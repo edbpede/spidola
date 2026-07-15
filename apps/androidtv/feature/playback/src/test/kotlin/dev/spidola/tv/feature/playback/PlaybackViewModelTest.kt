@@ -5,6 +5,8 @@ package dev.spidola.tv.feature.playback
 
 import dev.spidola.tv.core.corekit.PlayableChannel
 import dev.spidola.tv.core.corekit.PlaybackAccess
+import dev.spidola.tv.core.corekit.ResolvedPlaybackHeader
+import dev.spidola.tv.core.corekit.ResolvedPlaybackStream
 import dev.spidola.tv.core.corekit.ZapContext
 import dev.spidola.tv.core.corekit.ZapWindow
 import dev.spidola.tv.core.playercontract.EngineError
@@ -65,7 +67,7 @@ class PlaybackViewModelTest {
     // region Play-time stream resolution
 
     @Test
-    fun `plays the resolved locator rather than the stored one`() =
+    fun `plays the resolved locator and request overrides rather than stored envelopes`() =
         runTest(dispatcher) {
             // An Xtream catalog stores a credential-free locator (TECH_SPEC §12), so the row the
             // viewer picked is not playable on its own. Without this the engine is handed an
@@ -84,24 +86,37 @@ class PlaybackViewModelTest {
                 harness.access.resolvedCalls,
                 "resolution must be asked for once per load, not cached",
             )
+            assertEquals("Resolved-Agent", harness.engines.first().loaded.first().userAgent)
+            assertEquals(
+                listOf("Referer" to "https://portal.example/session"),
+                harness.engines.first().loaded.first().headers.map { it.name to it.value },
+            )
         }
 
     @Test
-    fun `falls back to the stored locator when resolution fails`() =
+    fun `resolution failure never loads the opaque stored locator`() =
         runTest(dispatcher) {
-            // For an M3U source the two are identical, so the fallback is exact; for an Xtream
-            // source the engine then fails with its own EngineError — the loud, actionable path
-            // (PRD §6.3) — rather than this silently loading nothing.
             val harness = Harness()
             harness.access.resolveFailure = ApiException.Internal()
-            harness.viewModel().start()
+            val viewModel = harness.viewModel()
+            viewModel.start()
             advanceUntilIdle()
-            assertEquals(
-                listOf("http://host.example/10.ts"),
-                harness.engines.first().loaded.map { it.locator },
-                "a failed resolution must still hand the engine the stored locator",
-            )
+            assertTrue(harness.engines.isEmpty(), "no engine may receive an opaque envelope")
+            assertNotNull(viewModel.state.value.playback.failure)
         }
+
+    @Test
+    fun `resolved stream diagnostics redact every credential-bearing value`() {
+        val secret = "credential-value"
+        val resolved =
+            ResolvedPlaybackStream(
+                locator = "https://stream.example/$secret",
+                userAgent = "Bearer-$secret",
+                headers = listOf(ResolvedPlaybackHeader("Authorization", secret)),
+            )
+
+        assertTrue(secret !in resolved.toString())
+    }
 
     // endregion
 
@@ -431,13 +446,14 @@ private class FakePlaybackAccess : PlaybackAccess {
      * test can tell a resolved locator from a stored one — the only way to prove the view model
      * plays what the resolver returned rather than what the catalog holds.
      */
-    override suspend fun resolveStream(
-        sourceId: Long,
-        locator: String,
-    ): String {
+    override suspend fun resolvePlayback(channel: PlayableChannel): ResolvedPlaybackStream {
         resolveFailure?.let { throw it }
-        resolvedCalls += locator
-        return "resolved://$locator"
+        resolvedCalls += channel.locator
+        return ResolvedPlaybackStream(
+            locator = "resolved://${channel.locator}",
+            userAgent = "Resolved-Agent",
+            headers = listOf(ResolvedPlaybackHeader("Referer", "https://portal.example/session")),
+        )
     }
 
     override suspend fun zapWindow(

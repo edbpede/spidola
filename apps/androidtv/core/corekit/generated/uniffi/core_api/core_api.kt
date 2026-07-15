@@ -814,6 +814,16 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_core_api_checksum_method_taskhandle_cancel(
     ): Int
+    external fun uniffi_core_api_checksum_method_resolvedheader_name(
+    ): Int
+    external fun uniffi_core_api_checksum_method_resolvedheader_value(
+    ): Int
+    external fun uniffi_core_api_checksum_method_resolvedstream_headers(
+    ): Int
+    external fun uniffi_core_api_checksum_method_resolvedstream_locator(
+    ): Int
+    external fun uniffi_core_api_checksum_method_resolvedstream_user_agent(
+    ): Int
     external fun uniffi_core_api_checksum_method_catalogservice_channel(
     ): Int
     external fun uniffi_core_api_checksum_method_catalogservice_channel_count(
@@ -902,6 +912,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_core_api_checksum_method_sourceservice_rename(
     ): Int
+    external fun uniffi_core_api_checksum_method_sourceservice_resolve_playback(
+    ): Int
     external fun uniffi_core_api_checksum_method_sourceservice_resolve_stream(
     ): Int
     external fun uniffi_core_api_checksum_method_sourceservice_set_auto_refresh(
@@ -980,6 +992,24 @@ internal object UniffiLib {
     ): Unit
     external fun uniffi_core_api_fn_method_taskhandle_cancel(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    external fun uniffi_core_api_fn_clone_resolvedheader(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_core_api_fn_free_resolvedheader(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_core_api_fn_method_resolvedheader_name(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_core_api_fn_method_resolvedheader_value(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_core_api_fn_clone_resolvedstream(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_core_api_fn_free_resolvedstream(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_core_api_fn_method_resolvedstream_headers(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_core_api_fn_method_resolvedstream_locator(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    external fun uniffi_core_api_fn_method_resolvedstream_user_agent(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_core_api_fn_clone_catalogservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
     external fun uniffi_core_api_fn_free_catalogservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1095,6 +1125,8 @@ internal object UniffiLib {
     external fun uniffi_core_api_fn_method_sourceservice_refresh(`ptr`: Long,`id`: Long,`listener`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
     external fun uniffi_core_api_fn_method_sourceservice_rename(`ptr`: Long,`id`: Long,`name`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_core_api_fn_method_sourceservice_resolve_playback(`ptr`: Long,`sourceId`: Long,`identity`: Long,`locator`: RustBuffer.ByValue,
     ): Long
     external fun uniffi_core_api_fn_method_sourceservice_resolve_stream(`ptr`: Long,`sourceId`: Long,`locator`: RustBuffer.ByValue,
     ): Long
@@ -1262,6 +1294,21 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_taskhandle_cancel() != 14297) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_core_api_checksum_method_resolvedheader_name() != 49329) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_resolvedheader_value() != 53982) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_resolvedstream_headers() != 26209) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_resolvedstream_locator() != 23415) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_resolvedstream_user_agent() != 30647) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_core_api_checksum_method_catalogservice_channel() != 27235) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1394,7 +1441,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_sourceservice_rename() != 38453) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_core_api_checksum_method_sourceservice_resolve_stream() != 516) {
+    if (lib.uniffi_core_api_checksum_method_sourceservice_resolve_playback() != 8813) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_sourceservice_resolve_stream() != 35996) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_sourceservice_set_auto_refresh() != 59646) {
@@ -1628,35 +1678,8 @@ private class UniffiJnaCleanable(
 }
 
 
-// We decide at uniffi binding generation time whether we were
-// using Android or not.
-// There are further runtime checks to chose the correct implementation
-// of the cleaner.
-private fun UniffiCleaner.Companion.create(): UniffiCleaner =
-    try {
-        // For safety's sake: if the library hasn't been run in android_cleaner = true
-        // mode, but is being run on Android, then we still need to think about
-        // Android API versions.
-        // So we check if java.lang.ref.Cleaner is there, and use that…
-        java.lang.Class.forName("java.lang.ref.Cleaner")
-        JavaLangRefCleaner()
-    } catch (e: ClassNotFoundException) {
-        // … otherwise, fallback to the JNA cleaner.
-        UniffiJnaCleaner()
-    }
+private fun UniffiCleaner.Companion.create(): UniffiCleaner = UniffiJnaCleaner()
 
-private class JavaLangRefCleaner : UniffiCleaner {
-    val cleaner = java.lang.ref.Cleaner.create()
-
-    override fun register(value: Any, cleanUpTask: Runnable): UniffiCleaner.Cleanable =
-        JavaLangRefCleanable(cleaner.register(value, cleanUpTask))
-}
-
-private class JavaLangRefCleanable(
-    val cleanable: java.lang.ref.Cleaner.Cleanable
-) : UniffiCleaner.Cleanable {
-    override fun clean() = cleanable.clean()
-}
 
 /**
  * @suppress
@@ -4219,6 +4242,607 @@ public object FfiConverterTypeRecentsService: FfiConverter<RecentsService, Long>
 
 
 /**
+ * One plaintext HTTP header exposed only as an opaque play-time object. Generated Swift/Kotlin
+ * representations therefore cannot print its value by reflecting a record's stored fields.
+ */
+public interface ResolvedHeaderInterface {
+    
+    /**
+     * Header name. Returned only when the shell constructs the engine request.
+     */
+    fun `name`(): kotlin.String
+    
+    /**
+     * Plaintext header value. Never persist or log the returned string.
+     */
+    fun `value`(): kotlin.String
+    
+    companion object
+}
+
+/**
+ * One plaintext HTTP header exposed only as an opaque play-time object. Generated Swift/Kotlin
+ * representations therefore cannot print its value by reflecting a record's stored fields.
+ */
+open class ResolvedHeader: Disposable, AutoCloseable, ResolvedHeaderInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    /**
+     * Whether the current object has been destroyed and its reference is gone in the Rust side.
+     */
+    val uniffiIsDestroyed: Boolean get() = wasDestroyed.get()
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_core_api_fn_free_resolvedheader(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_core_api_fn_clone_resolvedheader(handle, status)
+        }
+    }
+
+    
+    /**
+     * Header name. Returned only when the shell constructs the engine request.
+     */override fun `name`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_core_api_fn_method_resolvedheader_name(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Plaintext header value. Never persist or log the returned string.
+     */override fun `value`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_core_api_fn_method_resolvedheader_value(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeResolvedHeader: FfiConverter<ResolvedHeader, Long> {
+    override fun lower(value: ResolvedHeader): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): ResolvedHeader {
+        return ResolvedHeader(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): ResolvedHeader {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: ResolvedHeader) = 8UL
+
+    override fun write(value: ResolvedHeader, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Everything the shell needs to construct an engine request after the core has opened the
+ * catalog's authenticated envelopes. This opaque object is ephemeral: never persist or log it.
+ */
+public interface ResolvedStreamInterface {
+    
+    /**
+     * Opaque plaintext header handles for immediate engine construction.
+     */
+    fun `headers`(): List<ResolvedHeader>
+    
+    /**
+     * Playable locator with source credentials restored. Never persist or log it.
+     */
+    fun `locator`(): kotlin.String
+    
+    /**
+     * Plaintext per-channel user-agent, if present. Never persist or log it.
+     */
+    fun `userAgent`(): kotlin.String?
+    
+    companion object
+}
+
+/**
+ * Everything the shell needs to construct an engine request after the core has opened the
+ * catalog's authenticated envelopes. This opaque object is ephemeral: never persist or log it.
+ */
+open class ResolvedStream: Disposable, AutoCloseable, ResolvedStreamInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    /**
+     * Whether the current object has been destroyed and its reference is gone in the Rust side.
+     */
+    val uniffiIsDestroyed: Boolean get() = wasDestroyed.get()
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_core_api_fn_free_resolvedstream(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_core_api_fn_clone_resolvedstream(handle, status)
+        }
+    }
+
+    
+    /**
+     * Opaque plaintext header handles for immediate engine construction.
+     */override fun `headers`(): List<ResolvedHeader> {
+            return FfiConverterSequenceTypeResolvedHeader.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_core_api_fn_method_resolvedstream_headers(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Playable locator with source credentials restored. Never persist or log it.
+     */override fun `locator`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_core_api_fn_method_resolvedstream_locator(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Plaintext per-channel user-agent, if present. Never persist or log it.
+     */override fun `userAgent`(): kotlin.String? {
+            return FfiConverterOptionalString.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_core_api_fn_method_resolvedstream_user_agent(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeResolvedStream: FfiConverter<ResolvedStream, Long> {
+    override fun lower(value: ResolvedStream): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): ResolvedStream {
+        return ResolvedStream(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): ResolvedStream {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: ResolvedStream) = 8UL
+
+    override fun write(value: ResolvedStream, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
  * Runs channel searches against the FTS5 index.
  */
 public interface SearchServiceInterface {
@@ -5451,14 +6075,27 @@ public interface SourceServiceInterface {
     suspend fun `rename`(`id`: kotlin.Long, `name`: kotlin.String)
     
     /**
+     * Resolves a channel's playable locator and its per-channel HTTP overrides together,
+     * immediately before engine construction. The shell passes only stable identity plus the
+     * opaque stored locator; plaintext header values never enter navigation state.
+     *
+     * A recent whose channel no longer exists still resolves its snapshotted locator, but has no
+     * current catalog overrides to apply. That is the only honest fallback because history does
+     * not persist a second copy of override material.
+     *
+     * # Errors
+     * Returns the same failures as [`Self::resolve_stream`], plus [`ApiError::StorageCorrupt`] if
+     * the current channel row or an authenticated override envelope is corrupt.
+     */
+    suspend fun `resolvePlayback`(`sourceId`: kotlin.Long, `identity`: kotlin.Long, `locator`: kotlin.String): ResolvedStream
+    
+    /**
      * The playable URL for a channel's stored locator — call this immediately before handing a
      * stream to an engine.
      *
-     * **Kind-agnostic by design.** An M3U locator is already playable and comes back unchanged;
+     * **Kind-agnostic by design.** An M3U locator is an authenticated envelope and is opened here;
      * an Xtream locator is stored credential-free (§12, `core_xtream::urls`) and gets its
-     * credentials put back here, read from the host store. The shell therefore does not need to
-     * know which kind of source a channel came from — it asks for a playable URL and gets one,
-     * which is what keeps the zap path (PRD §8.4) free of per-kind branching.
+     * credentials put back here from the host store. The shell therefore does not branch on kind.
      *
      * The returned string carries credentials for an Xtream source. It is bound for the engine
      * and nowhere else: it must not be logged, persisted, or held past the play call. Resolve
@@ -5852,14 +6489,49 @@ open class SourceService: Disposable, AutoCloseable, SourceServiceInterface
 
     
     /**
+     * Resolves a channel's playable locator and its per-channel HTTP overrides together,
+     * immediately before engine construction. The shell passes only stable identity plus the
+     * opaque stored locator; plaintext header values never enter navigation state.
+     *
+     * A recent whose channel no longer exists still resolves its snapshotted locator, but has no
+     * current catalog overrides to apply. That is the only honest fallback because history does
+     * not persist a second copy of override material.
+     *
+     * # Errors
+     * Returns the same failures as [`Self::resolve_stream`], plus [`ApiError::StorageCorrupt`] if
+     * the current channel row or an authenticated override envelope is corrupt.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `resolvePlayback`(`sourceId`: kotlin.Long, `identity`: kotlin.Long, `locator`: kotlin.String) : ResolvedStream {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_sourceservice_resolve_playback(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterLong.lower(`identity`),
+        FfiConverterString.lower(`locator`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_u64(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_u64(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_u64(future) },
+        // lift function
+        { FfiConverterTypeResolvedStream.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
      * The playable URL for a channel's stored locator — call this immediately before handing a
      * stream to an engine.
      *
-     * **Kind-agnostic by design.** An M3U locator is already playable and comes back unchanged;
+     * **Kind-agnostic by design.** An M3U locator is an authenticated envelope and is opened here;
      * an Xtream locator is stored credential-free (§12, `core_xtream::urls`) and gets its
-     * credentials put back here, read from the host store. The shell therefore does not need to
-     * know which kind of source a channel came from — it asks for a playable URL and gets one,
-     * which is what keeps the zap path (PRD §8.4) free of per-kind branching.
+     * credentials put back here from the host store. The shell therefore does not branch on kind.
      *
      * The returned string carries credentials for an Xtream source. It is bound for the engine
      * and nowhere else: it must not be logged, persisted, or held past the play call. Resolve
@@ -6888,8 +7560,8 @@ public object FfiConverterTypeHandshake: FfiConverterRustBuffer<Handshake> {
 
 
 /**
- * A single per-channel HTTP header override. Token-bearing values must be sourced via the
- * host-secrets callback, never persisted (TECH_SPEC §12).
+ * A single per-channel HTTP header override. Catalog records carry authenticated envelopes;
+ * [`ResolvedHeader`] exposes the plaintext value only at play time (TECH_SPEC §12).
  */
 data class HeaderField (
     /**
@@ -7963,8 +8635,9 @@ public object FfiConverterTypePairingSubmission : FfiConverterRustBuffer<Pairing
 
 
 /**
- * A configured content source. Mirrors `core_model::source::Source` as a flat enum; the
- * Xtream password is never here — only its opaque host-secrets key (TECH_SPEC §12).
+ * A configured content source. Mirrors `core_model::source::Source` as a flat enum. Secret
+ * values and their opaque keys stay inside the core; the shell receives only display/settings
+ * metadata (TECH_SPEC §12).
  */
 sealed class Source {
     
@@ -7981,13 +8654,9 @@ sealed class Source {
          */
         val `common`: uniffi.core_api.SourceCommon, 
         /**
-         * The playlist URL.
+         * Whether a secure per-source user-agent override is configured.
          */
-        val `url`: kotlin.String, 
-        /**
-         * Optional per-source user-agent override for fetching.
-         */
-        val `userAgent`: kotlin.String?, 
+        val `hasUserAgent`: kotlin.Boolean, 
         /**
          * Opt-in "accept invalid TLS" escape hatch, off by default.
          */
@@ -8068,8 +8737,7 @@ public object FfiConverterTypeSource : FfiConverterRustBuffer<Source>{
             1 -> Source.M3uUrl(
                 FfiConverterLong.read(buf),
                 FfiConverterTypeSourceCommon.read(buf),
-                FfiConverterString.read(buf),
-                FfiConverterOptionalString.read(buf),
+                FfiConverterBoolean.read(buf),
                 FfiConverterBoolean.read(buf),
                 )
             2 -> Source.M3uFile(
@@ -8094,8 +8762,7 @@ public object FfiConverterTypeSource : FfiConverterRustBuffer<Source>{
                 4UL
                 + FfiConverterLong.allocationSize(value.`id`)
                 + FfiConverterTypeSourceCommon.allocationSize(value.`common`)
-                + FfiConverterString.allocationSize(value.`url`)
-                + FfiConverterOptionalString.allocationSize(value.`userAgent`)
+                + FfiConverterBoolean.allocationSize(value.`hasUserAgent`)
                 + FfiConverterBoolean.allocationSize(value.`acceptInvalidTls`)
             )
         }
@@ -8126,8 +8793,7 @@ public object FfiConverterTypeSource : FfiConverterRustBuffer<Source>{
                 buf.putInt(1)
                 FfiConverterLong.write(value.`id`, buf)
                 FfiConverterTypeSourceCommon.write(value.`common`, buf)
-                FfiConverterString.write(value.`url`, buf)
-                FfiConverterOptionalString.write(value.`userAgent`, buf)
+                FfiConverterBoolean.write(value.`hasUserAgent`, buf)
                 FfiConverterBoolean.write(value.`acceptInvalidTls`, buf)
                 Unit
             }
@@ -8855,6 +9521,34 @@ public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.Str
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterString.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeResolvedHeader: FfiConverterRustBuffer<List<ResolvedHeader>> {
+    override fun read(buf: ByteBuffer): List<ResolvedHeader> {
+        val len = buf.getInt()
+        return List<ResolvedHeader>(len) {
+            FfiConverterTypeResolvedHeader.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ResolvedHeader>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeResolvedHeader.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ResolvedHeader>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeResolvedHeader.write(it, buf)
         }
     }
 }

@@ -36,8 +36,8 @@ pub enum MediaKind {
 pub struct ChannelOverrides {
     /// Optional user-agent for this channel's stream.
     pub user_agent: Option<String>,
-    /// Extra request headers (name, value) for this channel's stream. Token-bearing
-    /// values must be sourced via the host-secrets callback, never persisted here (§12).
+    /// Extra request headers (name, value) for this channel's stream. Token-bearing values are
+    /// authenticated-encrypted at rest and opened only by the play-time resolver (§12).
     pub headers: Vec<(String, String)>,
     /// Opaque preferred-engine key resolved by the shell's selection policy.
     pub preferred_engine: Option<String>,
