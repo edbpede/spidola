@@ -11,11 +11,11 @@ import dev.spidola.tv.core.playercontract.AspectMode
  * The presentation layer for the playback slice's typed vocabulary, resolved from `strings.xml` so
  * the slice is translatable (PRD §6.10).
  *
- * The words duplicate [AspectMode]'s own `label` rather than read it, for the same reason the
- * settings slice re-spells the buffering profiles: a label baked into a contract class is
- * unreachable from a translation, and `player-contract` is not an Android resource module. The
- * `when` is exhaustive with no `else`, so a mode added to the contract is a compile error here until
- * someone writes its name.
+ * The words live here rather than beside [AspectMode] because naming a value is a rendering concern:
+ * the contract models what a mode *is* and what it does to a picture, and what to call it belongs to
+ * whichever slice puts it on screen — the same reason the settings slice re-spells the buffering
+ * profiles instead of reading them off the enum. The `when` is exhaustive with no `else`, so a mode
+ * added to the contract is a compile error here until someone writes its name.
  */
 @Composable
 internal fun AspectMode.label(): String =

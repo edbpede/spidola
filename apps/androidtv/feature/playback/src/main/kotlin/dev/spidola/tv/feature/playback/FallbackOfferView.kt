@@ -25,6 +25,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -89,17 +91,32 @@ fun FallbackOfferView(
                     onClick = { onTry(rememberChoice) },
                     modifier = Modifier.focusRequester(tryOther),
                 )
+                // Its two neighbours name what pressing them does, and so does this one: the title is
+                // the choice it would switch to, and the choice in force is the button's state. Named
+                // the other way round it is a coin toss — someone arriving on "Remember for this
+                // channel" cannot hear whether that is the setting or the offer, and guessing wrong
+                // switches remembering off on the way to choosing it, which the primary button then
+                // carries out (PRD §6.10).
+                val rememberState =
+                    stringResource(
+                        if (rememberChoice) {
+                            R.string.playback_fallback_remember_state
+                        } else {
+                            R.string.playback_fallback_once_state
+                        },
+                    )
                 OfferButton(
                     title =
                         stringResource(
                             if (rememberChoice) {
-                                R.string.playback_fallback_remember
-                            } else {
                                 R.string.playback_fallback_once
+                            } else {
+                                R.string.playback_fallback_remember
                             },
                         ),
                     isPrimary = false,
                     onClick = { rememberChoice = !rememberChoice },
+                    modifier = Modifier.semantics { stateDescription = rememberState },
                 )
                 OfferButton(
                     title = stringResource(R.string.playback_fallback_back),

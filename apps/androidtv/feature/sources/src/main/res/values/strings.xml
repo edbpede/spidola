@@ -58,6 +58,14 @@
     <string name="sources_disabled">Disabled</string>
     <!-- A source's kind and its refresh schedule, e.g. "Xtream account · Every hour". -->
     <string name="sources_subtitle">%1$s · %2$s</string>
+    <!--
+      The kinds of source, for the half of that subtitle that says what this one is. Deliberately not
+      the add-source mode names above: a mode is an instruction to the person adding one ("Paste a
+      playlist"), a kind is what the source turned out to be ("Playlist file").
+    -->
+    <string name="sources_kind_playlist_url">Playlist URL</string>
+    <string name="sources_kind_playlist_file">Playlist file</string>
+    <string name="sources_kind_xtream">Xtream account</string>
     <string name="sources_rename">Rename</string>
     <string name="sources_save_name">Save name</string>
     <string name="sources_enable">Enable</string>

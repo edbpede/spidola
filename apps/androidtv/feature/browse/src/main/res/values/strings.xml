@@ -28,6 +28,14 @@
     <string name="browse_home_on">On</string>
     <string name="browse_home_off">Off</string>
     <string name="browse_home_clear_recents">Clear recently watched</string>
+    <!--
+      What kind of source a home row stands for, under the name its owner gave it. The sources screen
+      names the same three kinds in its own file: there a kind shares a line with a refresh schedule,
+      here it stands alone, and neither screen has to ask the other before rewording one.
+    -->
+    <string name="browse_home_source_playlist_url">Playlist URL</string>
+    <string name="browse_home_source_playlist_file">Playlist file</string>
+    <string name="browse_home_source_xtream">Xtream account</string>
 
     <!--
       Channel detail. Each state of a toggling control is its own string rather than a stem plus a
@@ -75,9 +83,9 @@
     <string name="browse_source_kind_selected">Selected</string>
 
     <!--
-      The media kinds, spelled out again here rather than read from corekit's `MediaKind.label`:
-      a label baked into a Kotlin property cannot be translated (PRD §6.10). Same posture as the
-      settings slice takes with the buffering profiles.
+      The media kinds, as the levels of the browse drill-down. The search slice names the same three
+      in its own file, where they are filters rather than levels — what to call a kind is a rendering
+      job, and a word shared between two screens is a word neither can reword.
     -->
     <string name="browse_kind_live">Live</string>
     <string name="browse_kind_movies">Movies</string>

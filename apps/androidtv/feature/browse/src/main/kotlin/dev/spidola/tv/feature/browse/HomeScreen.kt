@@ -33,7 +33,6 @@ import dev.spidola.tv.core.corekit.LoadState
 import dev.spidola.tv.core.corekit.ZapContext
 import dev.spidola.tv.core.corekit.common
 import dev.spidola.tv.core.corekit.id
-import dev.spidola.tv.core.corekit.kindLabel
 import dev.spidola.tv.core.corekit.name
 import dev.spidola.tv.core.designsystem.PosterRail
 import dev.spidola.tv.core.designsystem.RowAccessory
@@ -147,7 +146,7 @@ private fun HomeReady(
         itemsIndexed(enabledSources, key = { _, source -> "source-${source.id}" }) { index, source ->
             SpidolaRow(
                 title = source.name,
-                subtitle = source.kindLabel,
+                subtitle = source.kindLabel(),
                 onClick = { navigator.openSource(source.id, source.name) },
                 modifier =
                     Modifier

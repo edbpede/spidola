@@ -52,8 +52,15 @@
 
     <!-- The loud fallback (TECH_SPEC §8): the viewer is offered the swap and chooses. -->
     <string name="playback_fallback_try_other">Try other player</string>
+    <!--
+      The remember toggle's two titles: each names the choice pressing would switch to, never the one
+      already in force. Which one that is goes below, where a screen reader has a place for it.
+    -->
     <string name="playback_fallback_remember">Remember for this channel</string>
     <string name="playback_fallback_once">Just this once</string>
+    <!-- Spoken as that button's state: what the swap does now, as opposed to what pressing changes it to. -->
+    <string name="playback_fallback_remember_state">Remembering for this channel</string>
+    <string name="playback_fallback_once_state">Just this once</string>
     <string name="playback_fallback_back">Go back</string>
 
     <!-- Left/right on a stream that cannot seek: "no-op with hint" (PRD §8.4). -->

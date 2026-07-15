@@ -34,7 +34,6 @@ import dev.spidola.tv.core.corekit.SourcesAccess
 import dev.spidola.tv.core.corekit.common
 import dev.spidola.tv.core.corekit.id
 import dev.spidola.tv.core.corekit.isRefreshable
-import dev.spidola.tv.core.corekit.kindLabel
 import dev.spidola.tv.core.corekit.name
 import dev.spidola.tv.core.designsystem.RowAccessory
 import dev.spidola.tv.core.designsystem.SpidolaPalette
@@ -201,7 +200,7 @@ private fun SourceItem(
         }
     SpidolaRow(
         title = source.name,
-        subtitle = stringResource(R.string.sources_subtitle, source.kindLabel, stringResource(autoRefresh.label)),
+        subtitle = stringResource(R.string.sources_subtitle, source.kindLabel(), stringResource(autoRefresh.label)),
         accessory = if (condition != null) RowAccessory.Label(condition) else RowAccessory.None,
         onClick = onToggleExpanded,
         // Refreshing and disabled are what this source *is* at the moment, so they announce as the

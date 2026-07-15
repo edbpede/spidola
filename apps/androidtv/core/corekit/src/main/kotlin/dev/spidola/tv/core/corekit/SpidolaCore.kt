@@ -87,15 +87,6 @@ val Source.isRefreshable: Boolean
             is Source.M3uFile -> false
         }
 
-/** A couch-legible one-word description of the source kind, for the sources list. */
-val Source.kindLabel: String
-    get() =
-        when (this) {
-            is Source.M3uUrl -> "Playlist URL"
-            is Source.M3uFile -> "Playlist file"
-            is Source.Xtream -> "Xtream account"
-        }
-
 /** One event from a running import; the stream terminates on [Complete] or [Failed]. */
 sealed interface ImportEvent {
     data class Progress(
