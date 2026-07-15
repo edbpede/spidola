@@ -22,7 +22,7 @@ The biggest way agents write wrong-but-plausible Swift is by importing habits fr
 - **Build & packaging:** Swift Package Manager, manifest `// swift-tools-version: 6.2` (or `6.3`).
 - **UI:** SwiftUI with the Observation framework (`import Observation`, or transitively via `import SwiftUI`); `@Observable` replaces `ObservableObject`/`@Published`.
 - **Persistence:** SwiftData (`@Model`) is the SwiftUI-native default. Core Data remains for legacy interop only.
-- **Testing:** Swift Testing (`import Testing`) is the current winning framework for all new unit tests; XCTest is the legacy/adjacent option retained for UI tests, performance tests, and existing suites.
+- **Testing:** Swift Testing (`import Testing`) is the current winning framework for all new unit tests; XCTest is the legacy/adjacent option retained for UI tests, performance tests, and existing suites. **In this repo, that last clause is the whole story — every Swift test is XCTest; write XCTest** (see the repo exception under "Testing with Swift Testing").
 - **Formatting:** `swift-format`, bundled in the toolchain since Swift 6.0 (Xcode 16), invoked as `swift format`.
 - **Linting:** SwiftLint (community ecosystem linter), current stable 0.65.0 — optional, complements swift-format.
 - **App Store floor:** Since April 28, 2026, iOS/iPadOS apps uploaded to App Store Connect must be built with the iOS 26 SDK or later (Xcode 26+).
@@ -1069,6 +1069,12 @@ struct BookService: Sendable {
 ## Testing with Swift Testing
 
 Swift Testing (`import Testing`, Swift 6.0, developed openly on GitHub and discussed on the Swift Forums) is the **current winning framework** — use it for all new tests. It uses macros (`@Test`, `@Suite`, `#expect`, `#require`), runs tests in parallel by default (per Apple: "all tests integrate seamlessly with Swift Concurrency and run in parallel by default"), and replaces XCTest's assertion zoo. **XCTest is the older/adjacent option**, retained for UI tests (XCUITest has no Swift Testing equivalent), performance tests, and existing suites; the two run side by side.
+
+> **Repo exception — Spidola uses XCTest.** Every Swift test in this tree is XCTest (19 files, no
+> `import Testing`), and CI's tvOS lane runs them. New tests here follow the tree, not this
+> section: `import XCTest`, not `import Testing`. The whole suite is an "existing suite" in the
+> sense above, so this is that clause rather than a disagreement with it. Migrating is a
+> deliberate, separate decision — not something to start midway through an unrelated change.
 
 ```swift
 import Testing

@@ -26,7 +26,7 @@ This document shows the one modern idiomatic way for each concern. Part I covers
 - **Serialization:** `org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0` + the `plugin.serialization` compiler plugin (versioned with Kotlin)
 - **Build:** Gradle with the Kotlin DSL (`build.gradle.kts`), Kotlin Gradle Plugin 2.4.0, compatible with Gradle up to 9.5.0
 - **Formatter/linter:** ktlint 1.8.0 or ktfmt 0.64 (formatting); detekt 1.23.8 stable (static analysis; detekt 2.0 is still alpha)
-- **Testing:** `kotlin.test` + JUnit Jupiter 5.14.4, `kotlinx-coroutines-test` 1.11.0, MockK 1.14.3
+- **Testing:** `kotlin.test` + JUnit Jupiter 5.14.4, `kotlinx-coroutines-test` 1.11.0, MockK 1.14.3 — **in this repo, hand-written fakes are the default and MockK is reserved for third-party types** (see the repo exception under "Mock with MockK").
 - **KMP UI:** Compose Multiplatform 1.11.1 (iOS Stable, Web Beta)
 
 ### Android TV (Compose for TV)
@@ -627,6 +627,15 @@ class OrderServiceTest {
 ```
 
 Mock with **MockK**, the idiomatic Kotlin mocking library — it understands `suspend` functions, coroutines, and final classes (Kotlin classes are final by default). Do **not** reach for Mockito, which is Java-first and fights Kotlin's final-by-default and suspend semantics.
+
+> **Repo exception — Spidola fakes by hand.** The default here is a hand-written fake
+> (`FakeEngine`, and the fakes inside each `*ViewModelTest`), not a mock. The core's boundary
+> types are small and foreign-implemented, so a fake states the contract in one readable place
+> and a mock only restates it per test. MockK stays available for **third-party types you cannot
+> hand-write** — its one use is `ExoErrorMappingTest`, mocking ExoPlayer's `DataSpec`. Reach for
+> it when faking would mean reimplementing someone else's framework class; otherwise write the
+> fake. Turbine is in the version catalog but unused — prefer it over ad-hoc flow collection if
+> you need it, but don't add it to a test that a plain `runTest` already covers.
 
 ```kotlin
 import io.mockk.*
