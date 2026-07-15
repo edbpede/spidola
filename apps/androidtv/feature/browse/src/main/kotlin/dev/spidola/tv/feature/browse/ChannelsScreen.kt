@@ -19,6 +19,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.spidola.tv.core.corekit.BrowseAccess
@@ -51,8 +54,8 @@ fun ChannelsScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     Box(modifier = modifier.fillMaxSize().background(SpidolaPalette.Studio)) {
         when (val current = state) {
-            LoadState.Loading -> CenteredMessage("Loading channels…")
-            LoadState.Empty -> CenteredMessage("No channels here.")
+            LoadState.Loading -> CenteredMessage(stringResource(R.string.browse_channels_loading))
+            LoadState.Empty -> CenteredMessage(stringResource(R.string.browse_channels_empty))
             is LoadState.Failed ->
                 ActionableErrorContent(current.error, onRetry = viewModel::load, onGoBack = {})
             is LoadState.Ready -> ChannelList(current.value, navigator, viewModel)
@@ -88,6 +91,7 @@ private fun ChannelList(
     ) {
         items(rows, key = { it.key }) { row ->
             LaunchedEffect(row.key) { viewModel.loadMoreIfNeeded(row) }
+            val favorite = stringResource(R.string.browse_channels_favorite_state)
             SpidolaRow(
                 title = row.channel.name,
                 subtitle = row.channel.groupTitle,
@@ -95,6 +99,12 @@ private fun ChannelList(
                 onClick = { open(row) },
                 modifier =
                     Modifier
+                        // The star is silent, so the row says what it marks. Only a favorite says it:
+                        // the state mirrors the mark, and a source of a thousand channels announcing
+                        // "not a favorite" a thousand times would bury the names they came for.
+                        .then(
+                            if (row.isFavorite) Modifier.semantics { stateDescription = favorite } else Modifier,
+                        )
                         .testTag("channel-${row.channel.name}")
                         .then(if (row.key == rows.first().key) Modifier.focusRequester(firstRow) else Modifier),
             )

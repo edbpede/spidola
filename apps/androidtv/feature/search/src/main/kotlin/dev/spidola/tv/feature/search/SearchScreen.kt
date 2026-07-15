@@ -26,6 +26,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -35,7 +38,6 @@ import dev.spidola.tv.core.corekit.PlayableChannel
 import dev.spidola.tv.core.corekit.SearchAccess
 import dev.spidola.tv.core.corekit.ZapContext
 import dev.spidola.tv.core.corekit.id
-import dev.spidola.tv.core.corekit.label
 import dev.spidola.tv.core.corekit.name
 import dev.spidola.tv.core.designsystem.RowAccessory
 import dev.spidola.tv.core.designsystem.SpidolaPalette
@@ -74,7 +76,11 @@ fun SearchScreen(
     ) {
         Box(modifier = Modifier.fillMaxWidth().background(SpidolaPalette.Set).padding(SpidolaSpacing.m)) {
             if (query.isEmpty()) {
-                Text("Search channels", style = MaterialTheme.typography.titleLarge, color = SpidolaPalette.Static)
+                Text(
+                    text = stringResource(R.string.search_placeholder),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = SpidolaPalette.Static,
+                )
             }
             BasicTextField(
                 value = query,
@@ -92,7 +98,7 @@ fun SearchScreen(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(SpidolaSpacing.s),
         ) {
-            FilterChip("All sources", selected = sourceFilter == null) {
+            FilterChip(stringResource(R.string.search_all_sources), selected = sourceFilter == null) {
                 sourceFilter = null
                 runSearch()
             }
@@ -107,12 +113,12 @@ fun SearchScreen(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(SpidolaSpacing.s),
         ) {
-            FilterChip("All types", selected = kindFilter == null) {
+            FilterChip(stringResource(R.string.search_all_types), selected = kindFilter == null) {
                 kindFilter = null
                 runSearch()
             }
             MediaKind.entries.forEach { kind ->
-                FilterChip(kind.label, selected = kindFilter == kind) {
+                FilterChip(kind.label(), selected = kindFilter == kind) {
                     kindFilter = kind
                     runSearch()
                 }
@@ -122,12 +128,19 @@ fun SearchScreen(
     }
 }
 
+/**
+ * One filter in a row of them, starred when it is the one in force. The star is silent, so the chip
+ * announces what it means instead: which filter is applied is the whole content of these two rows,
+ * and a viewer who cannot see the mark would otherwise hear the same sentence for every source they
+ * own (PRD §6.10). Only the applied chip says it — the rest are visibly the alternatives.
+ */
 @Composable
 private fun FilterChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
+    val selectedState = stringResource(R.string.search_filter_selected)
     SpidolaRow(
         title = label,
         accessory =
@@ -137,6 +150,7 @@ private fun FilterChip(
                 RowAccessory.None
             },
         onClick = onClick,
+        modifier = if (selected) Modifier.semantics { stateDescription = selectedState } else Modifier,
     )
 }
 
@@ -147,9 +161,9 @@ private fun Results(
     onOpenChannel: (channel: PlayableChannel, context: ZapContext, offset: UInt) -> Unit,
 ) {
     when (state) {
-        SearchState.Idle -> Hint("Type to search across your channels.")
-        SearchState.Loading -> Hint("Searching…")
-        SearchState.Empty -> Hint("No channels match “$query”.")
+        SearchState.Idle -> Hint(stringResource(R.string.search_idle))
+        SearchState.Loading -> Hint(stringResource(R.string.search_loading))
+        SearchState.Empty -> Hint(stringResource(R.string.search_empty, query))
         is SearchState.Failed ->
             ActionableErrorContent(state.error, onRetry = {}, onGoBack = {})
         is SearchState.Results ->
@@ -161,7 +175,7 @@ private fun Results(
                 if (state.results.fuzzy) {
                     item {
                         Text(
-                            text = "Showing closest matches",
+                            text = stringResource(R.string.search_fuzzy),
                             style = MaterialTheme.typography.labelMedium,
                             color = SpidolaPalette.Static,
                         )

@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.stringResource
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -83,17 +84,28 @@ fun FallbackOfferView(
                 horizontalArrangement = Arrangement.spacedBy(SpidolaSpacing.m),
             ) {
                 OfferButton(
-                    title = "Try other player",
+                    title = stringResource(R.string.playback_fallback_try_other),
                     isPrimary = true,
                     onClick = { onTry(rememberChoice) },
                     modifier = Modifier.focusRequester(tryOther),
                 )
                 OfferButton(
-                    title = if (rememberChoice) "Remember for this channel" else "Just this once",
+                    title =
+                        stringResource(
+                            if (rememberChoice) {
+                                R.string.playback_fallback_remember
+                            } else {
+                                R.string.playback_fallback_once
+                            },
+                        ),
                     isPrimary = false,
                     onClick = { rememberChoice = !rememberChoice },
                 )
-                OfferButton(title = "Go back", isPrimary = false, onClick = onBack)
+                OfferButton(
+                    title = stringResource(R.string.playback_fallback_back),
+                    isPrimary = false,
+                    onClick = onBack,
+                )
             }
         }
     }
@@ -154,7 +166,7 @@ fun PlaybackErrorView(
 fun SeekHintView(modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Text(
-            text = "This channel is live — there's nothing to skip to.",
+            text = stringResource(R.string.playback_seek_hint),
             style = MaterialTheme.typography.labelMedium,
             color = SpidolaPalette.Static,
             modifier =

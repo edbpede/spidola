@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: 2026 Spidola contributors -->
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!--
+  Every user-facing string in the search slice (PRD §6.10: English-first, string infrastructure
+  ready from day one), in PRD §8.6 voice: from the couch, active, no jargon — the viewer searches
+  *channels* across *sources*, and never meets a query, an index, or a score.
+
+  The actionable-error vocabulary is deliberately absent. `ActionableErrorContent` renders a
+  failure's class, message, and action labels straight from the core, so resourcing them here would
+  translate a third of a sentence and leave the rest English. The shells take that vocabulary over
+  as a code-plus-data contract in its own change; until then it stays wholly unextracted, so no one
+  reads this file and concludes the surface is done.
+-->
+<resources>
+
+    <!-- The field, and the filters above the results -->
+    <string name="search_placeholder">Search channels</string>
+    <string name="search_all_sources">All sources</string>
+    <string name="search_all_types">All types</string>
+    <!--
+      Spoken in place of the star on the filter in force (PRD §6.10). Only that one filter carries it:
+      a viewer moving along the row hears which is applied and takes the rest as the alternatives they
+      visibly are, which beats hearing "not selected" once per source.
+    -->
+    <string name="search_filter_selected">Selected</string>
+
+    <!-- Results -->
+    <string name="search_idle">Type to search across your channels.</string>
+    <string name="search_loading">Searching…</string>
+    <!-- The viewer's own words, quoted back to them. -->
+    <string name="search_empty">No channels match “%1$s”.</string>
+    <string name="search_fuzzy">Showing closest matches</string>
+
+    <!--
+      The media kinds, spelled out again here rather than read from corekit's `MediaKind.label`:
+      a label baked into a Kotlin property cannot be translated (PRD §6.10). Same posture as the
+      settings slice takes with the buffering profiles.
+    -->
+    <string name="search_kind_live">Live</string>
+    <string name="search_kind_movies">Movies</string>
+    <string name="search_kind_series">Series</string>
+
+</resources>

@@ -21,6 +21,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.MaterialTheme
@@ -54,7 +57,7 @@ fun HomeScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     Box(modifier = modifier.fillMaxSize().background(SpidolaPalette.Studio)) {
         when (val current = state) {
-            LoadState.Loading -> CenteredMessage("Loading…")
+            LoadState.Loading -> CenteredMessage(stringResource(R.string.browse_home_loading))
             LoadState.Empty -> EmptyHome(onAdd = navigator.manageSources)
             is LoadState.Failed ->
                 ActionableErrorContent(
@@ -77,7 +80,7 @@ fun HomeScreen(
 private fun EmptyHome(onAdd: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize().padding(SpidolaSpacing.xl)) {
         SpidolaRow(
-            title = "Add a source to start watching",
+            title = stringResource(R.string.browse_home_add_source),
             onClick = onAdd,
             modifier = Modifier.testTag("home-add-source"),
         )
@@ -104,7 +107,7 @@ private fun HomeReady(
         if (content.favorites.isNotEmpty()) {
             item {
                 PosterRail(
-                    title = "Favorites",
+                    title = stringResource(R.string.browse_home_favorites),
                     items = content.favorites.map { it.toPoster() }.toImmutableList(),
                     onSelect = { item ->
                         // The row is loaded from offset 0 in ring order, so a poster's index in it is
@@ -120,7 +123,7 @@ private fun HomeReady(
         if (content.recents.isNotEmpty()) {
             item {
                 PosterRail(
-                    title = "Recently watched",
+                    title = stringResource(R.string.browse_home_recents),
                     items = content.recents.map { it.toPoster() }.toImmutableList(),
                     onSelect = { item ->
                         content.recents.firstOrNull { it.key == item.id }?.let { channel ->
@@ -135,7 +138,7 @@ private fun HomeReady(
         }
         item {
             Text(
-                text = "Sources",
+                text = stringResource(R.string.browse_home_sources),
                 style = MaterialTheme.typography.titleLarge,
                 color = SpidolaPalette.BroadcastWhite,
                 modifier = Modifier.padding(horizontal = SpidolaSpacing.safeHorizontal),
@@ -155,7 +158,7 @@ private fun HomeReady(
         }
         item {
             SpidolaRow(
-                title = "Search channels",
+                title = stringResource(R.string.browse_home_search),
                 onClick = navigator.openSearch,
                 modifier =
                     Modifier.padding(horizontal = SpidolaSpacing.safeHorizontal).testTag("home-search"),
@@ -163,7 +166,7 @@ private fun HomeReady(
         }
         item {
             SpidolaRow(
-                title = "Add or manage sources",
+                title = stringResource(R.string.browse_home_manage_sources),
                 onClick = navigator.manageSources,
                 modifier =
                     Modifier.padding(horizontal = SpidolaSpacing.safeHorizontal).testTag("home-manage"),
@@ -171,7 +174,7 @@ private fun HomeReady(
         }
         item {
             SpidolaRow(
-                title = "Settings",
+                title = stringResource(R.string.browse_home_settings),
                 onClick = navigator.openSettings,
                 modifier =
                     Modifier.padding(horizontal = SpidolaSpacing.safeHorizontal).testTag("home-settings"),
@@ -179,25 +182,33 @@ private fun HomeReady(
         }
         item {
             Text(
-                text = "Recently watched",
+                text = stringResource(R.string.browse_home_recents),
                 style = MaterialTheme.typography.titleLarge,
                 color = SpidolaPalette.BroadcastWhite,
                 modifier = Modifier.padding(horizontal = SpidolaSpacing.safeHorizontal),
             )
         }
         item {
+            val value =
+                stringResource(if (content.recentsEnabled) R.string.browse_home_on else R.string.browse_home_off)
             SpidolaRow(
-                title = "Keep recently watched",
-                accessory = RowAccessory.Label(if (content.recentsEnabled) "On" else "Off"),
+                title = stringResource(R.string.browse_home_keep_recents),
+                accessory = RowAccessory.Label(value),
                 onClick = { onToggleRecents(!content.recentsEnabled) },
+                // This is the same switch settings carries, and it announces the same way: the title
+                // is the control's name, "On" is what it currently reads. Folding the value into the
+                // title would make one blob of a fact TalkBack has a place to put (PRD §6.10).
                 modifier =
-                    Modifier.padding(horizontal = SpidolaSpacing.safeHorizontal).testTag("home-recents-toggle"),
+                    Modifier
+                        .padding(horizontal = SpidolaSpacing.safeHorizontal)
+                        .semantics { stateDescription = value }
+                        .testTag("home-recents-toggle"),
             )
         }
         if (content.recents.isNotEmpty()) {
             item {
                 SpidolaRow(
-                    title = "Clear recently watched",
+                    title = stringResource(R.string.browse_home_clear_recents),
                     onClick = onClearRecents,
                     modifier =
                         Modifier.padding(horizontal = SpidolaSpacing.safeHorizontal).testTag("home-recents-clear"),

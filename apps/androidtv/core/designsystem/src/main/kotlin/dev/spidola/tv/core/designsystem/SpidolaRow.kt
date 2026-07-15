@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -26,6 +27,12 @@ sealed interface RowAccessory {
         val value: String,
     ) : RowAccessory
 
+    /**
+     * The mark a row wears to stand out from its neighbours — a favorite, or the choice in force.
+     * What it means is the caller's to say: it reads as a star to anyone who can see one, and the
+     * callers that use it mean three different things by it, so it is silent to a screen reader and
+     * each caller announces its own sense of it as the row's state (PRD §6.10).
+     */
     data object Star : RowAccessory
 }
 
@@ -84,6 +91,7 @@ fun SpidolaRow(
                         text = "★",
                         style = MaterialTheme.typography.bodyLarge,
                         color = SpidolaPalette.TestCardAmber,
+                        modifier = Modifier.clearAndSetSemantics { },
                     )
             }
         }
