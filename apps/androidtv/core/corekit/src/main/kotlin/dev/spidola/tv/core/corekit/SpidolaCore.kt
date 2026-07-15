@@ -3,11 +3,17 @@
 
 package dev.spidola.tv.core.corekit
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.withContext
 import uniffi.core_api.ApiException
+import uniffi.core_api.AppSettings
 import uniffi.core_api.BrowseGroupPage
+import uniffi.core_api.BufferingProfile
 import uniffi.core_api.ChannelPage
 import uniffi.core_api.Core
 import uniffi.core_api.CoreConfig
@@ -15,12 +21,18 @@ import uniffi.core_api.Handshake
 import uniffi.core_api.ImportListener
 import uniffi.core_api.ImportOutcome
 import uniffi.core_api.ImportProgress
+import uniffi.core_api.InterfaceDensity
+import uniffi.core_api.LogLevel
 import uniffi.core_api.LogSink
 import uniffi.core_api.MediaKind
+import uniffi.core_api.PairingListener
+import uniffi.core_api.PairingSubmission
 import uniffi.core_api.Recent
 import uniffi.core_api.SearchPage
 import uniffi.core_api.SecretStore
 import uniffi.core_api.Source
+import uniffi.core_api.SubtitleBackground
+import uniffi.core_api.SubtitleSize
 import uniffi.core_api.TaskHandle
 import uniffi.core_api.uniffiEnsureInitialized
 
@@ -75,15 +87,6 @@ val Source.isRefreshable: Boolean
             is Source.M3uFile -> false
         }
 
-/** A couch-legible one-word description of the source kind, for the sources list. */
-val Source.kindLabel: String
-    get() =
-        when (this) {
-            is Source.M3uUrl -> "Playlist URL"
-            is Source.M3uFile -> "Playlist file"
-            is Source.Xtream -> "Xtream account"
-        }
-
 /** One event from a running import; the stream terminates on [Complete] or [Failed]. */
 sealed interface ImportEvent {
     data class Progress(
@@ -112,9 +115,11 @@ class SpidolaCore private constructor(
     BrowseAccess,
     SearchAccess,
     HomeAccess,
-    PlaybackAccess {
+    PlaybackAccess,
+    SettingsAccess,
+    PairingAccess {
     /** The startup handshake (core / schema / boundary versions), checked before first use. */
-    fun handshake(): Handshake = core.handshake()
+    override fun handshake(): Handshake = core.handshake()
 
     // ---- Sources ----
 
@@ -134,6 +139,13 @@ class SpidolaCore private constructor(
     ): Source = addM3uUrl(name, url, null, false)
 
     override suspend fun addM3uFile(name: String): Source = core.sources().addM3uFile(name)
+
+    override suspend fun addXtream(
+        name: String,
+        server: String,
+        username: String,
+        password: String,
+    ): Source = core.sources().addXtream(name, server, username, password)
 
     override suspend fun rename(
         id: Long,
@@ -184,6 +196,28 @@ class SpidolaCore private constructor(
                 }
             val handle = start(listener)
             awaitClose { handle.cancel() }
+        }
+
+    // ---- Pairing ----
+
+    override fun pair(host: String?): Flow<PairingEvent> =
+        callbackFlow {
+            val listener =
+                object : PairingListener {
+                    override fun onSubmission(submission: PairingSubmission) {
+                        trySend(PairingEvent.Submitted(submission))
+                    }
+                }
+            send(PairingEvent.Started(core.pairing().start(host, listener)))
+            // Nothing terminates this stream from the core's side: the server runs until the screen
+            // that is collecting it goes away.
+            awaitClose()
+        }.onCompletion {
+            // The stop must outrun the cancellation that triggered it. By the time completion runs
+            // the collecting scope is already cancelled, so a plain suspend call here would be
+            // dropped — and the server's lifetime is the security model, so a skipped stop leaves a
+            // listener on the LAN. `stop` is idempotent, so a failed `start` completing here is fine.
+            withContext(NonCancellable) { core.pairing().stop() }
         }
 
     // ---- Catalog / browse ----
@@ -328,30 +362,61 @@ class SpidolaCore private constructor(
     override suspend fun channelEngine(
         sourceId: Long,
         identity: Long,
-    ): String? = setting(PlaybackSettingKey.channelEngine(sourceId, identity))
+    ): String? = core.settings().engineForChannel(sourceId, identity)
 
     override suspend fun setChannelEngine(
         sourceId: Long,
         identity: Long,
         engine: String?,
-    ) {
-        val key = PlaybackSettingKey.channelEngine(sourceId, identity)
-        if (engine != null) {
-            core.settings().set(key, engine)
-        } else {
-            core.settings().remove(key)
-        }
+    ) = core.settings().setEngineForChannel(sourceId, identity, engine)
+
+    override suspend fun sourceEngine(sourceId: Long): String? = core.settings().engineForSource(sourceId)
+
+    // The playback slice speaks `player-contract`'s `BufferingProfile` and the core speaks its
+    // own mirror of it; the two carry identical variants and identical stored spellings, so this
+    // adapter is the one seam that translates between them. `PlaybackAccess` deliberately keeps
+    // the raw value rather than either enum: it is the shell's own narrow contract, and pushing
+    // a core FFI type through it would make the playback slice depend on the boundary's shape.
+    override suspend fun bufferingProfile(): String? = core.settings().snapshot().buffering.stored()
+
+    override suspend fun setBufferingProfile(profile: String) = core.settings().setBuffering(profile.toCoreBuffering())
+
+    override suspend fun resolveStream(
+        sourceId: Long,
+        locator: String,
+    ): String = core.sources().resolveStream(sourceId, locator)
+
+    // ---- Settings ----
+
+    override suspend fun settings(): AppSettings = core.settings().snapshot()
+
+    override suspend fun setDefaultEngine(engine: String?) = core.settings().setDefaultEngine(engine)
+
+    override suspend fun setBuffering(profile: BufferingProfile) = core.settings().setBuffering(profile)
+
+    override suspend fun setSubtitleSize(size: SubtitleSize) = core.settings().setSubtitleSize(size)
+
+    // A block body only because the one-liner lands between ktlint's ceiling and detekt's: ktlint
+    // would fold an expression body back onto one 129-column line, which detekt then rejects at 120.
+    override suspend fun setSubtitleBackground(background: SubtitleBackground) {
+        core.settings().setSubtitleBackground(background)
     }
 
-    override suspend fun sourceEngine(sourceId: Long): String? = setting(PlaybackSettingKey.sourceEngine(sourceId))
+    override suspend fun setLanguage(tag: String?) = core.settings().setLanguage(tag)
 
-    override suspend fun bufferingProfile(): String? = setting(PlaybackSettingKey.BUFFERING_PROFILE)
+    override suspend fun setDensity(density: InterfaceDensity) = core.settings().setDensity(density)
 
-    override suspend fun setBufferingProfile(profile: String) {
-        core.settings().set(PlaybackSettingKey.BUFFERING_PROFILE, profile)
-    }
+    override suspend fun setRecentsRetentionDays(days: UInt) = core.settings().setRecentsRetentionDays(days)
 
-    private suspend fun setting(key: String): String? = core.settings().get(key)
+    override suspend fun setImageCacheMaxMb(megabytes: UInt) = core.settings().setImageCacheMaxMb(megabytes)
+
+    override suspend fun setLogLevel(level: LogLevel) = core.settings().setLogLevel(level)
+
+    // ---- Diagnostics ----
+
+    /** Reads the core's log buffer off the main thread: the export is a blocking FFI call, and the
+     * diagnostics screen asks for it from a composable's scope. */
+    override suspend fun exportLogs(): List<String> = withContext(Dispatchers.IO) { core.exportLogs() }
 
     companion object {
         /** Opens the core against [dbPath], installing the host secrets store and log sink. */

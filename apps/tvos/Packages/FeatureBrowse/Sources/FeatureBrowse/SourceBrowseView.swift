@@ -37,10 +37,13 @@ public struct SourceBrowseView: View {
   @ViewBuilder private var content: some View {
     switch model.state {
     case .loading:
-      ProgressView("Loading categories…")
+      ProgressView(String(localized: "Loading categories…", bundle: .module))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     case .empty:
-      CenteredNotice(text: "This source has no channels yet. Refresh it from the sources screen.")
+      CenteredNotice(
+        text: String(
+          localized: "This source has no channels yet. Refresh it from the sources screen.",
+          bundle: .module))
     case .failed(let error):
       actionableError(
         error,
@@ -59,7 +62,7 @@ public struct SourceBrowseView: View {
         }
         LazyVStack(spacing: SpidolaSpacing.s) {
           ForEach(content.groups, id: \.self) { group in
-            let title = group.title ?? "Ungrouped"
+            let title = group.title ?? String(localized: "Ungrouped", bundle: .module)
             SpidolaRow(
               title: title,
               accessory: .text("\(group.channelCount)"),
@@ -68,6 +71,14 @@ public struct SourceBrowseView: View {
               navigator.openChannels(sourceId, content.kind, group.title, title)
             }
             .focused($focused, equals: .group(title))
+            // The trailing number is a count, and a bare "42" arriving after a group's name could
+            // be anything. Said with its unit it means what the column of digits means to someone
+            // who can see them line up. Widened to `Int` and pluralised through the catalog for
+            // the reasons the import's own count gives (AddSourceView).
+            .accessibilityLabel(title)
+            .accessibilityValue(
+              String(localized: "\(Int(group.channelCount)) channels", bundle: .module)
+            )
             .accessibilityIdentifier("group-\(title)")
           }
         }
@@ -80,17 +91,23 @@ public struct SourceBrowseView: View {
   private func kindSelector(_ content: SourceBrowseContent) -> some View {
     HStack(spacing: SpidolaSpacing.m) {
       ForEach(content.kinds, id: \.self) { kind in
-        Button(kind.label) { Task { await model.select(kind: kind) } }
+        let isSelected = kind == content.kind
+        Button(kind.localizedLabel) { Task { await model.select(kind: kind) } }
           .buttonStyle(.plain)
           .padding(.horizontal, SpidolaSpacing.l)
           .padding(.vertical, SpidolaSpacing.s)
-          .background(kind == content.kind ? SpidolaPalette.testCardAmber : SpidolaPalette.set)
-          .foregroundStyle(
-            kind == content.kind ? SpidolaPalette.studio : SpidolaPalette.broadcastWhite
-          )
+          .background(isSelected ? SpidolaPalette.testCardAmber : SpidolaPalette.set)
+          .foregroundStyle(isSelected ? SpidolaPalette.studio : SpidolaPalette.broadcastWhite)
           .font(SpidolaType.caption)
           .focused($focused, equals: .kind(kind))
           .spidolaFocusRing(isFocused: focused == .kind(kind))
+          // Which kind is showing is carried by the amber fill and nothing else, and a colour does
+          // not survive being read aloud.
+          .accessibilityValue(
+            isSelected
+              ? String(localized: "Selected", bundle: .module)
+              : String(localized: "Not selected", bundle: .module)
+          )
       }
     }
     .padding(.horizontal, SpidolaSpacing.safeHorizontal)

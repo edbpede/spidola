@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: 2026 Spidola contributors -->
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!--
+  Every user-facing string in the sources slice (PRD §6.10: English-first, string infrastructure
+  from day one), in PRD §8.6 voice: from the couch, active, no jargon — "Add from your phone", never
+  "LAN pairing session".
+
+  Two things are deliberately still in Kotlin, and both are view-model API shape rather than
+  oversight: the `validation` and `status` channels are `StateFlow<String?>`, so resourcing them
+  means changing what a view model publishes, which is a design change and not a string sweep.
+-->
+<resources>
+
+    <!-- Add-source modes -->
+    <string name="add_source_mode_url">Playlist URL</string>
+    <string name="add_source_mode_file">Paste a playlist</string>
+    <string name="add_source_mode_xtream">Xtream account</string>
+
+    <!-- Add-source form -->
+    <string name="add_source_name">Name</string>
+    <string name="add_source_url_field">Playlist URL</string>
+    <string name="add_source_user_agent">User agent (optional)</string>
+    <string name="add_source_allow_self_signed">Allow self-signed certificates</string>
+    <string name="add_source_paste">Paste playlist text</string>
+    <string name="add_source_submit">Add source</string>
+    <string name="add_source_cancel">Cancel</string>
+    <string name="add_source_done">Done</string>
+    <string name="add_source_on">On</string>
+    <string name="add_source_off">Off</string>
+
+    <!-- Import progress and outcome -->
+    <string name="add_source_stage_connecting">Connecting…</string>
+    <plurals name="add_source_stage_importing">
+        <item quantity="one">Importing… %1$d channel</item>
+        <item quantity="other">Importing… %1$d channels</item>
+    </plurals>
+    <string name="add_source_stage_finalizing">Finishing up…</string>
+    <plurals name="add_source_added">
+        <item quantity="one">Added %1$d channel</item>
+        <item quantity="other">Added %1$d channels</item>
+    </plurals>
+    <plurals name="add_source_skipped">
+        <item quantity="one">%1$d entry was skipped as unreadable.</item>
+        <item quantity="other">%1$d entries were skipped as unreadable.</item>
+    </plurals>
+
+    <!-- Xtream account fields -->
+    <string name="add_source_server">Server address</string>
+    <string name="add_source_username">Username</string>
+    <string name="add_source_password">Password</string>
+
+    <!-- Sources list -->
+    <string name="sources_loading">Loading sources…</string>
+    <string name="sources_add">Add a source</string>
+    <string name="sources_empty">No sources yet.</string>
+    <string name="sources_refreshing">Refreshing…</string>
+    <string name="sources_disabled">Disabled</string>
+    <!-- A source's kind and its refresh schedule, e.g. "Xtream account · Every hour". -->
+    <string name="sources_subtitle">%1$s · %2$s</string>
+    <!--
+      The kinds of source, for the half of that subtitle that says what this one is. Deliberately not
+      the add-source mode names above: a mode is an instruction to the person adding one ("Paste a
+      playlist"), a kind is what the source turned out to be ("Playlist file").
+    -->
+    <string name="sources_kind_playlist_url">Playlist URL</string>
+    <string name="sources_kind_playlist_file">Playlist file</string>
+    <string name="sources_kind_xtream">Xtream account</string>
+    <string name="sources_rename">Rename</string>
+    <string name="sources_save_name">Save name</string>
+    <string name="sources_enable">Enable</string>
+    <string name="sources_disable">Disable</string>
+    <string name="sources_refresh_now">Refresh now</string>
+    <string name="sources_auto_refresh">Auto-refresh: %1$s</string>
+    <string name="sources_delete">Delete</string>
+    <string name="sources_delete_confirm">Confirm delete</string>
+    <string name="sources_delete_warning">Can\'t be undone</string>
+
+    <!-- Auto-refresh intervals -->
+    <string name="auto_refresh_off">Manual only</string>
+    <string name="auto_refresh_hourly">Every hour</string>
+    <string name="auto_refresh_six_hourly">Every 6 hours</string>
+    <string name="auto_refresh_daily">Every day</string>
+
+    <!-- Pairing -->
+    <string name="pairing_title">Add from your phone</string>
+    <string name="pairing_explainer">Open this address on your phone, enter the code, and send Spidola a playlist or an account. Nothing is added until you confirm it here.</string>
+    <string name="pairing_qr_description">A QR code for the address below. Scan it with your phone\'s camera.</string>
+    <string name="pairing_address">Address</string>
+    <string name="pairing_code">Code</string>
+    <string name="pairing_starting">Starting…</string>
+    <string name="pairing_done">Done</string>
+
+</resources>

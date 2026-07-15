@@ -7,16 +7,17 @@ import Observation
 import core_api
 
 /// Which add-source flow the form is driving. tvOS has no document picker, so a local playlist is
-/// added by pasting its text; the URL flow fetches and streams it (TECH_SPEC §4.5). Xtream and
-/// pairing land in Phase 6.
+/// added by pasting its text; the URL flow fetches and streams it (TECH_SPEC §4.5).
 public enum AddSourceMode: Sendable, CaseIterable {
   case url
   case file
+  case xtream
 
   public var title: String {
     switch self {
-    case .url: "Playlist URL"
-    case .file: "Paste a playlist"
+    case .url: String(localized: "Playlist URL", bundle: .module)
+    case .file: String(localized: "Paste a playlist", bundle: .module)
+    case .xtream: String(localized: "Xtream account", bundle: .module)
     }
   }
 }
@@ -43,6 +44,12 @@ public final class AddSourceModel {
   public var pastedContent = ""
   public var userAgent = ""
   public var acceptInvalidTls = false
+  public var server = ""
+  public var username = ""
+  /// The Xtream account password, in flight to `addXtream` and the host secure store behind it.
+  /// It lives here only as long as the form does: it is never logged, never persisted by the
+  /// shell, and what reaches SQLite is an opaque key the core mints (TECH_SPEC §12).
+  public var password = ""
   public private(set) var validationMessage: String?
   public private(set) var state: AddSourceState = .editing
 
@@ -100,8 +107,64 @@ public final class AddSourceModel {
         validationMessage = "Paste the playlist text."
         return false
       }
+    case .xtream:
+      if server.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        validationMessage = "Enter the server address."
+        return false
+      }
+      if username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        validationMessage = "Enter the username."
+        return false
+      }
+      // Not trimmed: leading and trailing spaces are legal in a password, and silently eating
+      // them would reject a correct one with a message about the account being wrong.
+      if password.isEmpty {
+        validationMessage = "Enter the password."
+        return false
+      }
     }
     return true
+  }
+
+  /// Returns a failed form to its fields so the details can be corrected — the action behind
+  /// `ErrorAction.fixInput`, which is what `Unauthorized` prescribes and therefore what a rejected
+  /// Xtream password lands on. Without this the "Edit" button on that error would re-render the
+  /// same error, and the most likely failure on this screen would have no way out but Back.
+  public func returnToForm() {
+    state = .editing
+    validationMessage = nil
+  }
+
+  /// Fills the form from what a phone sent, for the person at the TV to confirm (PRD §6.1). It
+  /// pre-fills and never submits: the confirmation *is* the point, since anything on the LAN could
+  /// have posted this.
+  ///
+  /// A submission carries no name — the form needs one and typing it on a remote is the misery
+  /// pairing exists to avoid — so the host of whatever was sent becomes the default, which is both
+  /// recognizable and editable.
+  public func prefill(from submission: PairingSubmission) {
+    switch submission {
+    case .m3uUrl(let url):
+      mode = .url
+      self.url = url
+      name = Self.hostLabel(of: url) ?? String(localized: "Playlist", bundle: .module)
+    case .xtream(let server, let username, let password):
+      mode = .xtream
+      self.server = server
+      self.username = username
+      self.password = password
+      name = Self.hostLabel(of: server) ?? String(localized: "Xtream account", bundle: .module)
+    @unknown default:
+      // A newer core sent a kind this build cannot fill in. Leaving the form untouched is the
+      // honest response: the screen still works by hand (TECH_SPEC §5).
+      break
+    }
+  }
+
+  /// The host of a URL, as a name a person would recognize on the sources list.
+  private static func hostLabel(of text: String) -> String? {
+    guard let host = URLComponents(string: text)?.host, !host.isEmpty else { return nil }
+    return host
   }
 
   private func run(mode: AddSourceMode) async {
@@ -121,7 +184,9 @@ public final class AddSourceModel {
 
     let stream: AsyncStream<ImportEvent>
     switch mode {
-    case .url: stream = access.importURL(id: created.id)
+    // Xtream fetches its catalog over the network exactly as a playlist URL does — `addXtream`
+    // only verifies and stores the account, so the import is the same refresh call.
+    case .url, .xtream: stream = access.importURL(id: created.id)
     case .file: stream = access.importContent(id: created.id, content: pastedContent)
     }
 
@@ -168,6 +233,15 @@ public final class AddSourceModel {
         acceptInvalidTls: acceptInvalidTls)
     case .file:
       return try await access.addM3uFile(name: trimmedName)
+    case .xtream:
+      // The password goes straight through, untrimmed and unlogged. This call verifies the account
+      // against the headend before storing it, so a wrong one throws `Unauthorized` here and lands
+      // on the form as a sentence rather than surfacing as a mystery on the next refresh.
+      return try await access.addXtream(
+        name: trimmedName,
+        server: server.trimmingCharacters(in: .whitespacesAndNewlines),
+        username: username.trimmingCharacters(in: .whitespacesAndNewlines),
+        password: password)
     }
   }
 

@@ -137,7 +137,12 @@ final class AppContainer {
   private static let fixtureChannelCount = 24
   private static let fixtureSourceName = "Fixture Catalog"
   private static let fixtureIdKey = "dev.spidola.tv.fixtureSourceId"
-  private static let supportedBoundaryVersion: UInt32 = 1
+  /// Bumped to 2 for the Phase 6 boundary: the typed settings vocabulary replaced the opaque
+  /// get/set/remove surface, and Xtream and pairing arrived. This pin is the shell stating which
+  /// boundary it was built against — the handshake guard above turns a mismatch into an immediate,
+  /// legible stop rather than a puzzling failure later (TECH_SPEC §5), so it has to move in step
+  /// with `core-api`'s `BOUNDARY_VERSION` or the app cannot launch at all.
+  private static let supportedBoundaryVersion: UInt32 = 2
   private static let supportedSchemaVersion: UInt32 = 1
 }
 

@@ -71,24 +71,61 @@ public protocol PlaybackAccess: Sendable {
   func bufferingProfile() async throws -> String?
   func setBufferingProfile(_ profile: String) async throws
 
+  /// The playable URL for a channel's stored locator. Call this immediately before handing a
+  /// stream to an engine, and never store the result.
+  ///
+  /// Not a formality: an Xtream catalog stores a **credential-free** locator so the account's
+  /// password never reaches SQLite (TECH_SPEC §12), which means the locator on a `PlayableChannel`
+  /// is not playable on its own — this is what puts the credential back. Kind-agnostic, so the zap
+  /// path never branches on where a channel came from: an M3U locator is already playable and
+  /// returns unchanged.
+  func resolveStream(sourceId: Int64, locator: String) async throws -> String
+
   func recordRecent(_ channel: PlayableChannel) async throws
 }
 
-/// The settings keys the playback slice owns.
+/// Translates the buffering profile between the core's boundary enum and the raw value
+/// `PlaybackAccess` speaks.
 ///
-/// Engine overrides live in the settings table rather than `channels.preferred_engine` on purpose:
-/// the channels table is replaced wholesale by the staging-and-swap refresh (TECH_SPEC §4.4), so a
-/// choice stored there would silently vanish on the next refresh. Favourites and hidden survive
-/// refresh by living in their own tables keyed on the stable identity hash; a remembered engine is
-/// the same kind of durable per-channel fact and is keyed the same way.
-enum PlaybackSettingKey {
-  static func channelEngine(sourceId: Int64, identity: Int64) -> String {
-    "player.engine.channel.\(sourceId).\(identity)"
+/// There is no key-naming type here any more, and that is the point: the core owns the settings
+/// vocabulary now, so the engine overrides are reached through `engineForChannel` /
+/// `engineForSource` / `setDefaultEngine` rather than through key strings this module used to
+/// invent. Where those choices *live* — the settings table, keyed on the stable identity hash and
+/// never on `channels.preferred_engine`, because a refresh replaces every channel row wholesale
+/// (TECH_SPEC §4.4) — is now documented on the core's own `channel_engine` key, which is the thing
+/// that decides it.
+///
+/// The core's `BufferingProfile` mirrors `PlayerContract`'s case for case and spelling for
+/// spelling — the core adopted the vocabulary Phase 5 had already settled rather than inventing a
+/// second, lossy one — so this adapter is a straight relabelling and not a lossy translation. It
+/// exists at all only because **CoreKit must not import `PlayerContract`**: engine identity and
+/// engine tuning are the player layer's concepts (TECH_SPEC §8), and a dependency from the binding
+/// wrapper onto the player contract would invert that. So the two enums cannot simply be one type,
+/// and the raw value is the seam where they meet.
+///
+/// `BufferingBridgeTests` (in the settings slice's suite — the only target that depends on both
+/// modules, and so the only place the two vocabularies can be checked against each other) pins it:
+/// a setting the viewer changes has to reach the player, and these two drifting apart is exactly
+/// where that would quietly stop being true without anything failing to compile.
+extension BufferingProfile {
+  /// The raw value the playback slice reads back into its own profile.
+  var playbackKey: String {
+    switch self {
+    case .low: "low"
+    case .balanced: "balanced"
+    case .generous: "generous"
+    @unknown default: "balanced"
+    }
   }
 
-  static func sourceEngine(sourceId: Int64) -> String {
-    "player.engine.source.\(sourceId)"
+  /// Reads a raw playback value back into the core's enum, falling back to the shared default
+  /// rather than throwing: the value comes from persisted settings, so an unrecognized one means a
+  /// newer app wrote it, not that this caller made a mistake.
+  init(playbackKey: String) {
+    switch playbackKey {
+    case "low": self = .low
+    case "generous": self = .generous
+    default: self = .balanced
+    }
   }
-
-  static let bufferingProfile = "player.buffering"
 }

@@ -88,6 +88,8 @@ private struct PosterCard: View {
     }
     .buttonStyle(.plain)
     .spidolaFocusRing(isFocused: isFocused)
-    .accessibilityLabel(item.subtitle.map { "\(item.title), \($0)" } ?? item.title)
+    .accessibilityLabel(
+      item.subtitle.map { String(localized: "\(item.title), \($0)", bundle: .module) }
+        ?? item.title)
   }
 }

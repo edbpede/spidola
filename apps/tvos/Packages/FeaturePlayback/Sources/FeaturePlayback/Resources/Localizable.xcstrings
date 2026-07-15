@@ -1,0 +1,227 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "%lld / %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld / %lld"
+          }
+        }
+      }
+    },
+    "%lld of %lld": {
+      "comment": "The playing channel's place in the zap ring, spoken by a screen reader. Separate from the shown '%lld / %lld' because a slash is heard as the word 'slash'; say it the way someone would say it aloud.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld of %lld"
+          }
+        }
+      }
+    },
+    "Audio": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio"
+          }
+        }
+      }
+    },
+    "Audio %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio %lld"
+          }
+        }
+      }
+    },
+    "Changes whether this choice sticks for this channel.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changes whether this choice sticks for this channel."
+          }
+        }
+      }
+    },
+    "Fill": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fill"
+          }
+        }
+      }
+    },
+    "Fit": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fit"
+          }
+        }
+      }
+    },
+    "Go back": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Go back"
+          }
+        }
+      }
+    },
+    "Just this once": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Just this once"
+          }
+        }
+      }
+    },
+    "LIVE": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LIVE"
+          }
+        }
+      }
+    },
+    "Live": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live"
+          }
+        }
+      }
+    },
+    "Not selected": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not selected"
+          }
+        }
+      }
+    },
+    "Off": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off"
+          }
+        }
+      }
+    },
+    "Only one audio track": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only one audio track"
+          }
+        }
+      }
+    },
+    "Picture": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Picture"
+          }
+        }
+      }
+    },
+    "Remember for this channel": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remember for this channel"
+          }
+        }
+      }
+    },
+    "Selected": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected"
+          }
+        }
+      }
+    },
+    "Stretch": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stretch"
+          }
+        }
+      }
+    },
+    "Subtitle %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subtitle %lld"
+          }
+        }
+      }
+    },
+    "Subtitles": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subtitles"
+          }
+        }
+      }
+    },
+    "This channel is live — there's nothing to skip to.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This channel is live — there's nothing to skip to."
+          }
+        }
+      }
+    },
+    "Try other player": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try other player"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

@@ -23,6 +23,8 @@ pub mod records;
 pub mod runtime;
 pub mod secrets;
 pub mod services;
+pub mod settings;
+pub mod xtream;
 
 use std::path::Path;
 use std::sync::Arc;
@@ -34,12 +36,16 @@ pub use events::{ImportListener, ImportOutcome, ImportProgress, ImportStage, Tas
 pub use logging::{LogConfig, LogHandle, LogLevel, LogRecord, LogSink, RingBuffer, RingLayer};
 pub use records::{
     BrowseGroup, BrowseGroupPage, Channel, ChannelOverrides, ChannelPage, Favorite, HeaderField,
-    MediaKind, Recent, SearchPage, SettingEntry, Source, SourceCommon, SourceKind,
+    MediaKind, Recent, SearchPage, Source, SourceCommon, SourceKind,
 };
 pub use runtime::CoreRuntime;
 pub use secrets::SecretStore;
 pub use services::{
-    CatalogService, FavoritesService, RecentsService, SearchService, SettingsService, SourceService,
+    CatalogService, FavoritesService, PairingListener, PairingService, PairingSession,
+    PairingSubmission, RecentsService, SearchService, SettingsService, SourceService,
+};
+pub use settings::{
+    AppSettings, BufferingProfile, InterfaceDensity, SubtitleBackground, SubtitleSize,
 };
 
 use crate::logging::targets;
@@ -49,7 +55,15 @@ uniffi::setup_scaffolding!();
 /// The FFI boundary version. Bumped whenever the exported surface changes shape; the startup
 /// [`Handshake`] lets an older shell refuse a newer core legibly rather than crash (TECH_SPEC
 /// §5, §13).
-pub const BOUNDARY_VERSION: u32 = 1;
+///
+/// `2` — Phase 6: added the Xtream and pairing services, and replaced `SettingsService`'s
+/// opaque key/value methods with the typed [`settings`] surface.
+pub const BOUNDARY_VERSION: u32 = 2;
+
+/// The core's build-time git revision, for the diagnostics screen (PRD §6.9). Resolved by
+/// `build.rs`; `"unknown"` in a source tree without git metadata (a release tarball build),
+/// which is reported honestly rather than failing the build.
+pub const GIT_REVISION: &str = env!("SPIDOLA_GIT_REVISION");
 
 /// Startup configuration handed to [`Core::new`].
 #[derive(Debug, Clone, uniffi::Record)]
@@ -68,6 +82,9 @@ pub struct CoreConfig {
 pub struct Handshake {
     /// The core crate's semantic version.
     pub core_version: String,
+    /// The core's build-time git revision ([`GIT_REVISION`]), shown on the diagnostics screen so
+    /// a support thread can name the exact core build (PRD §6.9).
+    pub core_git_revision: String,
     /// The database schema version at head.
     pub schema_version: u32,
     /// The FFI boundary version ([`BOUNDARY_VERSION`]).
@@ -84,10 +101,10 @@ pub struct Core {
     // instance every `sources()` call hands out. A best-effort `delete` can then find and cancel a
     // sibling `refresh`'s token instead of consulting an empty registry on a throwaway instance.
     source_service: Arc<SourceService>,
-    // Installed now so the host-secrets boundary and its threading contract are exercised in
-    // Phase 2; the first consumer (Xtream auth / authed-artwork resolver) lands in Phase 6.
-    #[allow(dead_code)]
-    secrets: Arc<dyn SecretStore>,
+    // One shared `PairingService` for the same reason, and a stronger one: it *holds* the running
+    // server, so a throwaway instance per `pairing()` call would drop the listener the moment the
+    // shell released the handle it started from.
+    pairing_service: Arc<PairingService>,
 }
 
 #[uniffi::export]
@@ -107,14 +124,33 @@ impl Core {
         log_sink: Box<dyn LogSink>,
     ) -> Result<Arc<Self>, ApiError> {
         let log = logging::init(&LogConfig {
-            default_directives: config.log_directives,
+            default_directives: config.log_directives.clone(),
             ring_capacity: logging::DEFAULT_RING_CAPACITY,
         })
         .map_err(|_| ApiError::Internal)?;
 
         let rt = Arc::new(CoreRuntime::new()?);
         let db = Arc::new(Db::open(Path::new(&config.db_path)).map_err(ApiError::from)?);
-        let source_service = SourceService::new(Arc::clone(&rt), Arc::clone(&db));
+        // Establish this `Core`'s filter explicitly, and unconditionally. A log level the user
+        // chose on the diagnostics screen outranks the start-up directives, so their choice
+        // survives a restart (PRD §6.9); with no stored level the caller's directives stand.
+        // The `else` branch is not redundant with `init`'s `default_directives`: `init` computes
+        // the pipeline once per process, so a second `Core` in one process would otherwise
+        // silently inherit the *previous* `Core`'s filter instead of honouring its own config.
+        // Applying it before the host sink is installed means the first records already comply.
+        let directives = match SettingsService::stored_log_level(&db)? {
+            Some(level) => level.directive().to_owned(),
+            None => config.log_directives,
+        };
+        if log.set_directives(&directives).is_err() {
+            tracing::warn!(
+                target: targets::DB,
+                "log directives could not be applied; the pipeline keeps its previous filter"
+            );
+        }
+        let secrets: Arc<dyn SecretStore> = Arc::from(secrets);
+        let source_service = SourceService::new(Arc::clone(&rt), Arc::clone(&db), secrets);
+        let pairing_service = PairingService::new(Arc::clone(&rt));
         // Claim the process-global host-sink slot last: it fails if a live `Core` already owns it,
         // and installing only after the fallible steps above means a transient runtime/db failure
         // never leaves the slot occupied (which would then block every future construction).
@@ -125,7 +161,7 @@ impl Core {
             db,
             log,
             source_service,
-            secrets: Arc::from(secrets),
+            pairing_service,
         }))
     }
 
@@ -134,6 +170,7 @@ impl Core {
     pub fn handshake(&self) -> Handshake {
         Handshake {
             core_version: env!("CARGO_PKG_VERSION").to_owned(),
+            core_git_revision: GIT_REVISION.to_owned(),
             schema_version: u32::try_from(core_db::SCHEMA_VERSION).unwrap_or(u32::MAX),
             boundary_version: BOUNDARY_VERSION,
         }
@@ -172,10 +209,19 @@ impl Core {
         RecentsService::new(Arc::clone(&self.rt), Arc::clone(&self.db))
     }
 
-    /// The settings service.
+    /// The pairing service (start/stop the LAN server, PRD §6.1).
+    ///
+    /// Returns the one shared instance, which owns the running server — a per-call instance
+    /// would close the socket as soon as the caller dropped its handle.
+    #[must_use]
+    pub fn pairing(&self) -> Arc<PairingService> {
+        Arc::clone(&self.pairing_service)
+    }
+
+    /// The settings service (typed surface with defaults, PRD §6.9).
     #[must_use]
     pub fn settings(&self) -> Arc<SettingsService> {
-        SettingsService::new(Arc::clone(&self.rt), Arc::clone(&self.db))
+        SettingsService::new(Arc::clone(&self.rt), Arc::clone(&self.db), self.log.clone())
     }
 
     /// Reloads the runtime log level from `EnvFilter` directives (diagnostics screen, §4.8).

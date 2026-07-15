@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: 2026 Spidola contributors -->
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!--
+  Every user-facing string in the browse slice (PRD §6.10: English-first, string infrastructure
+  ready from day one), in PRD §8.6 voice: from the couch, active, no jargon — the viewer browses
+  *sources* and *channels*, never "entries" or "playlists".
+
+  The actionable-error vocabulary is deliberately absent. `ActionableErrorContent` renders a
+  failure's class, message, and action labels straight from the core, so resourcing them here would
+  translate a third of a sentence and leave the rest English. The shells take that vocabulary over
+  as a code-plus-data contract in its own change; until then it stays wholly unextracted, so no one
+  reads this file and concludes the surface is done.
+-->
+<resources>
+
+    <!-- Home -->
+    <string name="browse_home_loading">Loading…</string>
+    <string name="browse_home_add_source">Add a source to start watching</string>
+    <string name="browse_home_favorites">Favorites</string>
+    <!-- The recently-watched rail, and the section header for the controls that govern it. -->
+    <string name="browse_home_recents">Recently watched</string>
+    <string name="browse_home_sources">Sources</string>
+    <string name="browse_home_search">Search channels</string>
+    <string name="browse_home_manage_sources">Add or manage sources</string>
+    <string name="browse_home_settings">Settings</string>
+    <string name="browse_home_keep_recents">Keep recently watched</string>
+    <string name="browse_home_on">On</string>
+    <string name="browse_home_off">Off</string>
+    <string name="browse_home_clear_recents">Clear recently watched</string>
+    <!--
+      What kind of source a home row stands for, under the name its owner gave it. The sources screen
+      names the same three kinds in its own file: there a kind shares a line with a refresh schedule,
+      here it stands alone, and neither screen has to ask the other before rewording one.
+    -->
+    <string name="browse_home_source_playlist_url">Playlist URL</string>
+    <string name="browse_home_source_playlist_file">Playlist file</string>
+    <string name="browse_home_source_xtream">Xtream account</string>
+
+    <!--
+      Channel detail. Each state of a toggling control is its own string rather than a stem plus a
+      prefix: "Remove" and "Add" do not compose onto "favorite" in every language.
+    -->
+    <string name="browse_detail_play">Play</string>
+    <string name="browse_detail_add_favorite">Add favorite</string>
+    <string name="browse_detail_remove_favorite">Remove favorite</string>
+    <string name="browse_detail_hide">Hide channel</string>
+    <string name="browse_detail_show">Show channel</string>
+    <!--
+      What a screen reader hears as those two rows' state (PRD §6.10). The labels above say what
+      pressing does; these say what the channel already is. A viewer who cannot see the star has to
+      reason backwards from "Remove favorite" to learn that, and a puzzle is not an announcement.
+    -->
+    <string name="browse_detail_favorite_state">Favorite</string>
+    <string name="browse_detail_not_favorite_state">Not a favorite</string>
+    <string name="browse_detail_hidden_state">Hidden</string>
+    <string name="browse_detail_visible_state">Visible</string>
+
+    <!-- Channel list -->
+    <string name="browse_channels_loading">Loading channels…</string>
+    <string name="browse_channels_empty">No channels here.</string>
+    <!--
+      Spoken in place of the star a favorite wears. Only the marked rows carry it: an unmarked row
+      stays silent about the star it hasn't got, exactly as it is on screen, and a source hundreds of
+      channels long would be unlistenable if every one announced what it is not.
+    -->
+    <string name="browse_channels_favorite_state">Favorite</string>
+
+    <!-- Categories within one source -->
+    <string name="browse_source_loading">Loading categories…</string>
+    <string name="browse_source_empty">This source has no channels yet. Refresh it from the sources screen.</string>
+    <!-- Stands in for a channel that arrived with no group of its own. -->
+    <string name="browse_source_ungrouped">Ungrouped</string>
+    <!--
+      A group row shows its size as a bare numeral, which is all it needs to be beside a name you can
+      see. Spoken on its own it is just a number, so the announced form carries the unit with it.
+    -->
+    <plurals name="browse_source_channel_count">
+        <item quantity="one">%1$d channel</item>
+        <item quantity="other">%1$d channels</item>
+    </plurals>
+    <!-- Spoken in place of the star on the media kind currently showing. -->
+    <string name="browse_source_kind_selected">Selected</string>
+
+    <!--
+      The media kinds, as the levels of the browse drill-down. The search slice names the same three
+      in its own file, where they are filters rather than levels — what to call a kind is a rendering
+      job, and a word shared between two screens is a word neither can reword.
+    -->
+    <string name="browse_kind_live">Live</string>
+    <string name="browse_kind_movies">Movies</string>
+    <string name="browse_kind_series">Series</string>
+
+</resources>

@@ -18,6 +18,7 @@ private struct SourceTarget: Identifiable {
 public struct SourcesView: View {
   @State private var model: SourcesModel
   private let onAddSource: @MainActor () -> Void
+  private let onPair: @MainActor () -> Void
 
   @FocusState private var focused: Focus?
   @State private var renameTarget: SourceTarget?
@@ -25,16 +26,21 @@ public struct SourcesView: View {
   @State private var deleteTarget: SourceTarget?
   @State private var renameText = ""
 
-  public init(access: any SourcesAccess, onAddSource: @escaping @MainActor () -> Void) {
+  public init(
+    access: any SourcesAccess,
+    onAddSource: @escaping @MainActor () -> Void,
+    onPair: @escaping @MainActor () -> Void
+  ) {
     _model = State(initialValue: SourcesModel(access: access))
     self.onAddSource = onAddSource
+    self.onPair = onPair
   }
 
   public var body: some View {
     content
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background(SpidolaPalette.studio)
-      .navigationTitle("Sources")
+      .navigationTitle(String(localized: "Sources", bundle: .module))
       .task { await model.load() }
       .sheet(item: $renameTarget) { target in
         RenameSheet(name: $renameText) { newName in
@@ -42,7 +48,9 @@ public struct SourcesView: View {
         }
       }
       .confirmationDialog(
-        "Auto-refresh", isPresented: autoRefreshBinding, titleVisibility: .visible
+        String(localized: "Auto-refresh", bundle: .module),
+        isPresented: autoRefreshBinding,
+        titleVisibility: .visible
       ) {
         if let target = autoRefreshTarget {
           ForEach(AutoRefreshOption.allCases) { option in
@@ -52,22 +60,29 @@ public struct SourcesView: View {
           }
         }
       }
-      .confirmationDialog("Delete source?", isPresented: deleteBinding, titleVisibility: .visible) {
+      .confirmationDialog(
+        String(localized: "Delete source?", bundle: .module),
+        isPresented: deleteBinding,
+        titleVisibility: .visible
+      ) {
         if let target = deleteTarget {
-          Button("Delete \(target.name)", role: .destructive) {
+          Button(String(localized: "Delete \(target.name)", bundle: .module), role: .destructive) {
             Task { await model.delete(id: target.id) }
           }
-          Button("Cancel", role: .cancel) {}
+          Button(String(localized: "Cancel", bundle: .module), role: .cancel) {}
         }
       } message: {
-        Text("Its channels, favorites, and history are removed. This can't be undone.")
+        Text(
+          String(
+            localized: "Its channels, favorites, and history are removed. This can't be undone.",
+            bundle: .module))
       }
   }
 
   @ViewBuilder private var content: some View {
     switch model.state {
     case .loading:
-      ProgressView("Loading sources…")
+      ProgressView(String(localized: "Loading sources…", bundle: .module))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     case .failed(let error):
       actionableError(error, retry: { Task { await model.load() } }, goBack: onAddSource)
@@ -87,14 +102,37 @@ public struct SourcesView: View {
             .foregroundStyle(SpidolaPalette.testCardAmber)
             .padding(.horizontal, SpidolaSpacing.safeHorizontal)
         }
-        SpidolaRow(title: "Add a source", accessory: .symbol("plus"), isFocused: focused == .add) {
+        SpidolaRow(
+          title: String(localized: "Add a source", bundle: .module),
+          accessory: .symbol("plus"),
+          isFocused: focused == .add
+        ) {
           onAddSource()
         }
         .focused($focused, equals: .add)
         .accessibilityIdentifier("sources-add")
 
+        SpidolaRow(
+          title: String(localized: "Use my phone", bundle: .module),
+          subtitle: String(
+            localized: "Send a playlist or account from your phone instead of typing it here.",
+            bundle: .module),
+          accessory: .symbol("iphone"),
+          isFocused: focused == .pair
+        ) {
+          onPair()
+        }
+        .focused($focused, equals: .pair)
+        .accessibilityLabel(String(localized: "Use my phone", bundle: .module))
+        .accessibilityValue(
+          String(
+            localized: "Send a playlist or account from your phone instead of typing it here.",
+            bundle: .module)
+        )
+        .accessibilityIdentifier("sources-pair")
+
         if sources.isEmpty {
-          Text("No sources yet.")
+          Text(String(localized: "No sources yet — add one to start watching.", bundle: .module))
             .font(SpidolaType.body)
             .foregroundStyle(SpidolaPalette.staticGray)
             .padding(SpidolaSpacing.m)
@@ -110,32 +148,46 @@ public struct SourcesView: View {
   }
 
   private func sourceRow(_ source: Source) -> some View {
-    SpidolaRow(
+    // Resolved once out here: the trailing word and the announcement must report the same state
+    // rather than each derive one.
+    let state = state(for: source)
+    return SpidolaRow(
       title: source.name,
       subtitle: subtitle(for: source),
-      accessory: model.refreshingIds.contains(source.id)
-        ? .text("Refreshing…") : (source.common.enabled ? .none : .text("Disabled")),
+      accessory: state.map { RowAccessory.text($0) } ?? .none,
       isFocused: focused == .source(source.id)
     ) {
       // Selecting a source opens its actions; the context menu holds the same set.
     }
     .focused($focused, equals: .source(source.id))
+    // The row is named by its source and valued by everything else it shows. "Disabled" left to
+    // ride in on the name lands next to VoiceOver's own word for a dimmed button, and a listener
+    // hearing "Acme, Playlist URL, Disabled, button" cannot tell whether the source is switched off
+    // or the row is unavailable — one is a setting they chose, the other a dead end (PRD §6.10).
+    .accessibilityLabel(source.name)
+    .accessibilityValue(accessibilityValue(for: source, state: state))
     .accessibilityIdentifier("manage-source-\(source.name)")
     .contextMenu {
-      Button("Rename") {
+      Button(String(localized: "Rename", bundle: .module)) {
         renameText = source.name
         renameTarget = SourceTarget(id: source.id, name: source.name)
       }
-      Button(source.common.enabled ? "Disable" : "Enable") {
+      Button(
+        source.common.enabled
+          ? String(localized: "Disable", bundle: .module)
+          : String(localized: "Enable", bundle: .module)
+      ) {
         Task { await model.setEnabled(id: source.id, enabled: !source.common.enabled) }
       }
       if source.isRefreshable {
-        Button("Refresh now") { Task { await model.refresh(source) } }
-        Button("Auto-refresh…") {
+        Button(String(localized: "Refresh now", bundle: .module)) {
+          Task { await model.refresh(source) }
+        }
+        Button(String(localized: "Auto-refresh…", bundle: .module)) {
           autoRefreshTarget = SourceTarget(id: source.id, name: source.name)
         }
       }
-      Button("Delete", role: .destructive) {
+      Button(String(localized: "Delete", bundle: .module), role: .destructive) {
         deleteTarget = SourceTarget(id: source.id, name: source.name)
       }
     }
@@ -143,7 +195,24 @@ public struct SourcesView: View {
 
   private func subtitle(for source: Source) -> String {
     let refresh = AutoRefreshOption.from(seconds: source.common.autoRefreshSecs).label
-    return "\(source.kindLabel) · \(refresh)"
+    return "\(source.localizedKindLabel) · \(refresh)"
+  }
+
+  /// The one word this row adds when the source is doing something or switched off, and `nil` when
+  /// it is simply itself — a source that is enabled and idle has no state worth a word.
+  private func state(for source: Source) -> String? {
+    if model.refreshingIds.contains(source.id) {
+      return String(localized: "Refreshing…", bundle: .module)
+    }
+    return source.common.enabled ? nil : String(localized: "Disabled", bundle: .module)
+  }
+
+  /// Everything the row shows that is not the source's name: what kind it is, how often it
+  /// refreshes, and what it is doing now. Naming the row leaves the subtitle out of the
+  /// announcement unless it is said here, and a source list that reads out only names is a list of
+  /// names.
+  private func accessibilityValue(for source: Source, state: String?) -> String {
+    [subtitle(for: source), state].compactMap { $0 }.joined(separator: ", ")
   }
 
   private var autoRefreshBinding: Binding<Bool> {
@@ -156,6 +225,7 @@ public struct SourcesView: View {
 
   private enum Focus: Hashable {
     case add
+    case pair
     case source(Int64)
   }
 }
@@ -170,10 +240,10 @@ private struct RenameSheet: View {
 
   var body: some View {
     VStack(spacing: SpidolaSpacing.l) {
-      Text("Rename source")
+      Text(String(localized: "Rename source", bundle: .module))
         .font(SpidolaType.title)
         .foregroundStyle(SpidolaPalette.broadcastWhite)
-      TextField("Name", text: $name)
+      TextField(String(localized: "Name", bundle: .module), text: $name)
         .textFieldStyle(.plain)
         .font(SpidolaType.body)
         .foregroundStyle(SpidolaPalette.broadcastWhite)
@@ -181,9 +251,9 @@ private struct RenameSheet: View {
         .background(SpidolaPalette.set)
         .focused($fieldFocused)
       HStack(spacing: SpidolaSpacing.m) {
-        Button("Cancel") { dismiss() }
+        Button(String(localized: "Cancel", bundle: .module)) { dismiss() }
           .buttonStyle(.plain)
-        Button("Save") {
+        Button(String(localized: "Save", bundle: .module)) {
           onSave(name)
           dismiss()
         }

@@ -678,6 +678,9 @@ internal interface UniffiCallbackInterfaceSecretStoreMethod1 : com.sun.jna.Callb
 internal interface UniffiCallbackInterfaceSecretStoreMethod2 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`key`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfacePairingListenerMethod0 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`submission`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 @Structure.FieldOrder("uniffiFree", "uniffiClone", "onProgress", "onComplete", "onFailed")
 internal open class UniffiVTableCallbackInterfaceImportListener(
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
@@ -747,6 +750,25 @@ internal open class UniffiVTableCallbackInterfaceSecretStore(
     }
 
 }
+@Structure.FieldOrder("uniffiFree", "uniffiClone", "onSubmission")
+internal open class UniffiVTableCallbackInterfacePairingListener(
+    @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+    @JvmField internal var `uniffiClone`: UniffiCallbackInterfaceClone? = null,
+    @JvmField internal var `onSubmission`: UniffiCallbackInterfacePairingListenerMethod0? = null,
+) : Structure() {
+    class UniffiByValue(
+        `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+        `uniffiClone`: UniffiCallbackInterfaceClone? = null,
+        `onSubmission`: UniffiCallbackInterfacePairingListenerMethod0? = null,
+    ): UniffiVTableCallbackInterfacePairingListener(`uniffiFree`,`uniffiClone`,`onSubmission`,), Structure.ByValue
+
+   internal fun uniffiSetValue(other: UniffiVTableCallbackInterfacePairingListener) {
+        `uniffiFree` = other.`uniffiFree`
+        `uniffiClone` = other.`uniffiClone`
+        `onSubmission` = other.`onSubmission`
+    }
+
+}
 
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
@@ -777,6 +799,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_core_api_checksum_method_core_favorites(
     ): Int
     external fun uniffi_core_api_checksum_method_core_handshake(
+    ): Int
+    external fun uniffi_core_api_checksum_method_core_pairing(
     ): Int
     external fun uniffi_core_api_checksum_method_core_recents(
     ): Int
@@ -816,6 +840,10 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_core_api_checksum_method_favoritesservice_remove(
     ): Int
+    external fun uniffi_core_api_checksum_method_pairingservice_start(
+    ): Int
+    external fun uniffi_core_api_checksum_method_pairingservice_stop(
+    ): Int
     external fun uniffi_core_api_checksum_method_recentsservice_clear(
     ): Int
     external fun uniffi_core_api_checksum_method_recentsservice_is_enabled(
@@ -828,17 +856,41 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_core_api_checksum_method_searchservice_search(
     ): Int
-    external fun uniffi_core_api_checksum_method_settingsservice_all(
+    external fun uniffi_core_api_checksum_method_settingsservice_engine_for_channel(
     ): Int
-    external fun uniffi_core_api_checksum_method_settingsservice_get(
+    external fun uniffi_core_api_checksum_method_settingsservice_engine_for_source(
     ): Int
-    external fun uniffi_core_api_checksum_method_settingsservice_remove(
+    external fun uniffi_core_api_checksum_method_settingsservice_set_buffering(
     ): Int
-    external fun uniffi_core_api_checksum_method_settingsservice_set(
+    external fun uniffi_core_api_checksum_method_settingsservice_set_default_engine(
+    ): Int
+    external fun uniffi_core_api_checksum_method_settingsservice_set_density(
+    ): Int
+    external fun uniffi_core_api_checksum_method_settingsservice_set_engine_for_channel(
+    ): Int
+    external fun uniffi_core_api_checksum_method_settingsservice_set_engine_for_source(
+    ): Int
+    external fun uniffi_core_api_checksum_method_settingsservice_set_epg_window(
+    ): Int
+    external fun uniffi_core_api_checksum_method_settingsservice_set_image_cache_max_mb(
+    ): Int
+    external fun uniffi_core_api_checksum_method_settingsservice_set_language(
+    ): Int
+    external fun uniffi_core_api_checksum_method_settingsservice_set_log_level(
+    ): Int
+    external fun uniffi_core_api_checksum_method_settingsservice_set_recents_retention_days(
+    ): Int
+    external fun uniffi_core_api_checksum_method_settingsservice_set_subtitle_background(
+    ): Int
+    external fun uniffi_core_api_checksum_method_settingsservice_set_subtitle_size(
+    ): Int
+    external fun uniffi_core_api_checksum_method_settingsservice_snapshot(
     ): Int
     external fun uniffi_core_api_checksum_method_sourceservice_add_m3u_file(
     ): Int
     external fun uniffi_core_api_checksum_method_sourceservice_add_m3u_url(
+    ): Int
+    external fun uniffi_core_api_checksum_method_sourceservice_add_xtream(
     ): Int
     external fun uniffi_core_api_checksum_method_sourceservice_delete(
     ): Int
@@ -849,6 +901,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_core_api_checksum_method_sourceservice_refresh(
     ): Int
     external fun uniffi_core_api_checksum_method_sourceservice_rename(
+    ): Int
+    external fun uniffi_core_api_checksum_method_sourceservice_resolve_stream(
     ): Int
     external fun uniffi_core_api_checksum_method_sourceservice_set_auto_refresh(
     ): Int
@@ -870,6 +924,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_core_api_checksum_method_secretstore_delete(
     ): Int
+    external fun uniffi_core_api_checksum_method_pairinglistener_on_submission(
+    ): Int
     external fun ffi_core_api_uniffi_contract_version(
     ): Int
 
@@ -888,6 +944,7 @@ internal object UniffiLib {
         Native.register(UniffiLib::class.java, findLibraryName(componentName = "core_api"))
         uniffiCallbackInterfaceImportListener.register(this)
         uniffiCallbackInterfaceLogSink.register(this)
+        uniffiCallbackInterfacePairingListener.register(this)
         uniffiCallbackInterfaceSecretStore.register(this)
         
     }
@@ -905,6 +962,8 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_core_api_fn_method_core_handshake(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    external fun uniffi_core_api_fn_method_core_pairing(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
     external fun uniffi_core_api_fn_method_core_recents(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
     external fun uniffi_core_api_fn_method_core_search(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -955,6 +1014,14 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_core_api_fn_method_favoritesservice_remove(`ptr`: Long,`sourceId`: Long,`identity`: Long,
     ): Long
+    external fun uniffi_core_api_fn_clone_pairingservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_core_api_fn_free_pairingservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_core_api_fn_method_pairingservice_start(`ptr`: Long,`host`: RustBuffer.ByValue,`listener`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_pairingservice_stop(`ptr`: Long,
+    ): Long
     external fun uniffi_core_api_fn_clone_recentsservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
     external fun uniffi_core_api_fn_free_recentsservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -979,13 +1046,35 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_core_api_fn_free_settingsservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
-    external fun uniffi_core_api_fn_method_settingsservice_all(`ptr`: Long,
+    external fun uniffi_core_api_fn_method_settingsservice_engine_for_channel(`ptr`: Long,`sourceId`: Long,`identity`: Long,
     ): Long
-    external fun uniffi_core_api_fn_method_settingsservice_get(`ptr`: Long,`key`: RustBuffer.ByValue,
+    external fun uniffi_core_api_fn_method_settingsservice_engine_for_source(`ptr`: Long,`sourceId`: Long,
     ): Long
-    external fun uniffi_core_api_fn_method_settingsservice_remove(`ptr`: Long,`key`: RustBuffer.ByValue,
+    external fun uniffi_core_api_fn_method_settingsservice_set_buffering(`ptr`: Long,`profile`: RustBuffer.ByValue,
     ): Long
-    external fun uniffi_core_api_fn_method_settingsservice_set(`ptr`: Long,`key`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,
+    external fun uniffi_core_api_fn_method_settingsservice_set_default_engine(`ptr`: Long,`engine`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_core_api_fn_method_settingsservice_set_density(`ptr`: Long,`density`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_core_api_fn_method_settingsservice_set_engine_for_channel(`ptr`: Long,`sourceId`: Long,`identity`: Long,`engine`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_core_api_fn_method_settingsservice_set_engine_for_source(`ptr`: Long,`sourceId`: Long,`engine`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_core_api_fn_method_settingsservice_set_epg_window(`ptr`: Long,`aheadHours`: Int,`behindHours`: Int,
+    ): Long
+    external fun uniffi_core_api_fn_method_settingsservice_set_image_cache_max_mb(`ptr`: Long,`megabytes`: Int,
+    ): Long
+    external fun uniffi_core_api_fn_method_settingsservice_set_language(`ptr`: Long,`tag`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_core_api_fn_method_settingsservice_set_log_level(`ptr`: Long,`level`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_core_api_fn_method_settingsservice_set_recents_retention_days(`ptr`: Long,`days`: Int,
+    ): Long
+    external fun uniffi_core_api_fn_method_settingsservice_set_subtitle_background(`ptr`: Long,`background`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_core_api_fn_method_settingsservice_set_subtitle_size(`ptr`: Long,`size`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_core_api_fn_method_settingsservice_snapshot(`ptr`: Long,
     ): Long
     external fun uniffi_core_api_fn_clone_sourceservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
@@ -994,6 +1083,8 @@ internal object UniffiLib {
     external fun uniffi_core_api_fn_method_sourceservice_add_m3u_file(`ptr`: Long,`name`: RustBuffer.ByValue,
     ): Long
     external fun uniffi_core_api_fn_method_sourceservice_add_m3u_url(`ptr`: Long,`name`: RustBuffer.ByValue,`url`: RustBuffer.ByValue,`userAgent`: RustBuffer.ByValue,`acceptInvalidTls`: Byte,
+    ): Long
+    external fun uniffi_core_api_fn_method_sourceservice_add_xtream(`ptr`: Long,`name`: RustBuffer.ByValue,`server`: RustBuffer.ByValue,`username`: RustBuffer.ByValue,`password`: RustBuffer.ByValue,
     ): Long
     external fun uniffi_core_api_fn_method_sourceservice_delete(`ptr`: Long,`id`: Long,
     ): Long
@@ -1005,6 +1096,8 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_core_api_fn_method_sourceservice_rename(`ptr`: Long,`id`: Long,`name`: RustBuffer.ByValue,
     ): Long
+    external fun uniffi_core_api_fn_method_sourceservice_resolve_stream(`ptr`: Long,`sourceId`: Long,`locator`: RustBuffer.ByValue,
+    ): Long
     external fun uniffi_core_api_fn_method_sourceservice_set_auto_refresh(`ptr`: Long,`id`: Long,`secs`: RustBuffer.ByValue,
     ): Long
     external fun uniffi_core_api_fn_method_sourceservice_set_enabled(`ptr`: Long,`id`: Long,`enabled`: Byte,
@@ -1014,6 +1107,8 @@ internal object UniffiLib {
     external fun uniffi_core_api_fn_init_callback_vtable_logsink(`vtable`: UniffiVTableCallbackInterfaceLogSink,
     ): Unit
     external fun uniffi_core_api_fn_init_callback_vtable_secretstore(`vtable`: UniffiVTableCallbackInterfaceSecretStore,
+    ): Unit
+    external fun uniffi_core_api_fn_init_callback_vtable_pairinglistener(`vtable`: UniffiVTableCallbackInterfacePairingListener,
     ): Unit
     external fun ffi_core_api_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1146,6 +1241,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_core_handshake() != 2257) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_core_api_checksum_method_core_pairing() != 51742) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_core_api_checksum_method_core_recents() != 27670) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1155,7 +1253,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_core_set_log_level() != 1812) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_core_api_checksum_method_core_settings() != 17208) {
+    if (lib.uniffi_core_api_checksum_method_core_settings() != 10175) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_core_sources() != 43952) {
@@ -1203,6 +1301,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_favoritesservice_remove() != 49667) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_core_api_checksum_method_pairingservice_start() != 33307) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_pairingservice_stop() != 19522) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_core_api_checksum_method_recentsservice_clear() != 9754) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1221,16 +1325,49 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_searchservice_search() != 39379) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_core_api_checksum_method_settingsservice_all() != 63986) {
+    if (lib.uniffi_core_api_checksum_method_settingsservice_engine_for_channel() != 18934) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_core_api_checksum_method_settingsservice_get() != 10406) {
+    if (lib.uniffi_core_api_checksum_method_settingsservice_engine_for_source() != 6804) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_core_api_checksum_method_settingsservice_remove() != 16474) {
+    if (lib.uniffi_core_api_checksum_method_settingsservice_set_buffering() != 51601) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_core_api_checksum_method_settingsservice_set() != 32636) {
+    if (lib.uniffi_core_api_checksum_method_settingsservice_set_default_engine() != 35508) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_settingsservice_set_density() != 5515) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_settingsservice_set_engine_for_channel() != 32167) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_settingsservice_set_engine_for_source() != 51543) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_settingsservice_set_epg_window() != 46990) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_settingsservice_set_image_cache_max_mb() != 6888) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_settingsservice_set_language() != 13851) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_settingsservice_set_log_level() != 50668) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_settingsservice_set_recents_retention_days() != 12278) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_settingsservice_set_subtitle_background() != 25834) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_settingsservice_set_subtitle_size() != 25876) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_settingsservice_snapshot() != 9129) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_sourceservice_add_m3u_file() != 60508) {
@@ -1239,7 +1376,10 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_sourceservice_add_m3u_url() != 16147) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_core_api_checksum_method_sourceservice_delete() != 42027) {
+    if (lib.uniffi_core_api_checksum_method_sourceservice_add_xtream() != 11873) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_sourceservice_delete() != 9569) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_sourceservice_import_m3u_content() != 7156) {
@@ -1252,6 +1392,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_sourceservice_rename() != 38453) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_sourceservice_resolve_stream() != 516) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_sourceservice_set_auto_refresh() != 59646) {
@@ -1282,6 +1425,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_secretstore_delete() != 41764) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_pairinglistener_on_submission() != 45457) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
 }
@@ -1510,6 +1656,33 @@ private class JavaLangRefCleanable(
     val cleanable: java.lang.ref.Cleaner.Cleanable
 ) : UniffiCleaner.Cleanable {
     override fun clean() = cleanable.clean()
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterUShort: FfiConverter<UShort, Short> {
+    override fun lift(value: Short): UShort {
+        return value.toUShort()
+    }
+
+    fun lift(value: Int): UShort {
+        return value.toUShort()
+    }
+
+    override fun read(buf: ByteBuffer): UShort {
+        return lift(buf.getShort())
+    }
+
+    override fun lower(value: UShort): Short {
+        return value.toShort()
+    }
+
+    override fun allocationSize(value: UShort) = 2UL
+
+    override fun write(value: UShort, buf: ByteBuffer) {
+        buf.putShort(value.toShort())
+    }
 }
 
 /**
@@ -2345,6 +2518,14 @@ public interface CoreInterface {
     fun `handshake`(): Handshake
     
     /**
+     * The pairing service (start/stop the LAN server, PRD §6.1).
+     *
+     * Returns the one shared instance, which owns the running server — a per-call instance
+     * would close the socket as soon as the caller dropped its handle.
+     */
+    fun `pairing`(): PairingService
+    
+    /**
      * The recently-watched service (list, purge, off-switch).
      */
     fun `recents`(): RecentsService
@@ -2363,7 +2544,7 @@ public interface CoreInterface {
     fun `setLogLevel`(`directives`: kotlin.String)
     
     /**
-     * The settings service.
+     * The settings service (typed surface with defaults, PRD §6.9).
      */
     fun `settings`(): SettingsService
     
@@ -2570,6 +2751,25 @@ open class Core: Disposable, AutoCloseable, CoreInterface
 
     
     /**
+     * The pairing service (start/stop the LAN server, PRD §6.1).
+     *
+     * Returns the one shared instance, which owns the running server — a per-call instance
+     * would close the socket as soon as the caller dropped its handle.
+     */override fun `pairing`(): PairingService {
+            return FfiConverterTypePairingService.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_core_api_fn_method_core_pairing(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
      * The recently-watched service (list, purge, off-switch).
      */override fun `recents`(): RecentsService {
             return FfiConverterTypeRecentsService.lift(
@@ -2622,7 +2822,7 @@ open class Core: Disposable, AutoCloseable, CoreInterface
 
     
     /**
-     * The settings service.
+     * The settings service (typed surface with defaults, PRD §6.9).
      */override fun `settings`(): SettingsService {
             return FfiConverterTypeSettingsService.lift(
     callWithHandle {
@@ -3127,6 +3327,360 @@ public object FfiConverterTypeFavoritesService: FfiConverter<FavoritesService, L
     override fun allocationSize(value: FavoritesService) = 8UL
 
     override fun write(value: FavoritesService, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Starts and stops the LAN pairing server.
+ */
+public interface PairingServiceInterface {
+    
+    /**
+     * Starts the server and returns what the pairing screen should render.
+     *
+     * `host` is the TV's LAN address to advertise. **A shell should supply it**: it can
+     * enumerate its own interfaces (`NWInterface` on tvOS, `WifiManager` / `NetworkInterface`
+     * on Android) and the core cannot — `core-pair` infers the address from the route out of
+     * the host, which is right on a plain LAN and wrong behind a full-tunnel VPN or on any
+     * multi-homed device (its docs carry the measurements). `None` asks for that inference as
+     * the convenience path, and fails loudly rather than advertising an address that will not
+     * answer.
+     *
+     * Starting while one already runs stops the old server first, so a re-entered screen gets a
+     * fresh token rather than silently reusing the last one — a token's whole meaning is
+     * "someone is looking at this screen right now", and a stale one outlives that claim.
+     * Overlapping calls are serialized rather than interleaved, so this holds however they
+     * arrive: at most one server is ever live, it is the one the last start to finish created,
+     * and a [`Self::stop`] issued at any point takes whichever one that turns out to be.
+     *
+     * # Errors
+     * Returns [`ApiError::InvalidInput`] if `host` is not a usable LAN address (either supplied
+     * as one, or inferred as one — see the note on that variant's message), or
+     * [`ApiError::Internal`] if the socket cannot be opened.
+     */
+    suspend fun `start`(`host`: kotlin.String?, `listener`: PairingListener): PairingSession
+    
+    /**
+     * Stops the server, if one is running. Idempotent.
+     *
+     * The shell calls this when the pairing screen goes away. Dropping the server does the same
+     * thing, so a shell that forgets to call this still cannot leave a listener on the LAN —
+     * this exists so the stop is *prompt* and awaited, not so it is possible.
+     */
+    suspend fun `stop`()
+    
+    companion object
+}
+
+/**
+ * Starts and stops the LAN pairing server.
+ */
+open class PairingService: Disposable, AutoCloseable, PairingServiceInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    /**
+     * Whether the current object has been destroyed and its reference is gone in the Rust side.
+     */
+    val uniffiIsDestroyed: Boolean get() = wasDestroyed.get()
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_core_api_fn_free_pairingservice(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_core_api_fn_clone_pairingservice(handle, status)
+        }
+    }
+
+    
+    /**
+     * Starts the server and returns what the pairing screen should render.
+     *
+     * `host` is the TV's LAN address to advertise. **A shell should supply it**: it can
+     * enumerate its own interfaces (`NWInterface` on tvOS, `WifiManager` / `NetworkInterface`
+     * on Android) and the core cannot — `core-pair` infers the address from the route out of
+     * the host, which is right on a plain LAN and wrong behind a full-tunnel VPN or on any
+     * multi-homed device (its docs carry the measurements). `None` asks for that inference as
+     * the convenience path, and fails loudly rather than advertising an address that will not
+     * answer.
+     *
+     * Starting while one already runs stops the old server first, so a re-entered screen gets a
+     * fresh token rather than silently reusing the last one — a token's whole meaning is
+     * "someone is looking at this screen right now", and a stale one outlives that claim.
+     * Overlapping calls are serialized rather than interleaved, so this holds however they
+     * arrive: at most one server is ever live, it is the one the last start to finish created,
+     * and a [`Self::stop`] issued at any point takes whichever one that turns out to be.
+     *
+     * # Errors
+     * Returns [`ApiError::InvalidInput`] if `host` is not a usable LAN address (either supplied
+     * as one, or inferred as one — see the note on that variant's message), or
+     * [`ApiError::Internal`] if the socket cannot be opened.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `start`(`host`: kotlin.String?, `listener`: PairingListener) : PairingSession {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_pairingservice_start(
+                uniffiHandle,
+                
+        FfiConverterOptionalString.lower(`host`),
+        FfiConverterTypePairingListener.lower(`listener`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterTypePairingSession.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Stops the server, if one is running. Idempotent.
+     *
+     * The shell calls this when the pairing screen goes away. Dropping the server does the same
+     * thing, so a shell that forgets to call this still cannot leave a listener on the LAN —
+     * this exists so the stop is *prompt* and awaited, not so it is possible.
+     */
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `stop`() {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_pairingservice_stop(
+                uniffiHandle,
+                
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        UniffiNullRustCallStatusErrorHandler,
+    )
+    }
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePairingService: FfiConverter<PairingService, Long> {
+    override fun lower(value: PairingService): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): PairingService {
+        return PairingService(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): PairingService {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: PairingService) = 8UL
+
+    override fun write(value: PairingService, buf: ByteBuffer) {
         buf.putLong(lower(value))
     }
 }
@@ -3951,47 +4505,155 @@ public object FfiConverterTypeSearchService: FfiConverter<SearchService, Long> {
 
 
 /**
- * Reads and writes persisted settings.
+ * Reads and writes persisted settings, resolved through their defaults.
  */
 public interface SettingsServiceInterface {
     
     /**
-     * Returns every stored setting as key/value pairs.
+     * The per-channel engine override, if the user chose "remember for this channel" after a
+     * loud fallback (PRD §6.3) — the **top** tier of the selection policy.
+     *
+     * `identity` is the channel's stable identity hash, not its rowid: the override has to
+     * outlive a refresh, and refresh replaces every row (TECH_SPEC §4.4).
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a query failure.
      */
-    suspend fun `all`(): List<SettingEntry>
+    suspend fun `engineForChannel`(`sourceId`: kotlin.Long, `identity`: kotlin.Long): kotlin.String?
     
     /**
-     * Reads a setting value, if present.
+     * The per-source engine override, if the user set one for this source.
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a query failure.
      */
-    suspend fun `get`(`key`: kotlin.String): kotlin.String?
+    suspend fun `engineForSource`(`sourceId`: kotlin.Long): kotlin.String?
     
     /**
-     * Removes a setting, reverting it to its code default.
+     * Sets the buffering profile.
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
      */
-    suspend fun `remove`(`key`: kotlin.String)
+    suspend fun `setBuffering`(`profile`: BufferingProfile)
     
     /**
-     * Writes (upserts) a setting value.
+     * Sets the global default engine, or clears it with `None` to fall back to the platform
+     * default. The key is opaque to the core — the shell's selection policy resolves it
+     * (TECH_SPEC §8), so the core stores the choice without holding an opinion on it.
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
      */
-    suspend fun `set`(`key`: kotlin.String, `value`: kotlin.String)
+    suspend fun `setDefaultEngine`(`engine`: kotlin.String?)
+    
+    /**
+     * Sets the interface density.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    suspend fun `setDensity`(`density`: InterfaceDensity)
+    
+    /**
+     * Sets a per-channel engine override, or clears it with `None`.
+     *
+     * This is what the loud fallback's "remember for this channel" toggle writes: only
+     * `UnsupportedFormat`/`DecoderFailed` offer it, and only the user's press stores it —
+     * automatic switching is never silent (TECH_SPEC §14).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    suspend fun `setEngineForChannel`(`sourceId`: kotlin.Long, `identity`: kotlin.Long, `engine`: kotlin.String?)
+    
+    /**
+     * Sets a per-source engine override, or clears it with `None` (the PRD §6.3 selection
+     * policy's middle tier: channel → source → platform default).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    suspend fun `setEngineForSource`(`sourceId`: kotlin.Long, `engine`: kotlin.String?)
+    
+    /**
+     * Sets the EPG rolling window (PRD §6.6). Both bounds move together because they describe
+     * one window — a single setter for the pair, and a single transaction underneath it, so
+     * there is no half-applied window for a fault to leave behind or a reader to see.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure, with the previous window whole.
+     */
+    suspend fun `setEpgWindow`(`aheadHours`: kotlin.UInt, `behindHours`: kotlin.UInt)
+    
+    /**
+     * Sets the image disk-cache ceiling in megabytes. The core persists it; each shell's
+     * artwork pipeline reads it and sizes its own cache — images are the one thing a shell
+     * may cache durably (TECH_SPEC §4.5).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    suspend fun `setImageCacheMaxMb`(`megabytes`: kotlin.UInt)
+    
+    /**
+     * Sets the UI language to a BCP-47 tag, or clears it with `None` to follow the system.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    suspend fun `setLanguage`(`tag`: kotlin.String?)
+    
+    /**
+     * Sets the diagnostics log level: persists the choice **and** applies it to the live
+     * `tracing` filter, so it survives a restart and takes effect without one (PRD §6.9,
+     * TECH_SPEC §4.8). Disabled levels cost nothing once the filter reloads.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure, or [`ApiError::Internal`] if
+     * the filter reload fails — which for a [`LogLevel`] means an internal inconsistency, not
+     * bad input, since the directive comes from a closed set rather than user text.
+     */
+    suspend fun `setLogLevel`(`level`: LogLevel)
+    
+    /**
+     * Sets how many days of recently-watched history to keep.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    suspend fun `setRecentsRetentionDays`(`days`: kotlin.UInt)
+    
+    /**
+     * Sets the subtitle backing treatment.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    suspend fun `setSubtitleBackground`(`background`: SubtitleBackground)
+    
+    /**
+     * Sets the subtitle glyph size.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    suspend fun `setSubtitleSize`(`size`: SubtitleSize)
+    
+    /**
+     * Every setting resolved to a value: stored where the user set one, code default
+     * otherwise. One call, because the settings screen wants all of them at once.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    suspend fun `snapshot`(): AppSettings
     
     companion object
 }
 
 /**
- * Reads and writes persisted settings.
+ * Reads and writes persisted settings, resolved through their defaults.
  */
 open class SettingsService: Disposable, AutoCloseable, SettingsServiceInterface
 {
@@ -4096,47 +4758,25 @@ open class SettingsService: Disposable, AutoCloseable, SettingsServiceInterface
 
     
     /**
-     * Returns every stored setting as key/value pairs.
+     * The per-channel engine override, if the user chose "remember for this channel" after a
+     * loud fallback (PRD §6.3) — the **top** tier of the selection policy.
+     *
+     * `identity` is the channel's stable identity hash, not its rowid: the override has to
+     * outlive a refresh, and refresh replaces every row (TECH_SPEC §4.4).
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a query failure.
      */
     @Throws(ApiException::class)
     @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
-    override suspend fun `all`() : List<SettingEntry> {
+    override suspend fun `engineForChannel`(`sourceId`: kotlin.Long, `identity`: kotlin.Long) : kotlin.String? {
         return uniffiRustCallAsync(
         callWithHandle { uniffiHandle ->
-            UniffiLib.uniffi_core_api_fn_method_settingsservice_all(
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_engine_for_channel(
                 uniffiHandle,
                 
-            )
-        },
-        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
-        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
-        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
-        // lift function
-        { FfiConverterSequenceTypeSettingEntry.lift(it) },
-        // Error FFI converter
-        ApiException.ErrorHandler,
-    )
-    }
-
-    
-    /**
-     * Reads a setting value, if present.
-     *
-     * # Errors
-     * Returns [`ApiError::StorageCorrupt`] on a query failure.
-     */
-    @Throws(ApiException::class)
-    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
-    override suspend fun `get`(`key`: kotlin.String) : kotlin.String? {
-        return uniffiRustCallAsync(
-        callWithHandle { uniffiHandle ->
-            UniffiLib.uniffi_core_api_fn_method_settingsservice_get(
-                uniffiHandle,
-                
-        FfiConverterString.lower(`key`),
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterLong.lower(`identity`),
             )
         },
         { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
@@ -4151,20 +4791,48 @@ open class SettingsService: Disposable, AutoCloseable, SettingsServiceInterface
 
     
     /**
-     * Removes a setting, reverting it to its code default.
+     * The per-source engine override, if the user set one for this source.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `engineForSource`(`sourceId`: kotlin.Long) : kotlin.String? {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_engine_for_source(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterOptionalString.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Sets the buffering profile.
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
      */
     @Throws(ApiException::class)
     @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
-    override suspend fun `remove`(`key`: kotlin.String) {
+    override suspend fun `setBuffering`(`profile`: BufferingProfile) {
         return uniffiRustCallAsync(
         callWithHandle { uniffiHandle ->
-            UniffiLib.uniffi_core_api_fn_method_settingsservice_remove(
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_set_buffering(
                 uniffiHandle,
                 
-        FfiConverterString.lower(`key`),
+        FfiConverterTypeBufferingProfile.lower(`profile`),
             )
         },
         { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
@@ -4180,21 +4848,22 @@ open class SettingsService: Disposable, AutoCloseable, SettingsServiceInterface
 
     
     /**
-     * Writes (upserts) a setting value.
+     * Sets the global default engine, or clears it with `None` to fall back to the platform
+     * default. The key is opaque to the core — the shell's selection policy resolves it
+     * (TECH_SPEC §8), so the core stores the choice without holding an opinion on it.
      *
      * # Errors
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
      */
     @Throws(ApiException::class)
     @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
-    override suspend fun `set`(`key`: kotlin.String, `value`: kotlin.String) {
+    override suspend fun `setDefaultEngine`(`engine`: kotlin.String?) {
         return uniffiRustCallAsync(
         callWithHandle { uniffiHandle ->
-            UniffiLib.uniffi_core_api_fn_method_settingsservice_set(
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_set_default_engine(
                 uniffiHandle,
                 
-        FfiConverterString.lower(`key`),
-        FfiConverterString.lower(`value`),
+        FfiConverterOptionalString.lower(`engine`),
             )
         },
         { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
@@ -4203,6 +4872,341 @@ open class SettingsService: Disposable, AutoCloseable, SettingsServiceInterface
         // lift function
         { Unit },
         
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Sets the interface density.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `setDensity`(`density`: InterfaceDensity) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_set_density(
+                uniffiHandle,
+                
+        FfiConverterTypeInterfaceDensity.lower(`density`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Sets a per-channel engine override, or clears it with `None`.
+     *
+     * This is what the loud fallback's "remember for this channel" toggle writes: only
+     * `UnsupportedFormat`/`DecoderFailed` offer it, and only the user's press stores it —
+     * automatic switching is never silent (TECH_SPEC §14).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `setEngineForChannel`(`sourceId`: kotlin.Long, `identity`: kotlin.Long, `engine`: kotlin.String?) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_set_engine_for_channel(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterLong.lower(`identity`),
+        FfiConverterOptionalString.lower(`engine`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Sets a per-source engine override, or clears it with `None` (the PRD §6.3 selection
+     * policy's middle tier: channel → source → platform default).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `setEngineForSource`(`sourceId`: kotlin.Long, `engine`: kotlin.String?) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_set_engine_for_source(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterOptionalString.lower(`engine`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Sets the EPG rolling window (PRD §6.6). Both bounds move together because they describe
+     * one window — a single setter for the pair, and a single transaction underneath it, so
+     * there is no half-applied window for a fault to leave behind or a reader to see.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure, with the previous window whole.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `setEpgWindow`(`aheadHours`: kotlin.UInt, `behindHours`: kotlin.UInt) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_set_epg_window(
+                uniffiHandle,
+                
+        FfiConverterUInt.lower(`aheadHours`),
+        FfiConverterUInt.lower(`behindHours`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Sets the image disk-cache ceiling in megabytes. The core persists it; each shell's
+     * artwork pipeline reads it and sizes its own cache — images are the one thing a shell
+     * may cache durably (TECH_SPEC §4.5).
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `setImageCacheMaxMb`(`megabytes`: kotlin.UInt) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_set_image_cache_max_mb(
+                uniffiHandle,
+                
+        FfiConverterUInt.lower(`megabytes`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Sets the UI language to a BCP-47 tag, or clears it with `None` to follow the system.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `setLanguage`(`tag`: kotlin.String?) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_set_language(
+                uniffiHandle,
+                
+        FfiConverterOptionalString.lower(`tag`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Sets the diagnostics log level: persists the choice **and** applies it to the live
+     * `tracing` filter, so it survives a restart and takes effect without one (PRD §6.9,
+     * TECH_SPEC §4.8). Disabled levels cost nothing once the filter reloads.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure, or [`ApiError::Internal`] if
+     * the filter reload fails — which for a [`LogLevel`] means an internal inconsistency, not
+     * bad input, since the directive comes from a closed set rather than user text.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `setLogLevel`(`level`: LogLevel) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_set_log_level(
+                uniffiHandle,
+                
+        FfiConverterTypeLogLevel.lower(`level`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Sets how many days of recently-watched history to keep.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `setRecentsRetentionDays`(`days`: kotlin.UInt) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_set_recents_retention_days(
+                uniffiHandle,
+                
+        FfiConverterUInt.lower(`days`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Sets the subtitle backing treatment.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `setSubtitleBackground`(`background`: SubtitleBackground) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_set_subtitle_background(
+                uniffiHandle,
+                
+        FfiConverterTypeSubtitleBackground.lower(`background`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Sets the subtitle glyph size.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `setSubtitleSize`(`size`: SubtitleSize) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_set_subtitle_size(
+                uniffiHandle,
+                
+        FfiConverterTypeSubtitleSize.lower(`size`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Every setting resolved to a value: stored where the user set one, code default
+     * otherwise. One call, because the settings screen wants all of them at once.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `snapshot`() : AppSettings {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_settingsservice_snapshot(
+                uniffiHandle,
+                
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterTypeAppSettings.lift(it) },
         // Error FFI converter
         ApiException.ErrorHandler,
     )
@@ -4368,7 +5372,36 @@ public interface SourceServiceInterface {
     suspend fun `addM3uUrl`(`name`: kotlin.String, `url`: kotlin.String, `userAgent`: kotlin.String?, `acceptInvalidTls`: kotlin.Boolean): Source
     
     /**
-     * Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history.
+     * Adds an Xtream Codes account (no import yet — call [`Self::refresh`] to fetch its
+     * catalog).
+     *
+     * The account is **verified before it is stored**: a wrong password should be a sentence
+     * on the add screen, not a mystery on the next refresh. The password is then written to the
+     * host secure store under a freshly minted opaque key and dropped; what reaches SQLite is
+     * the key, never the credential (TECH_SPEC §12).
+     *
+     * # Errors
+     * Returns [`ApiError::InvalidInput`] if `server` is not a valid absolute URL,
+     * [`ApiError::Unauthorized`] if the headend rejects the account,
+     * [`ApiError::NetworkUnreachable`] / [`ApiError::Timeout`] if it cannot be reached, and
+     * [`ApiError::StorageCorrupt`] if the source cannot be persisted.
+     */
+    suspend fun `addXtream`(`name`: kotlin.String, `server`: kotlin.String, `username`: kotlin.String, `password`: kotlin.String): Source
+    
+    /**
+     * Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history —
+     * and, for an Xtream account, its password in the host secure store.
+     *
+     * Deleting the credential is part of deleting the source, not a nicety: the DB row is the
+     * only record of which opaque key belongs to this account, so a delete that skipped it
+     * would strand the password in the platform keychain with nothing left able to name it
+     * (TECH_SPEC §12).
+     *
+     * The credential therefore goes **first**, and a secure store that refuses it fails the
+     * whole call with the source still listed. That is the only order in which a half-done
+     * delete is one the user can finish by pressing delete again: the row is what names the
+     * key, so while it stands the retry knows what to remove, and once it is gone nothing
+     * does. A locked device is a wait, not a leak.
      *
      * Signals every in-flight refresh for this source to cancel first, so a still-downloading
      * import aborts at its next batch boundary and discards its staged catalog rather than
@@ -4377,7 +5410,9 @@ public interface SourceServiceInterface {
      * the swap and reports the refresh as cancelled — never a spurious storage failure.
      *
      * # Errors
-     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     * Returns [`ApiError::StorageCorrupt`] on a write failure, or whatever the host secure
+     * store reports if it will not release the account's password — in which case nothing was
+     * removed at all and the call can simply be made again.
      */
     suspend fun `delete`(`id`: kotlin.Long)
     
@@ -4414,6 +5449,29 @@ public interface SourceServiceInterface {
      * Returns [`ApiError::StorageCorrupt`] on a write failure.
      */
     suspend fun `rename`(`id`: kotlin.Long, `name`: kotlin.String)
+    
+    /**
+     * The playable URL for a channel's stored locator — call this immediately before handing a
+     * stream to an engine.
+     *
+     * **Kind-agnostic by design.** An M3U locator is already playable and comes back unchanged;
+     * an Xtream locator is stored credential-free (§12, `core_xtream::urls`) and gets its
+     * credentials put back here, read from the host store. The shell therefore does not need to
+     * know which kind of source a channel came from — it asks for a playable URL and gets one,
+     * which is what keeps the zap path (PRD §8.4) free of per-kind branching.
+     *
+     * The returned string carries credentials for an Xtream source. It is bound for the engine
+     * and nowhere else: it must not be logged, persisted, or held past the play call. Resolve
+     * per play rather than caching — the whole point of storing a credential-free catalog is
+     * that the playable form does not outlive its use.
+     *
+     * # Errors
+     * Returns [`ApiError::NotFound`] if the source is gone or its stored locator is not a
+     * recognizable reference (a stale row; the source needs a refresh), [`ApiError::Unauthorized`]
+     * if the account's password is missing from the host store, [`ApiError::InvalidInput`] if
+     * `locator` is not a valid address, and [`ApiError::StorageCorrupt`] on a read failure.
+     */
+    suspend fun `resolveStream`(`sourceId`: kotlin.Long, `locator`: kotlin.String): kotlin.String
     
     /**
      * Sets (or clears, with `None`) the automatic refresh interval in seconds.
@@ -4603,7 +5661,59 @@ open class SourceService: Disposable, AutoCloseable, SourceServiceInterface
 
     
     /**
-     * Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history.
+     * Adds an Xtream Codes account (no import yet — call [`Self::refresh`] to fetch its
+     * catalog).
+     *
+     * The account is **verified before it is stored**: a wrong password should be a sentence
+     * on the add screen, not a mystery on the next refresh. The password is then written to the
+     * host secure store under a freshly minted opaque key and dropped; what reaches SQLite is
+     * the key, never the credential (TECH_SPEC §12).
+     *
+     * # Errors
+     * Returns [`ApiError::InvalidInput`] if `server` is not a valid absolute URL,
+     * [`ApiError::Unauthorized`] if the headend rejects the account,
+     * [`ApiError::NetworkUnreachable`] / [`ApiError::Timeout`] if it cannot be reached, and
+     * [`ApiError::StorageCorrupt`] if the source cannot be persisted.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `addXtream`(`name`: kotlin.String, `server`: kotlin.String, `username`: kotlin.String, `password`: kotlin.String) : Source {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_sourceservice_add_xtream(
+                uniffiHandle,
+                
+        FfiConverterString.lower(`name`),
+        FfiConverterString.lower(`server`),
+        FfiConverterString.lower(`username`),
+        FfiConverterString.lower(`password`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterTypeSource.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Deletes a source and (by cascade) its catalog, favorites, hidden flags, and history —
+     * and, for an Xtream account, its password in the host secure store.
+     *
+     * Deleting the credential is part of deleting the source, not a nicety: the DB row is the
+     * only record of which opaque key belongs to this account, so a delete that skipped it
+     * would strand the password in the platform keychain with nothing left able to name it
+     * (TECH_SPEC §12).
+     *
+     * The credential therefore goes **first**, and a secure store that refuses it fails the
+     * whole call with the source still listed. That is the only order in which a half-done
+     * delete is one the user can finish by pressing delete again: the row is what names the
+     * key, so while it stands the retry knows what to remove, and once it is gone nothing
+     * does. A locked device is a wait, not a leak.
      *
      * Signals every in-flight refresh for this source to cancel first, so a still-downloading
      * import aborts at its next batch boundary and discards its staged catalog rather than
@@ -4612,7 +5722,9 @@ open class SourceService: Disposable, AutoCloseable, SourceServiceInterface
      * the swap and reports the refresh as cancelled — never a spurious storage failure.
      *
      * # Errors
-     * Returns [`ApiError::StorageCorrupt`] on a write failure.
+     * Returns [`ApiError::StorageCorrupt`] on a write failure, or whatever the host secure
+     * store reports if it will not release the account's password — in which case nothing was
+     * removed at all and the call can simply be made again.
      */
     @Throws(ApiException::class)
     @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
@@ -4733,6 +5845,50 @@ open class SourceService: Disposable, AutoCloseable, SourceServiceInterface
         // lift function
         { Unit },
         
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * The playable URL for a channel's stored locator — call this immediately before handing a
+     * stream to an engine.
+     *
+     * **Kind-agnostic by design.** An M3U locator is already playable and comes back unchanged;
+     * an Xtream locator is stored credential-free (§12, `core_xtream::urls`) and gets its
+     * credentials put back here, read from the host store. The shell therefore does not need to
+     * know which kind of source a channel came from — it asks for a playable URL and gets one,
+     * which is what keeps the zap path (PRD §8.4) free of per-kind branching.
+     *
+     * The returned string carries credentials for an Xtream source. It is bound for the engine
+     * and nowhere else: it must not be logged, persisted, or held past the play call. Resolve
+     * per play rather than caching — the whole point of storing a credential-free catalog is
+     * that the playable form does not outlive its use.
+     *
+     * # Errors
+     * Returns [`ApiError::NotFound`] if the source is gone or its stored locator is not a
+     * recognizable reference (a stale row; the source needs a refresh), [`ApiError::Unauthorized`]
+     * if the account's password is missing from the host store, [`ApiError::InvalidInput`] if
+     * `locator` is not a valid address, and [`ApiError::StorageCorrupt`] on a read failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `resolveStream`(`sourceId`: kotlin.Long, `locator`: kotlin.String) : kotlin.String {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_sourceservice_resolve_stream(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterString.lower(`locator`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterString.lift(it) },
         // Error FFI converter
         ApiException.ErrorHandler,
     )
@@ -5103,6 +6259,136 @@ public object FfiConverterTypeTaskHandle: FfiConverter<TaskHandle, Long> {
 
     override fun write(value: TaskHandle, buf: ByteBuffer) {
         buf.putLong(lower(value))
+    }
+}
+
+
+
+/**
+ * Every setting resolved to a value: stored where the user set one, code default otherwise.
+ *
+ * Flat and owned, per the boundary rules (TECH_SPEC §5). The shells render this directly;
+ * there is no "unset" state to represent because [`Default`] has already resolved it.
+ */
+data class AppSettings (
+    /**
+     * Opaque global default-engine key; `None` means the platform default (TECH_SPEC §8).
+     */
+    var `defaultEngine`: kotlin.String?
+    , 
+    /**
+     * Buffering profile.
+     */
+    var `buffering`: BufferingProfile
+    , 
+    /**
+     * Subtitle glyph size.
+     */
+    var `subtitleSize`: SubtitleSize
+    , 
+    /**
+     * Subtitle backing treatment.
+     */
+    var `subtitleBackground`: SubtitleBackground
+    , 
+    /**
+     * BCP-47 UI language tag; `None` means follow the system language.
+     */
+    var `language`: kotlin.String?
+    , 
+    /**
+     * List/row density.
+     */
+    var `density`: InterfaceDensity
+    , 
+    /**
+     * Whether recently-watched recording is on (PRD §6.5 off-switch).
+     */
+    var `recentsEnabled`: kotlin.Boolean
+    , 
+    /**
+     * Days of recently-watched history to keep.
+     */
+    var `recentsRetentionDays`: kotlin.UInt
+    , 
+    /**
+     * Hours of EPG kept ahead of now (PRD §6.6; consumed when EPG ingest lands).
+     */
+    var `epgWindowAheadHours`: kotlin.UInt
+    , 
+    /**
+     * Hours of EPG kept behind now (PRD §6.6; consumed when EPG ingest lands).
+     */
+    var `epgWindowBehindHours`: kotlin.UInt
+    , 
+    /**
+     * Image disk-cache ceiling in megabytes, read by each shell's artwork pipeline.
+     */
+    var `imageCacheMaxMb`: kotlin.UInt
+    , 
+    /**
+     * Diagnostics log level (PRD §6.9, TECH_SPEC §4.8).
+     */
+    var `logLevel`: LogLevel
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAppSettings: FfiConverterRustBuffer<AppSettings> {
+    override fun read(buf: ByteBuffer): AppSettings {
+        return AppSettings(
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeBufferingProfile.read(buf),
+            FfiConverterTypeSubtitleSize.read(buf),
+            FfiConverterTypeSubtitleBackground.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterTypeInterfaceDensity.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterTypeLogLevel.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AppSettings) = (
+            FfiConverterOptionalString.allocationSize(value.`defaultEngine`) +
+            FfiConverterTypeBufferingProfile.allocationSize(value.`buffering`) +
+            FfiConverterTypeSubtitleSize.allocationSize(value.`subtitleSize`) +
+            FfiConverterTypeSubtitleBackground.allocationSize(value.`subtitleBackground`) +
+            FfiConverterOptionalString.allocationSize(value.`language`) +
+            FfiConverterTypeInterfaceDensity.allocationSize(value.`density`) +
+            FfiConverterBoolean.allocationSize(value.`recentsEnabled`) +
+            FfiConverterUInt.allocationSize(value.`recentsRetentionDays`) +
+            FfiConverterUInt.allocationSize(value.`epgWindowAheadHours`) +
+            FfiConverterUInt.allocationSize(value.`epgWindowBehindHours`) +
+            FfiConverterUInt.allocationSize(value.`imageCacheMaxMb`) +
+            FfiConverterTypeLogLevel.allocationSize(value.`logLevel`)
+    )
+
+    override fun write(value: AppSettings, buf: ByteBuffer) {
+            FfiConverterOptionalString.write(value.`defaultEngine`, buf)
+            FfiConverterTypeBufferingProfile.write(value.`buffering`, buf)
+            FfiConverterTypeSubtitleSize.write(value.`subtitleSize`, buf)
+            FfiConverterTypeSubtitleBackground.write(value.`subtitleBackground`, buf)
+            FfiConverterOptionalString.write(value.`language`, buf)
+            FfiConverterTypeInterfaceDensity.write(value.`density`, buf)
+            FfiConverterBoolean.write(value.`recentsEnabled`, buf)
+            FfiConverterUInt.write(value.`recentsRetentionDays`, buf)
+            FfiConverterUInt.write(value.`epgWindowAheadHours`, buf)
+            FfiConverterUInt.write(value.`epgWindowBehindHours`, buf)
+            FfiConverterUInt.write(value.`imageCacheMaxMb`, buf)
+            FfiConverterTypeLogLevel.write(value.`logLevel`, buf)
     }
 }
 
@@ -5547,6 +6833,12 @@ data class Handshake (
     var `coreVersion`: kotlin.String
     , 
     /**
+     * The core's build-time git revision ([`GIT_REVISION`]), shown on the diagnostics screen so
+     * a support thread can name the exact core build (PRD §6.9).
+     */
+    var `coreGitRevision`: kotlin.String
+    , 
+    /**
      * The database schema version at head.
      */
     var `schemaVersion`: kotlin.UInt
@@ -5572,6 +6864,7 @@ public object FfiConverterTypeHandshake: FfiConverterRustBuffer<Handshake> {
     override fun read(buf: ByteBuffer): Handshake {
         return Handshake(
             FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
             FfiConverterUInt.read(buf),
             FfiConverterUInt.read(buf),
         )
@@ -5579,12 +6872,14 @@ public object FfiConverterTypeHandshake: FfiConverterRustBuffer<Handshake> {
 
     override fun allocationSize(value: Handshake) = (
             FfiConverterString.allocationSize(value.`coreVersion`) +
+            FfiConverterString.allocationSize(value.`coreGitRevision`) +
             FfiConverterUInt.allocationSize(value.`schemaVersion`) +
             FfiConverterUInt.allocationSize(value.`boundaryVersion`)
     )
 
     override fun write(value: Handshake, buf: ByteBuffer) {
             FfiConverterString.write(value.`coreVersion`, buf)
+            FfiConverterString.write(value.`coreGitRevision`, buf)
             FfiConverterUInt.write(value.`schemaVersion`, buf)
             FfiConverterUInt.write(value.`boundaryVersion`, buf)
     }
@@ -5815,6 +7110,66 @@ public object FfiConverterTypeLogRecord: FfiConverterRustBuffer<LogRecord> {
 
 
 /**
+ * What the pairing screen renders while the server is up.
+ */
+data class PairingSession (
+    /**
+     * The address to show and encode as a QR code, e.g. `http://192.168.1.40:53219`.
+     *
+     * Guaranteed to be an address the server would answer on: `core-pair` checks the
+     * advertised host against the same predicate as its peer check, so a URL that exists is
+     * one a phone on the LAN can dial.
+     */
+    var `url`: kotlin.String
+    , 
+    /**
+     * The bound port. Reported so a shell can recognize its own session, and because a URL is
+     * only ever host + port.
+     */
+    var `port`: kotlin.UShort
+    , 
+    /**
+     * This session's token, for the person reading the screen to type on their phone.
+     */
+    var `token`: kotlin.String
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePairingSession: FfiConverterRustBuffer<PairingSession> {
+    override fun read(buf: ByteBuffer): PairingSession {
+        return PairingSession(
+            FfiConverterString.read(buf),
+            FfiConverterUShort.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PairingSession) = (
+            FfiConverterString.allocationSize(value.`url`) +
+            FfiConverterUShort.allocationSize(value.`port`) +
+            FfiConverterString.allocationSize(value.`token`)
+    )
+
+    override fun write(value: PairingSession, buf: ByteBuffer) {
+            FfiConverterString.write(value.`url`, buf)
+            FfiConverterUShort.write(value.`port`, buf)
+            FfiConverterString.write(value.`token`, buf)
+    }
+}
+
+
+
+/**
  * A "recently watched" entry (PRD §6.5). Snapshots the name and locator at play time and
  * keys the channel by stable identity, so it stays replayable across refreshes even if the
  * channel later leaves the catalog. Never leaves the device.
@@ -5945,54 +7300,6 @@ public object FfiConverterTypeSearchPage: FfiConverterRustBuffer<SearchPage> {
             FfiConverterSequenceTypeChannel.write(value.`channels`, buf)
             FfiConverterUInt.write(value.`offset`, buf)
             FfiConverterBoolean.write(value.`fuzzy`, buf)
-    }
-}
-
-
-
-/**
- * One stored setting as an opaque key/value pair. The typed settings surface and defaults
- * land in Phase 6; the boundary exposes the raw store today.
- */
-data class SettingEntry (
-    /**
-     * Opaque setting key.
-     */
-    var `key`: kotlin.String
-    , 
-    /**
-     * Stored value.
-     */
-    var `value`: kotlin.String
-    
-){
-    
-
-    
-
-    
-    companion object
-}
-
-/**
- * @suppress
- */
-public object FfiConverterTypeSettingEntry: FfiConverterRustBuffer<SettingEntry> {
-    override fun read(buf: ByteBuffer): SettingEntry {
-        return SettingEntry(
-            FfiConverterString.read(buf),
-            FfiConverterString.read(buf),
-        )
-    }
-
-    override fun allocationSize(value: SettingEntry) = (
-            FfiConverterString.allocationSize(value.`key`) +
-            FfiConverterString.allocationSize(value.`value`)
-    )
-
-    override fun write(value: SettingEntry, buf: ByteBuffer) {
-            FfiConverterString.write(value.`key`, buf)
-            FfiConverterString.write(value.`value`, buf)
     }
 }
 
@@ -6286,6 +7593,62 @@ public object FfiConverterTypeApiError : FfiConverterRustBuffer<ApiException> {
 
 
 /**
+ * How much latency the viewer trades for resilience, mapped to engine parameters by each shell
+ * (PRD §6.9).
+ *
+ * The variants mirror `PlayerContract.BufferingProfile` / `player-contract`'s
+ * `BufferingProfile` exactly, including their stored spellings. That vocabulary was settled in
+ * Phase 5 and is the engine-neutral one both shells already speak — its own docs say "the
+ * settings screen speaks this vocabulary" — so the core adopts it rather than inventing a
+ * second, lossy one. PRD §6.9's "low-latency vs. stable" is a summary of the axis, not a
+ * statement that it has two positions; `Balanced` is the middle the shells default to, and a
+ * two-variant core enum would have had no honest value to map it onto.
+ */
+
+enum class BufferingProfile {
+    
+    /**
+     * Smallest buffer: fastest zap, least tolerant of a jittery source.
+     */
+    LOW,
+    /**
+     * The default trade-off.
+     */
+    BALANCED,
+    /**
+     * Largest buffer: slowest to start, rides out a bad connection.
+     */
+    GENEROUS;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeBufferingProfile: FfiConverterRustBuffer<BufferingProfile> {
+    override fun read(buf: ByteBuffer) = try {
+        BufferingProfile.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: BufferingProfile) = 4UL
+
+    override fun write(value: BufferingProfile, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
  * Which phase of an import is currently running.
  */
 
@@ -6333,7 +7696,54 @@ public object FfiConverterTypeImportStage: FfiConverterRustBuffer<ImportStage> {
 
 
 /**
+ * How much breathing room lists and rows get (PRD §6.9).
+ */
+
+enum class InterfaceDensity {
+    
+    /**
+     * Fewer, larger rows — the 10-foot default.
+     */
+    COMFORTABLE,
+    /**
+     * More rows per screen, for users who prefer density to reach.
+     */
+    COMPACT;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeInterfaceDensity: FfiConverterRustBuffer<InterfaceDensity> {
+    override fun read(buf: ByteBuffer) = try {
+        InterfaceDensity.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: InterfaceDensity) = 4UL
+
+    override fun write(value: InterfaceDensity, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
  * Severity of a forwarded log record, mapped one-to-one from `tracing::Level`.
+ *
+ * `Info` is the [`Default`]: it is what the diagnostics screen's log level resolves to when the
+ * user has never chosen one (PRD §6.9) — verbose enough to tell a support thread what happened,
+ * quiet enough to cost nothing on the zap path.
  */
 
 enum class LogLevel {
@@ -6427,6 +7837,124 @@ public object FfiConverterTypeMediaKind: FfiConverterRustBuffer<MediaKind> {
 
     override fun write(value: MediaKind, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * What a phone submitted, ready to pre-fill the TV's add-source flow.
+ *
+ * Mirrors `core_pair::Submission` as flat owned data (TECH_SPEC §5). The URLs arrive parsed and
+ * are flattened back to strings because that is what `SourceService`'s add methods take — the
+ * shell passes them straight through.
+ */
+sealed class PairingSubmission {
+    
+    /**
+     * An M3U/M3U8 playlist to fetch by URL.
+     */
+    data class M3uUrl(
+        /**
+         * The playlist URL.
+         */
+        val `url`: kotlin.String) : PairingSubmission()
+        
+    {
+        
+
+        companion object
+    }
+    
+    /**
+     * An Xtream Codes account.
+     */
+    data class Xtream(
+        /**
+         * The Xtream server base URL.
+         */
+        val `server`: kotlin.String, 
+        /**
+         * The account username.
+         */
+        val `username`: kotlin.String, 
+        /**
+         * The account password, in flight to the host secure store via
+         * `SourceService::add_xtream`. The shell hands it to that call and keeps it nowhere
+         * else — not in a log, not in its own storage (TECH_SPEC §12).
+         */
+        val `password`: kotlin.String) : PairingSubmission()
+        
+    {
+        
+
+        companion object
+    }
+    
+
+    
+
+    
+    
+
+
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePairingSubmission : FfiConverterRustBuffer<PairingSubmission>{
+    override fun read(buf: ByteBuffer): PairingSubmission {
+        return when(buf.getInt()) {
+            1 -> PairingSubmission.M3uUrl(
+                FfiConverterString.read(buf),
+                )
+            2 -> PairingSubmission.Xtream(
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: PairingSubmission): ULong = when(value) {
+        is PairingSubmission.M3uUrl -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`url`)
+            )
+        }
+        is PairingSubmission.Xtream -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`server`)
+                + FfiConverterString.allocationSize(value.`username`)
+                + FfiConverterString.allocationSize(value.`password`)
+            )
+        }
+    }
+
+    override fun write(value: PairingSubmission, buf: ByteBuffer) {
+        when(value) {
+            is PairingSubmission.M3uUrl -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`url`, buf)
+                Unit
+            }
+            is PairingSubmission.Xtream -> {
+                buf.putInt(2)
+                FfiConverterString.write(value.`server`, buf)
+                FfiConverterString.write(value.`username`, buf)
+                FfiConverterString.write(value.`password`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
     }
 }
 
@@ -6673,6 +8201,100 @@ public object FfiConverterTypeSourceKind: FfiConverterRustBuffer<SourceKind> {
 
 
 
+/**
+ * What sits behind subtitle text, so it stays legible over bright video (PRD §6.9).
+ */
+
+enum class SubtitleBackground {
+    
+    /**
+     * Glyphs only.
+     */
+    NONE,
+    /**
+     * A soft drop shadow — legible on most material without a visible box.
+     */
+    SHADOW,
+    /**
+     * An opaque plate behind the text.
+     */
+    SOLID;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSubtitleBackground: FfiConverterRustBuffer<SubtitleBackground> {
+    override fun read(buf: ByteBuffer) = try {
+        SubtitleBackground.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: SubtitleBackground) = 4UL
+
+    override fun write(value: SubtitleBackground, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Subtitle glyph size, resolved to platform points by each shell (PRD §6.9).
+ */
+
+enum class SubtitleSize {
+    
+    /**
+     * Below the default.
+     */
+    SMALL,
+    /**
+     * The default.
+     */
+    MEDIUM,
+    /**
+     * Above the default.
+     */
+    LARGE;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeSubtitleSize: FfiConverterRustBuffer<SubtitleSize> {
+    override fun read(buf: ByteBuffer) = try {
+        SubtitleSize.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: SubtitleSize) = 4UL
+
+    override fun write(value: SubtitleSize, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
 
 
 /**
@@ -6848,6 +8470,76 @@ internal object uniffiCallbackInterfaceLogSink {
  * @suppress
  */
 public object FfiConverterTypeLogSink: FfiConverterCallbackInterface<LogSink>()
+
+
+
+
+
+/**
+ * Receives what the phone sent.
+ *
+ * **Threading contract:** invoked from the pairing server's connection task — it may arrive on
+ * *any* core thread, and the shell must trampoline to its own main actor/dispatcher (TECH_SPEC
+ * §5). It must not block: the phone is waiting on a response behind it.
+ */
+public interface PairingListener {
+    
+    /**
+     * Called at most once per accepted submission.
+     */
+    fun `onSubmission`(`submission`: PairingSubmission)
+    
+    companion object
+}
+
+
+
+// Put the implementation in an object so we don't pollute the top-level namespace
+internal object uniffiCallbackInterfacePairingListener {
+    internal object `onSubmission`: UniffiCallbackInterfacePairingListenerMethod0 {
+        override fun callback(`uniffiHandle`: Long,`submission`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypePairingListener.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`onSubmission`(
+                    FfiConverterTypePairingSubmission.lift(`submission`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+
+    internal object uniffiFree: UniffiCallbackInterfaceFree {
+        override fun callback(handle: Long) {
+            FfiConverterTypePairingListener.handleMap.remove(handle)
+        }
+    }
+
+    internal object uniffiClone: UniffiCallbackInterfaceClone {
+        override fun callback(handle: Long): Long {
+            return FfiConverterTypePairingListener.handleMap.clone(handle)
+        }
+    }
+
+    internal var vtable = UniffiVTableCallbackInterfacePairingListener.UniffiByValue(
+        uniffiFree,
+        uniffiClone,
+        `onSubmission`,
+    )
+
+    // Registers the foreign callback with the Rust side.
+    // This method is generated for each callback interface.
+    internal fun register(lib: UniffiLib) {
+        lib.uniffi_core_api_fn_init_callback_vtable_pairinglistener(vtable)
+    }
+}
+
+/**
+ * The ffiConverter which transforms the Callbacks in to handles to pass to Rust.
+ *
+ * @suppress
+ */
+public object FfiConverterTypePairingListener: FfiConverterCallbackInterface<PairingListener>()
 
 
 
@@ -7303,34 +8995,6 @@ public object FfiConverterSequenceTypeRecent: FfiConverterRustBuffer<List<Recent
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeRecent.write(it, buf)
-        }
-    }
-}
-
-
-
-
-/**
- * @suppress
- */
-public object FfiConverterSequenceTypeSettingEntry: FfiConverterRustBuffer<List<SettingEntry>> {
-    override fun read(buf: ByteBuffer): List<SettingEntry> {
-        val len = buf.getInt()
-        return List<SettingEntry>(len) {
-            FfiConverterTypeSettingEntry.read(buf)
-        }
-    }
-
-    override fun allocationSize(value: List<SettingEntry>): ULong {
-        val sizeForLength = 4UL
-        val sizeForItems = value.map { FfiConverterTypeSettingEntry.allocationSize(it) }.sum()
-        return sizeForLength + sizeForItems
-    }
-
-    override fun write(value: List<SettingEntry>, buf: ByteBuffer) {
-        buf.putInt(value.size)
-        value.iterator().forEach {
-            FfiConverterTypeSettingEntry.write(it, buf)
         }
     }
 }

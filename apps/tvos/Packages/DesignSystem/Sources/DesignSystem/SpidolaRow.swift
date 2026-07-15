@@ -4,6 +4,11 @@
 import SwiftUI
 
 /// A trailing accessory on a `SpidolaRow` — a status word or an SF Symbol (e.g. a favorite star).
+///
+/// The two are not equivalent to a listener. A `.text` accessory is words and is read out with the
+/// row; a `.symbol` reads as its symbol name — "trash", "star fill" — which is never what the row
+/// means, so it is kept out of the announcement entirely. Any state a glyph stands for therefore
+/// has to be given words by the caller, as an `.accessibilityValue` on the row.
 public enum RowAccessory: Sendable, Equatable {
   case none
   case text(String)
@@ -73,6 +78,7 @@ public struct SpidolaRow: View {
       Image(systemName: name)
         .font(.system(size: 26))
         .foregroundStyle(SpidolaPalette.testCardAmber)
+        .accessibilityHidden(true)
     }
   }
 }

@@ -3,6 +3,7 @@
 
 package dev.spidola.tv.core.corekit
 
+import uniffi.core_api.BufferingProfile
 import uniffi.core_api.MediaKind
 
 /**
@@ -98,25 +99,58 @@ interface PlaybackAccess {
 
     suspend fun setBufferingProfile(profile: String)
 
+    /**
+     * The playable URL for a channel's stored locator. Call immediately before handing a stream to
+     * an engine, and never store the result.
+     *
+     * Not a formality: an Xtream catalog stores a **credential-free** locator so the account's
+     * password never reaches SQLite (TECH_SPEC §12), which means the locator on a [PlayableChannel]
+     * is not playable on its own — this is what puts the credential back. Kind-agnostic, so the zap
+     * path never branches on where a channel came from: an M3U locator is already playable and
+     * returns unchanged.
+     */
+    suspend fun resolveStream(
+        sourceId: Long,
+        locator: String,
+    ): String
+
     suspend fun recordRecent(channel: PlayableChannel)
 }
 
 /**
- * The settings keys the playback slice owns.
+ * Translates the buffering profile between the core's boundary enum and the raw value
+ * [PlaybackAccess] speaks.
  *
- * Engine overrides live in the settings table rather than `channels.preferred_engine` on purpose:
- * the channels table is replaced wholesale by the staging-and-swap refresh (TECH_SPEC §4.4), so a
- * choice stored there would silently vanish on the next refresh. Favourites and hidden survive
- * refresh by living in their own tables keyed on the stable identity hash; a remembered engine is
- * the same kind of durable per-channel fact and is keyed the same way.
+ * There is no key-naming object here any more, and that is the point: the core owns the settings
+ * vocabulary now, so the engine overrides are reached through `engineForChannel` /
+ * `engineForSource` rather than through key strings this module invents. Where those choices
+ * *live* — the settings table, keyed on the stable identity hash, never
+ * `channels.preferred_engine`, because a refresh replaces every channel row wholesale
+ * (TECH_SPEC §4.4) — is now documented on the core's `channel_engine` key, which is the thing
+ * that decides it.
+ *
+ * These strings are `player-contract`'s `BufferingProfile` names, lowercased. This module cannot
+ * name that type — corekit does not depend on player-contract, which is exactly why
+ * [PlaybackAccess] speaks a raw value rather than either enum — so the coupling is written down
+ * instead: `PlaybackViewModel` matches these case-insensitively against its enum's `name`, and
+ * the core pins the identical spellings in its own test. Three vocabularies meet at this line,
+ * and a setting the user changes has to survive the trip through all of them.
  */
-internal object PlaybackSettingKey {
-    fun channelEngine(
-        sourceId: Long,
-        identity: Long,
-    ): String = "player.engine.channel.$sourceId.$identity"
+internal fun BufferingProfile.stored(): String =
+    when (this) {
+        BufferingProfile.LOW -> "low"
+        BufferingProfile.BALANCED -> "balanced"
+        BufferingProfile.GENEROUS -> "generous"
+    }
 
-    fun sourceEngine(sourceId: Long): String = "player.engine.source.$sourceId"
-
-    const val BUFFERING_PROFILE = "player.buffering"
-}
+/**
+ * Reads a raw buffering value back into the core's enum, falling back to the shared default
+ * rather than throwing: the value comes from persisted settings, so an unrecognized one means a
+ * newer app wrote it, not that this caller made a mistake.
+ */
+internal fun String.toCoreBuffering(): BufferingProfile =
+    when (lowercase()) {
+        "low" -> BufferingProfile.LOW
+        "generous" -> BufferingProfile.GENEROUS
+        else -> BufferingProfile.BALANCED
+    }

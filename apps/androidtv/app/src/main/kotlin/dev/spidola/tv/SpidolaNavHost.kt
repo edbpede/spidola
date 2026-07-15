@@ -18,7 +18,14 @@ import dev.spidola.tv.feature.browse.HomeScreen
 import dev.spidola.tv.feature.browse.SourceBrowseScreen
 import dev.spidola.tv.feature.playback.PlaybackScreen
 import dev.spidola.tv.feature.search.SearchScreen
+import dev.spidola.tv.feature.settings.DiagnosticsScreen
+import dev.spidola.tv.feature.settings.SettingsNavigator
+import dev.spidola.tv.feature.settings.SettingsPicker
+import dev.spidola.tv.feature.settings.SettingsPickerScreen
+import dev.spidola.tv.feature.settings.SettingsScreen
 import dev.spidola.tv.feature.sources.AddSourceScreen
+import dev.spidola.tv.feature.sources.PairingHandoff
+import dev.spidola.tv.feature.sources.PairingScreen
 import dev.spidola.tv.feature.sources.SourcesScreen
 import uniffi.core_api.MediaKind
 
@@ -33,6 +40,7 @@ import uniffi.core_api.MediaKind
 fun SpidolaNavHost(
     core: SpidolaCore,
     registry: EngineRegistry,
+    handoff: PairingHandoff,
     modifier: Modifier = Modifier,
 ) {
     val backStack = rememberNavBackStack(HomeRoute)
@@ -48,6 +56,14 @@ fun SpidolaNavHost(
                 },
                 openSearch = { backStack.add(SearchRoute) },
                 manageSources = { backStack.add(ManageSourcesRoute) },
+                openSettings = { backStack.add(SettingsRoute) },
+            )
+        }
+    val settingsNavigator =
+        remember(backStack) {
+            SettingsNavigator(
+                openPicker = { picker -> backStack.add(SettingsPickerRoute(picker.name)) },
+                openDiagnostics = { backStack.add(DiagnosticsRoute) },
             )
         }
 
@@ -97,10 +113,60 @@ fun SpidolaNavHost(
                     )
                 }
                 entry<ManageSourcesRoute> {
-                    SourcesScreen(access = core, onAddSource = { backStack.add(AddSourceRoute) })
+                    SourcesScreen(
+                        access = core,
+                        onAddSource = { backStack.add(AddSourceRoute) },
+                        onPairPhone = { backStack.add(PairingRoute) },
+                    )
                 }
                 entry<AddSourceRoute> {
-                    AddSourceScreen(access = core, onFinished = { backStack.removeLastOrNull() })
+                    // Claimed once, as the screen's entry is composed: a submission pre-fills this
+                    // form exactly once, and re-entering add-source later starts blank rather than
+                    // re-filling someone's account.
+                    val prefill = remember { handoff.take() }
+                    AddSourceScreen(
+                        access = core,
+                        onFinished = { backStack.removeLastOrNull() },
+                        prefill = prefill,
+                    )
+                }
+                entry<PairingRoute> {
+                    PairingScreen(
+                        access = core,
+                        handoff = handoff,
+                        // Replace rather than push: the pairing screen's job is done, its server is
+                        // stopped, and Back from the pre-filled form should land on the sources list
+                        // rather than restart a server the viewer already finished with.
+                        onSubmissionReady = {
+                            backStack.removeLastOrNull()
+                            backStack.add(AddSourceRoute)
+                        },
+                        onGoBack = { backStack.removeLastOrNull() },
+                    )
+                }
+                entry<SettingsRoute> {
+                    SettingsScreen(
+                        access = core,
+                        navigator = settingsNavigator,
+                        onGoBack = { backStack.removeLastOrNull() },
+                    )
+                }
+                entry<SettingsPickerRoute> { route ->
+                    SettingsPickerScreen(
+                        picker = SettingsPicker.valueOf(route.pickerName),
+                        access = core,
+                        onClose = { backStack.removeLastOrNull() },
+                    )
+                }
+                entry<DiagnosticsRoute> {
+                    DiagnosticsScreen(
+                        access = core,
+                        // The one place the app's own version is known; the feature module must not
+                        // reach up into the shell's BuildConfig to read it.
+                        appVersion = BuildConfig.VERSION_NAME,
+                        onOpenLogLevel = { backStack.add(SettingsPickerRoute(SettingsPicker.LOG_LEVEL.name)) },
+                        onGoBack = { backStack.removeLastOrNull() },
+                    )
                 }
             },
     )

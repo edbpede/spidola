@@ -32,11 +32,21 @@ struct FallbackOfferView: View {
         .foregroundStyle(SpidolaPalette.staticGray)
 
       HStack(spacing: SpidolaSpacing.m) {
-        Button("Try other player") { onTry(remember) }
+        Button(String(localized: "Try other player", bundle: .module)) { onTry(remember) }
           .focused($focused, equals: .tryOther)
-        Button(remember ? "Remember for this channel" : "Just this once") { remember.toggle() }
-          .focused($focused, equals: .remember)
-        Button("Go back") { onBack() }
+        Button(
+          remember
+            ? String(localized: "Remember for this channel", bundle: .module)
+            : String(localized: "Just this once", bundle: .module)
+        ) { remember.toggle() }
+        .focused($focused, equals: .remember)
+        // Alone among these three, this button's title states the choice in force rather than what
+        // pressing it does — which a viewer reads from its place beside "Try other player", and a
+        // listener arriving at it cold cannot. The hint is where that goes.
+        .accessibilityHint(
+          String(localized: "Changes whether this choice sticks for this channel.", bundle: .module)
+        )
+        Button(String(localized: "Go back", bundle: .module)) { onBack() }
           .focused($focused, equals: .back)
       }
       .font(SpidolaType.body)
@@ -58,6 +68,12 @@ struct PlaybackErrorView: View {
   let onRetry: @MainActor () -> Void
   let onBack: @MainActor () -> Void
 
+  // These two titles are deliberately not localized, alone in this file. They are not this
+  // slice's words: they are the `ErrorAction` vocabulary spelled out by hand, and the class and
+  // message above them come from `EngineError` in the same English. Resourcing the buttons would
+  // translate the answer and leave the question — the half-done state that reads as finished,
+  // which is the whole reason that vocabulary is excluded rather than swept (TECH_SPEC §14). It
+  // goes when the core returns a code and the shells own the words; until then it goes nowhere.
   var body: some View {
     ActionableErrorView(
       failureClass: error.failureClass,
@@ -73,7 +89,7 @@ struct SeekHintView: View {
   var body: some View {
     VStack {
       Spacer()
-      Text("This channel is live — there's nothing to skip to.")
+      Text(String(localized: "This channel is live — there's nothing to skip to.", bundle: .module))
         .font(SpidolaType.caption)
         .foregroundStyle(SpidolaPalette.staticGray)
         .padding(.horizontal, SpidolaSpacing.m)

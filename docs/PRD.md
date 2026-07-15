@@ -87,7 +87,9 @@ Recording while watching (remuxing the input stream to local storage) is feasibl
 
 ### 6.9 Settings — P0
 
-Settings cover: default player engine per platform and per source; buffering profile (low-latency vs. stable, mapped to engine parameters); subtitle appearance (size, background); UI language; interface density; recently-watched retention; EPG window; cache size and a clear-cache action; and a diagnostics screen (log level, export logs, versions of app/core/engines). Every setting has a sane default; the app must be fully usable without ever opening settings.
+Settings cover: default player engine per platform, per source, and per channel; buffering profile (three positions on one axis — **Fastest start / Balanced / Smoothest playback** — mapped to engine parameters, with Balanced the default); subtitle appearance (size, background); UI language; interface density; recently-watched retention; EPG window; cache size and a clear-cache action; and a diagnostics screen (log level, export logs, versions of app/core/engines). Every setting has a sane default; the app must be fully usable without ever opening settings.
+
+Two of those are worth pinning because earlier drafts of this section were read as saying otherwise. The buffering axis has **three** positions, not two: an earlier wording ("low-latency vs. stable") named the axis rather than enumerating it, and was briefly implemented as a two-way choice — which left *Balanced*, the profile every fresh install actually plays at, with no name a viewer could see, and made the engines' third step unreachable. The engine setting has **three tiers** (channel → source → platform default, §6.3), not two; the per-channel tier is what the loud fallback's "remember for this channel" writes.
 
 ### 6.10 Accessibility and localization — P0 baseline, ongoing
 

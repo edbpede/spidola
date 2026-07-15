@@ -24,6 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
@@ -83,17 +86,43 @@ fun FallbackOfferView(
                 horizontalArrangement = Arrangement.spacedBy(SpidolaSpacing.m),
             ) {
                 OfferButton(
-                    title = "Try other player",
+                    title = stringResource(R.string.playback_fallback_try_other),
                     isPrimary = true,
                     onClick = { onTry(rememberChoice) },
                     modifier = Modifier.focusRequester(tryOther),
                 )
+                // Its two neighbours name what pressing them does, and so does this one: the title is
+                // the choice it would switch to, and the choice in force is the button's state. Named
+                // the other way round it is a coin toss — someone arriving on "Remember for this
+                // channel" cannot hear whether that is the setting or the offer, and guessing wrong
+                // switches remembering off on the way to choosing it, which the primary button then
+                // carries out (PRD §6.10).
+                val rememberState =
+                    stringResource(
+                        if (rememberChoice) {
+                            R.string.playback_fallback_remember_state
+                        } else {
+                            R.string.playback_fallback_once_state
+                        },
+                    )
                 OfferButton(
-                    title = if (rememberChoice) "Remember for this channel" else "Just this once",
+                    title =
+                        stringResource(
+                            if (rememberChoice) {
+                                R.string.playback_fallback_once
+                            } else {
+                                R.string.playback_fallback_remember
+                            },
+                        ),
                     isPrimary = false,
                     onClick = { rememberChoice = !rememberChoice },
+                    modifier = Modifier.semantics { stateDescription = rememberState },
                 )
-                OfferButton(title = "Go back", isPrimary = false, onClick = onBack)
+                OfferButton(
+                    title = stringResource(R.string.playback_fallback_back),
+                    isPrimary = false,
+                    onClick = onBack,
+                )
             }
         }
     }
@@ -154,7 +183,7 @@ fun PlaybackErrorView(
 fun SeekHintView(modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Text(
-            text = "This channel is live — there's nothing to skip to.",
+            text = stringResource(R.string.playback_seek_hint),
             style = MaterialTheme.typography.labelMedium,
             color = SpidolaPalette.Static,
             modifier =

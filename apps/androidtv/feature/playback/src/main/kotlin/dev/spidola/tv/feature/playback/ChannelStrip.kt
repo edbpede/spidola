@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -51,6 +52,11 @@ fun ChannelStrip(
     isLive: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    // All resolved out here: `semantics {}` is not a composable scope. The band shows the position
+    // and the announcement says it, and they are deliberately not the same string — see
+    // [spokenPosition].
+    val position = position(window)
+    val description = accessibilityLabel(channel, isLive, spokenPosition(window))
     Column(
         // A lower-third sits on the lower third. The video above it stays uncovered, which is the
         // difference between a strip and a scrim.
@@ -58,12 +64,10 @@ fun ChannelStrip(
             modifier
                 .fillMaxWidth()
                 .background(SpidolaPalette.Set.copy(alpha = BAND_ALPHA))
-                .semantics(mergeDescendants = true) {
-                    contentDescription = accessibilityLabel(window, channel, isLive)
-                },
+                .semantics(mergeDescendants = true) { contentDescription = description },
     ) {
         Peek(window?.previous, edge = PeekEdge.TOP)
-        Band(channel = channel, isLive = isLive, position = position(window))
+        Band(channel = channel, isLive = isLive, position = position)
         SmpteRibbon()
         Peek(window?.next, edge = PeekEdge.BOTTOM)
     }
@@ -179,7 +183,7 @@ private fun LiveMarker() {
                     .background(SpidolaPalette.TestCardAmber, shape = CircleShape),
         )
         Text(
-            text = "LIVE",
+            text = stringResource(R.string.playback_live_marker),
             style = MaterialTheme.typography.labelMedium.copy(letterSpacing = LIVE_TRACKING),
             color = SpidolaPalette.TestCardAmber,
         )
@@ -190,22 +194,37 @@ private fun LiveMarker() {
  * Position in the ring, shown only when the ring's length is known — a search ring is paged without
  * a count, and "3 of ?" is worse than nothing.
  */
+@Composable
 private fun position(window: ZapWindow?): String? {
     val total = window?.total ?: return null
-    return "${window.offset + 1u} / $total"
+    return stringResource(R.string.playback_position, (window.offset + 1u).toInt(), total.toInt())
 }
 
+/**
+ * The same place in the ring, said rather than shown. Separate from [position] because the slash
+ * that reads well is heard as the word "slash"; the announcement says "of" instead, which is what
+ * the eye was reading off the glyph all along (PRD §6.10). tvOS's strip carries the same pair.
+ */
+@Composable
+private fun spokenPosition(window: ZapWindow?): String? {
+    val total = window?.total ?: return null
+    return stringResource(R.string.playback_position_spoken, (window.offset + 1u).toInt(), total.toInt())
+}
+
+@Composable
 private fun accessibilityLabel(
-    window: ZapWindow?,
     channel: PlayableChannel,
     isLive: Boolean,
-): String =
-    buildList {
+    position: String?,
+): String {
+    val live = stringResource(R.string.playback_live_announcement)
+    return buildList {
         add(channel.name)
         channel.group?.let(::add)
-        if (isLive) add("Live")
-        position(window)?.let(::add)
+        if (isLive) add(live)
+        position?.let(::add)
     }.joinToString(", ")
+}
 
 /** The live marker is only honest for live channels; a movie has no "LIVE", and a recent carries no
  * kind at all, so nothing is claimed without evidence. */

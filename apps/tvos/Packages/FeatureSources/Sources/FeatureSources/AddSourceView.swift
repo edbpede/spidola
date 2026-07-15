@@ -6,17 +6,28 @@ import DesignSystem
 import SwiftUI
 import core_api
 
-/// The add-source screen: choose URL or paste, enter the details, and watch a live import with a
-/// cancel button and a diagnostics summary (PRD §6.1). Xtream accounts and LAN pairing land in
-/// Phase 6.
+/// The add-source screen: choose a playlist URL, pasted text, or an Xtream account, enter the
+/// details, and watch a live import with a cancel button and a diagnostics summary (PRD §6.1).
+///
+/// It is also where a phone's pairing submission lands, pre-filled and waiting to be confirmed —
+/// the same screen and the same "Add source" button, because a submission is an input method, not
+/// a fourth kind of source.
 public struct AddSourceView: View {
   @State private var model: AddSourceModel
   private let onFinished: @MainActor () -> Void
 
   @FocusState private var focused: Field?
 
-  public init(access: any SourcesAccess, onFinished: @escaping @MainActor () -> Void) {
-    _model = State(initialValue: AddSourceModel(access: access))
+  /// - Parameter prefill: what a phone sent, if this screen was reached through pairing. Applied
+  ///   once, when the form is first built; the person at the TV confirms or edits it.
+  public init(
+    access: any SourcesAccess,
+    prefill: PairingSubmission? = nil,
+    onFinished: @escaping @MainActor () -> Void
+  ) {
+    let model = AddSourceModel(access: access)
+    if let prefill { model.prefill(from: prefill) }
+    _model = State(initialValue: model)
     self.onFinished = onFinished
   }
 
@@ -24,7 +35,7 @@ public struct AddSourceView: View {
     content
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background(SpidolaPalette.studio)
-      .navigationTitle("Add a source")
+      .navigationTitle(String(localized: "Add a source", bundle: .module))
       .onAppear { model.onFinished = onFinished }
   }
 
@@ -41,7 +52,9 @@ public struct AddSourceView: View {
         error,
         retry: { model.submit() },
         goBack: onFinished,
-        fixInput: { model.mode = model.mode })  // returns to the form (state resets on next submit)
+        // `Unauthorized` prescribes `fixInput`, and a rejected Xtream password is the likeliest
+        // failure this screen has — so "Edit" must actually put the fields back on screen.
+        fixInput: { model.returnToForm() })
     }
   }
 
@@ -51,24 +64,48 @@ public struct AddSourceView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: SpidolaSpacing.m) {
         modePicker
-        field("Name", text: $model.name, field: .name)
+        field(String(localized: "Name", bundle: .module), text: $model.name, field: .name)
         switch model.mode {
         case .url:
-          field("Playlist URL", text: $model.url, field: .url)
-          field("User agent (optional)", text: $model.userAgent, field: .userAgent)
-          Toggle("Allow self-signed certificates", isOn: $model.acceptInvalidTls)
-            .font(SpidolaType.body)
-            .foregroundStyle(SpidolaPalette.broadcastWhite)
-            .focused($focused, equals: .tls)
+          field(String(localized: "Playlist URL", bundle: .module), text: $model.url, field: .url)
+          field(
+            String(localized: "User agent (optional)", bundle: .module),
+            text: $model.userAgent, field: .userAgent)
+          Toggle(
+            String(localized: "Allow self-signed certificates", bundle: .module),
+            isOn: $model.acceptInvalidTls
+          )
+          .font(SpidolaType.body)
+          .foregroundStyle(SpidolaPalette.broadcastWhite)
+          .focused($focused, equals: .tls)
         case .file:
-          field("Paste playlist text", text: $model.pastedContent, field: .content)
+          field(
+            String(localized: "Paste playlist text", bundle: .module),
+            text: $model.pastedContent, field: .content)
+        case .xtream:
+          field(
+            String(localized: "Server address", bundle: .module),
+            text: $model.server, field: .server)
+          field(
+            String(localized: "Username", bundle: .module),
+            text: $model.username, field: .username)
+          secureField(
+            String(localized: "Password", bundle: .module),
+            text: $model.password, field: .password)
+          Text(
+            String(
+              localized: "Spidola checks these with your provider before saving them.",
+              bundle: .module)
+          )
+          .font(SpidolaType.caption)
+          .foregroundStyle(SpidolaPalette.staticGray)
         }
         if let message = model.validationMessage {
           Text(message)
             .font(SpidolaType.caption)
             .foregroundStyle(SpidolaPalette.streamRed)
         }
-        Button("Add source") { model.submit() }
+        Button(String(localized: "Add source", bundle: .module)) { model.submit() }
           .buttonStyle(.plain)
           .padding(.horizontal, SpidolaSpacing.l)
           .padding(.vertical, SpidolaSpacing.m)
@@ -116,6 +153,20 @@ public struct AddSourceView: View {
       .accessibilityIdentifier("add-source-\(field)")
   }
 
+  /// A masked field. `SecureField` is what keeps a password off a living-room screen — the one
+  /// place in this app where someone else is quite likely to be watching.
+  private func secureField(_ label: String, text: Binding<String>, field: Field) -> some View {
+    SecureField(label, text: text)
+      .textFieldStyle(.plain)
+      .font(SpidolaType.body)
+      .foregroundStyle(SpidolaPalette.broadcastWhite)
+      .padding(SpidolaSpacing.m)
+      .background(SpidolaPalette.set)
+      .focused($focused, equals: field)
+      .spidolaFocusRing(isFocused: focused == field)
+      .accessibilityIdentifier("add-source-\(field)")
+  }
+
   // MARK: - Importing / done
 
   private func importing(stage: ImportStage, channels: UInt64) -> some View {
@@ -124,7 +175,7 @@ public struct AddSourceView: View {
       Text(stageLabel(stage, channels: channels))
         .font(SpidolaType.title)
         .foregroundStyle(SpidolaPalette.broadcastWhite)
-      Button("Cancel") { model.cancel() }
+      Button(String(localized: "Cancel", bundle: .module)) { model.cancel() }
         .buttonStyle(.plain)
         .padding(.horizontal, SpidolaSpacing.l)
         .padding(.vertical, SpidolaSpacing.m)
@@ -145,15 +196,22 @@ public struct AddSourceView: View {
       Image(systemName: "checkmark.circle.fill")
         .font(.system(size: 56))
         .foregroundStyle(SpidolaPalette.streamGreen)
-      Text("Added \(outcome.inserted) channels")
+        .accessibilityHidden(true)
+      // Widened to `Int` before interpolating so the extracted keys are plain `%lld`, and
+      // pluralised through the catalog: an import of exactly one channel is ordinary, and
+      // "Added 1 channels" is the kind of seam that makes an app feel machine-made.
+      Text(String(localized: "Added \(Int(outcome.inserted)) channels", bundle: .module))
         .font(SpidolaType.title)
         .foregroundStyle(SpidolaPalette.broadcastWhite)
       if skipped > 0 {
-        Text("\(skipped) entries were skipped as unreadable.")
-          .font(SpidolaType.caption)
-          .foregroundStyle(SpidolaPalette.staticGray)
+        Text(
+          String(
+            localized: "\(Int(skipped)) entries were skipped as unreadable.", bundle: .module)
+        )
+        .font(SpidolaType.caption)
+        .foregroundStyle(SpidolaPalette.staticGray)
       }
-      Button("Done") { onFinished() }
+      Button(String(localized: "Done", bundle: .module)) { onFinished() }
         .buttonStyle(.plain)
         .padding(.horizontal, SpidolaSpacing.l)
         .padding(.vertical, SpidolaSpacing.m)
@@ -170,15 +228,17 @@ public struct AddSourceView: View {
 
   private func stageLabel(_ stage: ImportStage, channels: UInt64) -> String {
     switch stage {
-    case .connecting: "Connecting…"
-    case .downloading: "Importing… \(channels) channels"
-    case .finalizing: "Finishing up…"
-    @unknown default: "Importing…"
+    case .connecting: String(localized: "Connecting…", bundle: .module)
+    case .downloading:
+      String(localized: "Importing… \(Int(channels)) channels", bundle: .module)
+    case .finalizing: String(localized: "Finishing up…", bundle: .module)
+    @unknown default: String(localized: "Importing…", bundle: .module)
     }
   }
 
   private enum Field: Hashable {
     case mode(AddSourceMode)
     case name, url, userAgent, content, tls, submit, cancel, done
+    case server, username, password
   }
 }

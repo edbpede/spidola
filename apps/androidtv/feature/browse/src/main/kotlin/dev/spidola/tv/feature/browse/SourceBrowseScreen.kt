@@ -21,11 +21,14 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.spidola.tv.core.corekit.BrowseAccess
 import dev.spidola.tv.core.corekit.LoadState
-import dev.spidola.tv.core.corekit.label
 import dev.spidola.tv.core.designsystem.RowAccessory
 import dev.spidola.tv.core.designsystem.SpidolaPalette
 import dev.spidola.tv.core.designsystem.SpidolaRow
@@ -49,9 +52,8 @@ fun SourceBrowseScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     Box(modifier = modifier.fillMaxSize().background(SpidolaPalette.Studio)) {
         when (val current = state) {
-            LoadState.Loading -> CenteredMessage("Loading categories…")
-            LoadState.Empty ->
-                CenteredMessage("This source has no channels yet. Refresh it from the sources screen.")
+            LoadState.Loading -> CenteredMessage(stringResource(R.string.browse_source_loading))
+            LoadState.Empty -> CenteredMessage(stringResource(R.string.browse_source_empty))
             is LoadState.Failed ->
                 ActionableErrorContent(current.error, onRetry = viewModel::load, onGoBack = {})
             is LoadState.Ready -> Groups(current.value, sourceId, navigator, viewModel::selectKind)
@@ -83,32 +85,53 @@ private fun Groups(
             item { KindSelector(content, onSelectKind) }
         }
         itemsIndexed(content.groups, key = { _, group -> group.title ?: "" }) { index, group ->
-            val title = group.title ?: "Ungrouped"
+            val title = group.title ?: stringResource(R.string.browse_source_ungrouped)
+            val count = group.channelCount.toInt()
+            val channels = pluralStringResource(R.plurals.browse_source_channel_count, count, count)
             SpidolaRow(
                 title = title,
-                accessory = RowAccessory.Label(group.channelCount.toString()),
+                accessory = RowAccessory.Label(count.toString()),
                 onClick = { navigator.openChannels(sourceId, content.kind, group.title, title) },
                 modifier =
                     Modifier
-                        .testTag("group-$title")
+                        // Read out, the accessory's numeral is a number with nothing attached to it —
+                        // "News, 40". Naming the count as the row's state is what makes it forty
+                        // channels rather than forty of something the viewer has to guess (PRD §6.10).
+                        .semantics { stateDescription = channels }
+                        // The tag names the group in English even when the row does not: a test id
+                        // that moves with the display language is a test id that fails in Danish.
+                        .testTag("group-${group.title ?: UNGROUPED_TAG}")
                         .then(if (index == 0) Modifier.focusRequester(firstGroup) else Modifier),
             )
         }
     }
 }
 
+/** The English stand-in a group with no title carries in test ids, pinned against translation. */
+private const val UNGROUPED_TAG = "Ungrouped"
+
 @Composable
 private fun KindSelector(
     content: SourceBrowseContent,
     onSelectKind: (MediaKind) -> Unit,
 ) {
+    val selected = stringResource(R.string.browse_source_kind_selected)
     Row(horizontalArrangement = Arrangement.spacedBy(SpidolaSpacing.m)) {
         content.kinds.forEach { kind ->
+            val isSelected = kind == content.kind
             SpidolaRow(
-                title = kind.label,
-                accessory = if (kind == content.kind) RowAccessory.Star else RowAccessory.None,
+                title = kind.label(),
+                accessory = if (isSelected) RowAccessory.Star else RowAccessory.None,
                 onClick = { onSelectKind(kind) },
-                modifier = Modifier.padding(bottom = SpidolaSpacing.s),
+                modifier =
+                    Modifier
+                        .padding(bottom = SpidolaSpacing.s)
+                        // The star here means "showing", not "favorite", which is why the row says so
+                        // and the glyph doesn't. The unstarred kinds stay quiet: they are the two or
+                        // three alternatives sitting in plain view beside the one that is on.
+                        .then(
+                            if (isSelected) Modifier.semantics { stateDescription = selected } else Modifier,
+                        ),
             )
         }
     }

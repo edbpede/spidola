@@ -335,8 +335,11 @@ dependencies = [
  "core-db",
  "core-fetch",
  "core-model",
+ "core-pair",
  "core-parse",
  "core-search",
+ "core-xtream",
+ "rand 0.9.5",
  "tempfile",
  "thiserror",
  "tokio",
@@ -399,6 +402,13 @@ dependencies = [
 [[package]]
 name = "core-pair"
 version = "0.0.0"
+dependencies = [
+ "core-model",
+ "rand 0.9.5",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
 
 [[package]]
 name = "core-parse"
@@ -426,6 +436,16 @@ dependencies = [
 [[package]]
 name = "core-xtream"
 version = "0.0.0"
+dependencies = [
+ "core-fetch",
+ "core-model",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "url",
+]
 
 [[package]]
 name = "cpufeatures"

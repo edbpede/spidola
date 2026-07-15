@@ -207,21 +207,128 @@ coherently in each platform's tooling. Physical-device validation is deferred an
 
 ## Phase 6 — Xtream, pairing, settings, accessibility (completing P0)
 
-- [ ] **`core-xtream`**
-  - [ ] Auth handshake; live/VOD/series catalogs; series → seasons/episodes expansion; defensive wire deserialization
-  - [ ] Centralized, audited stream-URL credential embedding; scrubbed fixture corpus + stub-server tests
-  - [ ] Secrets flow: credentials via host-secrets callback only; DB stores opaque keys (verified by test inspecting the DB file)
-- [ ] **Xtream in the apps** — add-account flow, series browsing UI, per-source refresh semantics, 401-renewal error path
-- [ ] **`core-pair` + pairing UX**
-  - [ ] LAN-only server, alive only while its screen is visible; session-random token; single static form + single POST shape
-  - [ ] AGPL §13 source link on every served page
-  - [ ] TV screen with QR + URL + token; submission lands as a pre-filled add-source flow
-- [ ] **Settings (full PRD §6.9 surface)**
-  - [ ] All settings wired through the core SettingsService; defaults verified ("usable without opening settings" walkthrough)
-  - [ ] Diagnostics screen: log level (runtime tracing filter), log export (ring buffer, redaction test on export output), versions incl. core git revision
-- [ ] **Accessibility + localization baseline**
-  - [ ] VoiceOver / TalkBack pass over every focusable element; reduce-motion honored; contrast audit against tokens
-  - [ ] String extraction complete; localization infrastructure live; English strings copy-edited per PRD §8.6 voice
+- [x] **`core-xtream`**
+  - [x] Auth handshake; live/VOD/series catalogs; series → seasons/episodes expansion; defensive wire deserialization
+  - [x] Centralized, audited stream-URL credential embedding; scrubbed fixture corpus + stub-server tests
+  - [x] Secrets flow: credentials via host-secrets callback only; DB stores opaque keys (verified by test inspecting the DB file)
+    - Catalogs persist a **credential-free** locator; the password is embedded only at play time,
+      in `core-xtream/src/urls.rs` (the audited point). Xtream buffers each listing whole rather
+      than streaming — the protocol returns one unpaginated JSON array per listing, so there is
+      nothing to stream; bounded by a 64 MiB cap. Revisit against the low-end baseline in Phase 7.
+- [x] **Xtream in the apps** — add-account flow, series browsing UI, per-source refresh semantics, 401-renewal error path
+  - `SourceService::add_xtream` **verifies the account before storing it**, so a wrong password is a
+    sentence on the add screen rather than a mystery on the next refresh; the 401-renewal path is
+    the same `Unauthorized` variant with the same prescribed action (re-enter credentials)
+  - **Series browsing needed no code**: episodes arrive as channels with `MediaKind::SeriesEpisode`
+    and `core-xtream` writes the show name into `group_title`, so the existing
+    source → kind → group → channel drill-down already reads source → Series → show → episodes
+  - **Play-time resolution was the missing keel**: nothing called `resolve_stream`, so an Xtream
+    channel imported, browsed and favorited perfectly and then could not play — the catalog stores
+    a credential-free locator by design. Both shells now resolve immediately before handing a
+    stream to an engine (per play, never cached), kind-agnostic so the zap path never branches
+- [x] **`core-pair` + pairing UX**
+  - [x] LAN-only server, alive only while its screen is visible; session-random token; single static form + single POST shape
+    - Locality is enforced as a **peer check** (private / link-local / loopback), not merely a bind
+  - [x] AGPL §13 source link on every served page
+    - One shared page shell ends in a quiet colophon, so a page cannot be served without the
+      offer; a test enumerates every renderable page and asserts it
+  - [x] TV screen with QR + URL + token; submission lands as a pre-filled add-source flow
+    - **Each shell supplies the TV's LAN address itself** (`NWInterface` on tvOS,
+      `NetworkInterface` on Android — not `WifiManager`, which is Wi-Fi-only and deprecated from
+      API 31). The core's own inference reads the route out of the host, which a full-tunnel VPN
+      defeats; both shells prefer `eth*`/`wlan*` so a tunnel cannot win
+    - **The submission never travels on the Android back stack**: `rememberNavBackStack` is
+      serialized into saved instance state, so a payload there would have written an Xtream
+      password to disk. It goes through a one-slot in-memory handoff whose `take()` empties it, so
+      a submission pre-fills exactly once; the password field is `remember`, not `rememberSaveable`
+    - QR is `zxing` on Android and CoreImage's built-in `CIQRCodeGenerator` on tvOS — an
+      implementation asymmetry, not a §7 divergence, since both shells show one. The Android test
+      renders the matrix to pixels and decodes it with a real reader: a matrix of the right shape
+      that no camera can read would pass every structural check
+- [x] **Settings (full PRD §6.9 surface)**
+  - [x] All settings wired through the core SettingsService; defaults verified ("usable without opening settings" walkthrough)
+    - The typed vocabulary + defaults (`core-api/src/settings.rs`) replace Phase 2's opaque
+      key/value FFI surface, so a shell cannot invent an untyped setting; a contract test asserts a
+      fresh install resolves every setting with no stored row. Both shells render the same IA: a
+      grouped `SpidolaRow` list showing each setting's current value, with nine closed-set settings
+      routing through one reusable picker that hands back a **typed** value
+    - The **EPG window is deliberately not surfaced**: it is in the core vocabulary because §6.9
+      lists it, but ingest is Phase 8 and a control that does nothing is a UX bug
+  - [x] Diagnostics screen: log level (runtime tracing filter), log export (ring buffer, redaction test on export output), versions incl. core git revision
+    - `set_log_level` persists **and** applies the live filter (and is re-applied at startup),
+      `export_logs` snapshots the ring, the handshake reports the core git revision. Redaction on
+      export is asserted end-to-end against a headend that mirrors the password back. "Export" is an
+      on-screen viewer on both platforms — tvOS has no user-visible file system, and parity is the
+      default (PRD §7)
+- [x] **Accessibility + localization baseline**
+  - [x] VoiceOver / TalkBack pass over every focusable element; reduce-motion honored; contrast audit against tokens
+    - **Reduce-motion is done and was a real bug**: `SpidolaFocusRing` (tvOS) and `SpidolaFocus`
+      (Android) both animated the focus lift unconditionally, so every focusable surface in the app
+      moved even with animations switched off — older than this phase, and failing the P0 bar for
+      every slice. Fixed in the shared token on both platforms (only the movement goes; the amber
+      border stays, since an invisible focus ring is the worse failure). Android's comment showed
+      the misconception outright — "kept under the reduce-motion-safe ceiling (< 200 ms)" conflates
+      duration with suppression
+    - **State is announced as state, not as part of the name**: the sweep over browse, search, and
+      playback follows the idiom the settings slices established — `.accessibilityLabel` +
+      `.accessibilityValue` on tvOS, `stateDescription` on Android — because a row that reads
+      "Recents, On" as one blob is not what a VoiceOver or TalkBack user expects to hear. The
+      favorite/hide and filter-chip surfaces announce their *current* state rather than only the
+      verb that would change it. Decorative glyphs (`★`, `✓`, `▲▼`) are cleared from the
+      accessibility tree: they are ornament, and a screen reader spelling them out is noise
+    - **The contrast audit found a real failure, and this is why it was worth running.** The palette
+      was expected to pass everywhere; every pair listed in PRD §8.2 does. But Stream Red — the one
+      semantic color that carries *prose* (the add-source validation message on both shells, and
+      Material's `error` role on Android) — was `#C0554E` and reached only **4.05:1** on Studio and
+      **3.58:1** on Set against the 4.5:1 floor for body text. §8.2 pins hexes for its five named
+      values and asks only for a *muted red in the same tonal family*, so the hex was ours: it is
+      now `#C96E69`, same hue and saturation, lightness 53% → 60%, at **5.16:1** and **4.56:1**.
+      Recorded in TECH_SPEC §14 with the rejected alternatives. Full table, all passing:
+
+      | fg | bg | ratio | needs |
+      |---|---|---|---|
+      | Broadcast White | Studio | 15.91:1 | 4.5:1 |
+      | Broadcast White | Set | 14.06:1 | 4.5:1 |
+      | Static | Studio | 5.98:1 | 4.5:1 |
+      | Static | Set | 5.28:1 | 4.5:1 |
+      | Studio | Test-Card Amber | 8.43:1 | 4.5:1 |
+      | Test-Card Amber | Studio | 8.43:1 | 3:1 (non-text) |
+      | Test-Card Amber | Set | 7.45:1 | 3:1 (non-text) |
+      | Stream Red | Studio | 5.16:1 | 4.5:1 |
+      | Stream Red | Set | 4.56:1 | 4.5:1 |
+      | Stream Green | Studio | 6.21:1 | 3:1 (icon) |
+
+    - **Focus behaviour remains inspection-verified, deliberately.** The labels are a code pass
+      against established idioms; a per-feature-module instrumentation harness that could assert
+      focus *restoration* is Phase-7-sized and is not in this phase. The existing XCUITest smoke
+      and the Android smoke test stay as they are, and this note says so rather than letting the
+      tick imply coverage that does not exist
+  - [x] String extraction complete; localization infrastructure live; English strings copy-edited per PRD §8.6 voice
+    - **Infrastructure is live on both** (`Localizable.xcstrings`, `strings.xml`), English-first, and
+      the sweep now covers every slice: tvOS `FeatureSources`, `FeatureBrowse`, `FeaturePlayback`,
+      `FeatureSearch`, and the two interpolation formats in `DesignSystem` (localized as *formats*,
+      so word order can vary by language); Android `feature:browse`, `feature:playback`,
+      `feature:search`. Counts pluralize through the catalogs rather than through concatenation.
+      Enum labels reaching UI resolve through feature-side `@Composable` resolvers, so no resource
+      landed in corekit or player-contract
+    - **`defaultLocalization` is the silent-echo trap**: a Swift package without it compiles, runs,
+      and shows the key instead of the string. Every newly-resourced package carries it
+    - **Three view-model channels are deliberately left in English** and are not a sweep:
+      `AddSourceViewModel.validation`, `SourcesViewModel.status`, and `ChannelDetailViewModel.notice`
+      (found during this pass, same shape as the two already recorded) carry sentences, and some
+      interpolate, so resourcing them means restructuring a view-model API to carry resource ids
+      plus args — a design change, decided separately
+    - **`ActionableError` cannot be localized by a sweep, and this is the reason:**
+      `ApiError::InvalidInput` carries `reason: String` — **English prose generated in Rust** — which
+      the shells put straight into the message. Resourcing the shell wrappers would localize every
+      arm *except the one that varies*, which is worse than not doing it, because it would look
+      done. Fully localizing means the core returns an **error code plus structured data** and the
+      shell renders the sentence: a TECH_SPEC §5 boundary change across both shells, three slices
+      each, and the core's taxonomy. **That question is now answered — the shells own the
+      vocabulary (TECH_SPEC §14) — and the implementation is a scoped follow-up, not this PR.** The
+      *entire* surface stays unextracted meanwhile (failureClass, message, and the "Try again" /
+      "Go back" / "Edit" action labels), so the one place visible English remains is deliberate and
+      reads as pending work rather than as an oversight
 
 **Exit criteria:** all PRD P0 features function on both platforms; secrets provably never touch SQLite or logs; the app passes a full screen-reader walkthrough.
 
@@ -234,6 +341,14 @@ coherently in each platform's tooling. Physical-device validation is deferred an
 - [ ] **Release engineering**
   - [ ] Signed store pipelines; Android direct-release fat APK with checksums attached to GitHub releases
   - [ ] Third-party notices generated into About; final cargo-deny/REUSE audit; LGPL build flags for mpv/FFmpeg committed and verified
+  - [ ] **Close the license-gate gap: cargo-deny only audits the Rust graph.** The JVM/Gradle graph
+        (Media3, Compose, Hilt, JNA, zxing) and the SPM graph (MPVKit) have no automated license
+        gate — `android.yml` and `apple.yml` run no license step at all, so `deny.toml`'s allow-list
+        has never applied to them and a shell dependency's license is a reviewer's job. Found in
+        Phase 6 when zxing was added and `cargo deny check` was (wrongly) treated as evidence about
+        it. Add an allow-list-or-fail gate per graph — `app.cash.licensee` is the Gradle analogue —
+        so "all bundled components must be AGPL-compatible" (PRD §10) is enforced rather than
+        asserted (TECH_SPEC §12)
   - [ ] Conventional-commit changelog generation
 - [ ] **Store submission (PRD §10 posture)**
   - [ ] Reserve the app name in App Store Connect (create the app record) — the definitive "Spidola" availability test (PRD §13); maintainer action

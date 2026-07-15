@@ -3,6 +3,7 @@
 
 package dev.spidola.tv.feature.sources
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -29,12 +30,12 @@ import uniffi.core_api.Source
 /** An auto-refresh interval offered in the sources UI (PRD §6.1 per-source auto-refresh). */
 enum class AutoRefreshOption(
     val seconds: UInt?,
-    val label: String,
+    @param:StringRes val label: Int,
 ) {
-    OFF(null, "Manual only"),
-    HOURLY(3600u, "Every hour"),
-    SIX_HOURLY(21_600u, "Every 6 hours"),
-    DAILY(86_400u, "Every day"),
+    OFF(null, R.string.auto_refresh_off),
+    HOURLY(3600u, R.string.auto_refresh_hourly),
+    SIX_HOURLY(21_600u, R.string.auto_refresh_six_hourly),
+    DAILY(86_400u, R.string.auto_refresh_daily),
     ;
 
     /** The next option in the cycle, so a single click steps through the intervals. */

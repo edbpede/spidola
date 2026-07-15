@@ -172,5 +172,30 @@ data object SearchRoute : NavKey
 @Serializable
 data object ManageSourcesRoute : NavKey
 
+/**
+ * The add-source form. Carries no payload on purpose: what a phone submits over pairing includes an
+ * Xtream password, and this back stack is serialized into saved instance state — a payload here
+ * would write that credential to disk. The submission travels in memory instead
+ * (`PairingHandoff`, TECH_SPEC §12).
+ */
 @Serializable
 data object AddSourceRoute : NavKey
+
+@Serializable
+data object PairingRoute : NavKey
+
+@Serializable
+data object SettingsRoute : NavKey
+
+/**
+ * The option list for one setting (PRD §6.9). The picker travels as its enum name, like every other
+ * enum in this file, so the whole back stack restores across process death without a custom
+ * serializer.
+ */
+@Serializable
+data class SettingsPickerRoute(
+    val pickerName: String,
+) : NavKey
+
+@Serializable
+data object DiagnosticsRoute : NavKey

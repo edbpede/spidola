@@ -34,6 +34,9 @@ android {
 
     buildFeatures {
         compose = true
+        // The diagnostics screen names this build's version; the composition root is the only
+        // module that may read it (TECH_SPEC §3.1) and hands it down.
+        buildConfig = true
     }
 
     compileOptions {
@@ -61,6 +64,7 @@ dependencies {
     implementation(project(":feature:browse"))
     implementation(project(":feature:playback"))
     implementation(project(":feature:search"))
+    implementation(project(":feature:settings"))
     implementation(project(":feature:sources"))
 
     // The composition root is the only module that may name engines (TECH_SPEC §3.1): it builds the

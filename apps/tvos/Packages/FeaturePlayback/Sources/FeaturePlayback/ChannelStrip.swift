@@ -35,6 +35,7 @@ struct ChannelStrip: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .accessibilityElement(children: .combine)
     .accessibilityLabel(accessibilityLabel)
+    .accessibilityValue(accessibilityValue)
   }
 
   /// The band: logo, name, and the live marker. Now/next EPG joins it in Phase 8 — the row is laid
@@ -87,9 +88,24 @@ struct ChannelStrip: View {
 
   /// Position in the ring, shown only when the ring's length is known — a search ring is paged
   /// without a count, and "3 of ?" is worse than nothing.
+  ///
+  /// Widened to `Int` before interpolating so the extracted key is a plain `%lld / %lld`. Android's
+  /// own strip shows it as a `%1$d / %2$d` resource, so the two screens count the same by
+  /// construction.
   private var position: String? {
     guard let window, let total = window.total else { return nil }
-    return "\(window.offset + 1) / \(total)"
+    return String(localized: "\(Int(window.offset) + 1) / \(Int(total))", bundle: .module)
+  }
+
+  /// The same count, said rather than shown — and it has to be a different sentence, because a
+  /// slash is a shape and not a word. Read out, `3 / 12` is "3 slash 12", which is not how anyone
+  /// says where they are in a list; the eye takes the separator as "of" and the ear cannot. So the
+  /// glyph stays where it reads well and the word goes where it is heard, which is the whole reason
+  /// a value is a separate thing from what is drawn (PRD §6.10). Android's strip carries the same
+  /// pair for the same reason, so the shells still say the same thing.
+  private var spokenPosition: String? {
+    guard let window, let total = window.total else { return nil }
+    return String(localized: "\(Int(window.offset) + 1) of \(Int(total))", bundle: .module)
   }
 
   private func positionLabel(_ text: String) -> some View {
@@ -98,11 +114,20 @@ struct ChannelStrip: View {
       .foregroundStyle(SpidolaPalette.staticGray)
   }
 
+  /// The strip is named by the channel it is tuned to; that the channel is live and where it sits
+  /// in the ring are the tuner's state, not part of its name. Said as one phrase, "BBC One, News,
+  /// Live, 3 / 12" gives a listener nothing to tell the channel's own words from the strip's
+  /// reading of them — the split is what makes the name announce as a name (PRD §6.10).
   private var accessibilityLabel: String {
     var parts = [channel.name]
     if let group = channel.group { parts.append(group) }
-    if isLive { parts.append("Live") }
-    if let position { parts.append(position) }
+    return parts.joined(separator: ", ")
+  }
+
+  private var accessibilityValue: String {
+    var parts: [String] = []
+    if isLive { parts.append(String(localized: "Live", bundle: .module)) }
+    if let spokenPosition { parts.append(spokenPosition) }
     return parts.joined(separator: ", ")
   }
 
@@ -119,7 +144,7 @@ struct LiveMarker: View {
       Circle()
         .fill(SpidolaPalette.testCardAmber)
         .frame(width: Self.dot, height: Self.dot)
-      Text("LIVE")
+      Text(String(localized: "LIVE", bundle: .module))
         .font(SpidolaType.caption)
         .tracking(Self.tracking)
         .foregroundStyle(SpidolaPalette.testCardAmber)

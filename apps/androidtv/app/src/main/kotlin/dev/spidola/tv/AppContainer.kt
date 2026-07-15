@@ -9,6 +9,7 @@ import dev.spidola.tv.core.corekit.SpidolaCore
 import dev.spidola.tv.core.corekit.SpidolaLogSink
 import dev.spidola.tv.core.playercontract.EngineId
 import dev.spidola.tv.core.playercontract.EngineRegistry
+import dev.spidola.tv.feature.sources.PairingHandoff
 import dev.spidola.tv.player.engineexo.ExoEngine
 import dev.spidola.tv.player.enginempv.MpvEngine
 
@@ -46,6 +47,13 @@ class AppContainer(context: Context) {
                     EngineId.MPV to { MpvEngine() },
                 ),
         )
+
+    /**
+     * Carries a pairing submission from the pairing screen to the add-source form. Owned here
+     * because both screens need the same instance and it must outlive neither — it is in-memory
+     * precisely so an Xtream password never reaches disk (TECH_SPEC §12).
+     */
+    val pairingHandoff: PairingHandoff = PairingHandoff()
 
     val fixtureSeeder: FixtureSeeder = FixtureSeeder(core)
 }

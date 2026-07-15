@@ -5,11 +5,8 @@ package dev.spidola.tv.feature.sources
 
 import dev.spidola.tv.core.corekit.ImportEvent
 import dev.spidola.tv.core.corekit.LoadState
-import dev.spidola.tv.core.corekit.SourcesAccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -23,8 +20,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import uniffi.core_api.ApiException
 import uniffi.core_api.ImportOutcome
-import uniffi.core_api.ImportProgress
-import uniffi.core_api.ImportStage
 import uniffi.core_api.Source
 import uniffi.core_api.SourceCommon
 
@@ -156,74 +151,4 @@ class SourcesViewModelTest {
             userAgent = null,
             acceptInvalidTls = false,
         )
-}
-
-/** A fake [SourcesAccess]: records mutations and replays a scripted import terminal event. */
-private class FakeSourcesAccess(
-    private val sources: List<Source> = emptyList(),
-    private val importResult: ImportEvent =
-        ImportEvent.Complete(
-            ImportOutcome(inserted = 0uL, duplicatesDropped = 0uL, emitted = 0uL, skipped = 0uL, invalid = 0uL),
-        ),
-) : SourcesAccess {
-    var lastEnabled: Pair<Long, Boolean>? = null
-        private set
-    val deletedIds = mutableListOf<Long>()
-    private var nextId = 100L
-
-    override suspend fun sources(): List<Source> = sources
-
-    override suspend fun addM3uUrl(
-        name: String,
-        url: String,
-        userAgent: String?,
-        acceptInvalidTls: Boolean,
-    ): Source =
-        Source.M3uUrl(
-            id = nextId++,
-            common = SourceCommon(name = name, enabled = true, autoRefreshSecs = null),
-            url = url,
-            userAgent = userAgent,
-            acceptInvalidTls = acceptInvalidTls,
-        )
-
-    override suspend fun addM3uFile(name: String): Source =
-        Source.M3uFile(
-            id = nextId++,
-            common = SourceCommon(name = name, enabled = true, autoRefreshSecs = null),
-        )
-
-    override suspend fun rename(
-        id: Long,
-        name: String,
-    ) = Unit
-
-    override suspend fun setEnabled(
-        id: Long,
-        enabled: Boolean,
-    ) {
-        lastEnabled = id to enabled
-    }
-
-    override suspend fun setAutoRefresh(
-        id: Long,
-        secs: UInt?,
-    ) = Unit
-
-    override suspend fun deleteSource(id: Long) {
-        deletedIds.add(id)
-    }
-
-    override fun importUrl(id: Long): Flow<ImportEvent> = scripted()
-
-    override fun importContent(
-        id: Long,
-        content: String,
-    ): Flow<ImportEvent> = scripted()
-
-    private fun scripted(): Flow<ImportEvent> =
-        flow {
-            emit(ImportEvent.Progress(ImportProgress(stage = ImportStage.DOWNLOADING, channelsSeen = 1uL)))
-            emit(importResult)
-        }
 }

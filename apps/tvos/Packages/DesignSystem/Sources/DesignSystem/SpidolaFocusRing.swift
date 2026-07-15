@@ -14,6 +14,12 @@ public struct SpidolaFocusRing: ViewModifier {
   private let borderWidth: CGFloat = 3
   private let focusedScale: CGFloat = 1.05
 
+  /// Honoured here rather than at each call site because this modifier *is* the app's focus
+  /// motion: every focusable surface wears it, so reading the setting once is what makes
+  /// "all motion suppressed under reduce-motion" (PRD §8.6, §6.10) true everywhere at once
+  /// instead of true wherever someone remembered.
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
   public init(isFocused: Bool) {
     self.isFocused = isFocused
   }
@@ -24,8 +30,11 @@ public struct SpidolaFocusRing: ViewModifier {
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
           .strokeBorder(SpidolaPalette.testCardAmber, lineWidth: isFocused ? borderWidth : 0)
       )
-      .scaleEffect(isFocused ? focusedScale : 1)
-      .animation(.easeOut(duration: 0.15), value: isFocused)
+      // The amber border stays under reduce-motion; only the movement goes. Focus must remain
+      // unmistakable (PRD §8.4) — suppressing the scale is not the same as hiding the ring, and a
+      // viewer who turned motion off still has to see where they are.
+      .scaleEffect(reduceMotion ? 1 : (isFocused ? focusedScale : 1))
+      .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: isFocused)
   }
 }
 

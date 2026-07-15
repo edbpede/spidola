@@ -20,6 +20,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -80,19 +83,50 @@ fun ChannelDetailScreen(
                 color = SpidolaPalette.Static,
             )
             SpidolaRow(
-                title = "Play",
+                title = stringResource(R.string.browse_detail_play),
                 onClick = onPlay,
                 modifier = Modifier.focusRequester(playFocus).testTag("detail-play"),
             )
+            // Both rows label themselves with the verb, so on their own they leave the current state
+            // to be inferred from it — and "Remove favorite" is a slower way to learn "Favorite" than
+            // being told. Naming the state separately keeps the label about the press (PRD §6.10).
+            val favoriteState =
+                stringResource(
+                    if (state.isFavorite) {
+                        R.string.browse_detail_favorite_state
+                    } else {
+                        R.string.browse_detail_not_favorite_state
+                    },
+                )
             SpidolaRow(
-                title = if (state.isFavorite) "Remove favorite" else "Add favorite",
+                title =
+                    stringResource(
+                        if (state.isFavorite) {
+                            R.string.browse_detail_remove_favorite
+                        } else {
+                            R.string.browse_detail_add_favorite
+                        },
+                    ),
                 onClick = viewModel::toggleFavorite,
-                modifier = Modifier.testTag("detail-favorite"),
+                modifier =
+                    Modifier
+                        .semantics { stateDescription = favoriteState }
+                        .testTag("detail-favorite"),
             )
+            val hiddenState =
+                stringResource(
+                    if (state.isHidden) R.string.browse_detail_hidden_state else R.string.browse_detail_visible_state,
+                )
             SpidolaRow(
-                title = if (state.isHidden) "Unhide" else "Hide",
+                title =
+                    stringResource(
+                        if (state.isHidden) R.string.browse_detail_show else R.string.browse_detail_hide,
+                    ),
                 onClick = viewModel::toggleHidden,
-                modifier = Modifier.testTag("detail-hide"),
+                modifier =
+                    Modifier
+                        .semantics { stateDescription = hiddenState }
+                        .testTag("detail-hide"),
             )
             state.notice?.let {
                 Text(text = it, style = MaterialTheme.typography.labelMedium, color = SpidolaPalette.TestCardAmber)

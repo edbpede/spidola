@@ -347,16 +347,6 @@ impl From<DomainHistory> for Recent {
     }
 }
 
-/// One stored setting as an opaque key/value pair. The typed settings surface and defaults
-/// land in Phase 6; the boundary exposes the raw store today.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct SettingEntry {
-    /// Opaque setting key.
-    pub key: String,
-    /// Stored value.
-    pub value: String,
-}
-
 /// A convenience for turning the storage `i64` a shell holds back into an identity.
 #[must_use]
 pub(crate) fn identity_from_storage(value: i64) -> ChannelIdentity {

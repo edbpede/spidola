@@ -17,15 +17,16 @@
 use std::fmt::Write as _;
 use std::io::{Read, Write};
 use std::net::TcpListener;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{Sender, channel};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use std::time::Duration;
 
 use core_api::{
-    ApiError, Core, CoreConfig, ImportListener, ImportOutcome, ImportProgress, LogRecord, LogSink,
-    SecretStore, Source,
+    ApiError, AppSettings, BufferingProfile, Core, CoreConfig, ImportListener, ImportOutcome,
+    ImportProgress, LogLevel, LogRecord, LogSink, PairingListener, PairingSubmission, SecretStore,
+    Source, SubtitleSize,
 };
 use tokio::runtime::Runtime;
 
@@ -42,9 +43,18 @@ fn serial() -> MutexGuard<'static, ()> {
 // -- Host callback fakes -----------------------------------------------------------------
 
 /// A host secret store backed by an in-memory map (stands in for Keychain / Keystore).
-#[derive(Default)]
+///
+/// Shares its map behind an `Arc` so a test can hold one handle while the `Core` owns another —
+/// which is what lets the secrets tests below assert on what the host was actually asked to
+/// store, rather than trusting the core's word for it.
+///
+/// A real Keychain can say no — the device is locked, an entitlement is wrong — and the orders
+/// the credential paths are written in are only observable when it does. `refuse_deletes` is how
+/// a test asks for that no.
+#[derive(Clone, Default)]
 struct FakeSecrets {
-    store: Mutex<std::collections::HashMap<String, String>>,
+    store: Arc<Mutex<std::collections::HashMap<String, String>>>,
+    refuse_deletes: Arc<AtomicBool>,
 }
 
 impl SecretStore for FakeSecrets {
@@ -56,8 +66,39 @@ impl SecretStore for FakeSecrets {
         Ok(())
     }
     fn delete(&self, key: String) -> Result<(), ApiError> {
+        if self.refuse_deletes.load(Ordering::SeqCst) {
+            return Err(ApiError::Internal);
+        }
         self.store.lock().unwrap().remove(&key);
         Ok(())
+    }
+}
+
+/// Makes every subsequent `sources` insert on the database at `db_path` fail.
+///
+/// Installed over a second handle to the same file, because the boundary is typed all the way
+/// down: it offers no way to ask for one write to fail and the rest to work, and the paths that
+/// matter here are the ones that run when a write does. SQLite keeps the trigger in the schema,
+/// so the `Core`'s own connections meet it on their next insert without knowing this happened.
+fn refuse_source_inserts(db_path: &std::path::Path) {
+    let db = core_db::Db::open(db_path).expect("a second handle to the same database");
+    db.writer()
+        .execute_batch(
+            "CREATE TRIGGER refuse_sources BEFORE INSERT ON sources \
+             BEGIN SELECT RAISE(ABORT, 'the disk said no'); END",
+        )
+        .expect("the trigger installs");
+}
+
+/// A pairing listener recording what the phone submitted.
+#[derive(Clone, Default)]
+struct RecordingPairingListener {
+    seen: Arc<Mutex<Vec<PairingSubmission>>>,
+}
+
+impl PairingListener for RecordingPairingListener {
+    fn on_submission(&self, submission: PairingSubmission) {
+        self.seen.lock().unwrap().push(submission);
     }
 }
 
@@ -144,6 +185,51 @@ fn serve(socket: &mut std::net::TcpStream, body: &[u8], chunk: usize, delay: Dur
     }
 }
 
+/// Serves a minimal but believable Xtream `player_api.php` from `127.0.0.1`, for `connections`
+/// requests. Answers the handshake with an active account and every listing with an empty array,
+/// which is all `add_xtream` needs: it authenticates and stores, and never lists.
+///
+/// Deliberately echoes the submitted credentials back inside `user_info`, exactly as real panels
+/// do — that is the trap `secrets_never_reach_sqlite_or_the_log_stream` is set to catch.
+fn spawn_xtream_stub(connections: usize) -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    thread::spawn(move || {
+        for _ in 0..connections {
+            let Ok((mut socket, _)) = listener.accept() else {
+                break;
+            };
+            let mut scratch = [0_u8; 4096];
+            let read = socket.read(&mut scratch).unwrap_or(0);
+            let request = String::from_utf8_lossy(&scratch[..read]).into_owned();
+            // The credentials are in the request path (Xtream puts them in the URL); reflect them
+            // back the way a real headend does.
+            let body = if request.contains("action=") {
+                "[]".to_owned()
+            } else {
+                format!(
+                    "{{\"user_info\":{{\"auth\":1,\"status\":\"Active\",\"username\":\"{XTREAM_USER}\",\
+                     \"password\":\"{XTREAM_PASSWORD}\",\"max_connections\":\"2\"}},\
+                     \"server_info\":{{\"url\":\"host.example\"}}}}"
+                )
+            };
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            let _ = socket.write_all(response.as_bytes());
+            let _ = socket.flush();
+        }
+    });
+    base
+}
+
+/// The account this suite adds. The password is distinctive so a substring search over the
+/// database file and the log export cannot produce a false negative.
+const XTREAM_USER: &str = "contract-user";
+const XTREAM_PASSWORD: &str = "Sp1dola-Contract-Passphrase-8f3ac1";
+
 /// A synthetic M3U with `count` uniquely-identified channels.
 fn playlist(count: usize) -> Vec<u8> {
     let mut out = String::from("#EXTM3U\n");
@@ -168,24 +254,50 @@ fn build_core(rt: &Runtime) -> Harness {
     let dir = tempfile::tempdir().unwrap();
     let db_path = dir.path().join("spidola.sqlite");
     let sink = RecordingSink::default();
-    let config = CoreConfig {
-        db_path: db_path.to_string_lossy().into_owned(),
-        log_directives: "debug".to_owned(),
-    };
-    let core = rt
-        .block_on(async {
-            Core::new(
-                config,
-                Box::new(FakeSecrets::default()),
-                Box::new(sink.clone()),
-            )
-        })
-        .expect("core initializes");
+    let core = open_core(rt, &db_path, sink.clone(), FakeSecrets::default());
     Harness {
         core,
         sink,
         _db: dir,
     }
+}
+
+/// Opens a `Core` over an explicit database path and host stores, so a test can close one and
+/// reopen another on the same file — the "restart the app" shape — or keep a handle on what the
+/// host was asked to store. A `Core` is single-per-process (it owns the host-sink slot), so the
+/// previous one must be dropped first.
+fn open_core(
+    rt: &Runtime,
+    db_path: &std::path::Path,
+    sink: RecordingSink,
+    secrets: FakeSecrets,
+) -> Arc<Core> {
+    let config = CoreConfig {
+        db_path: db_path.to_string_lossy().into_owned(),
+        log_directives: "debug".to_owned(),
+    };
+    rt.block_on(async { Core::new(config, Box::new(secrets), Box::new(sink)) })
+        .expect("core initializes")
+}
+
+/// Every byte the core wrote to disk for this database: the main file plus SQLite's `-wal` and
+/// `-shm` companions. Scanning only the `.sqlite` file would be a false negative under WAL mode,
+/// where a recent write still lives in the log.
+fn everything_on_disk(dir: &std::path::Path) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    for entry in std::fs::read_dir(dir).expect("the database directory is readable") {
+        let path = entry.expect("a readable entry").path();
+        if path.is_file() {
+            bytes.extend(std::fs::read(&path).expect("a readable file"));
+        }
+    }
+    bytes
+}
+
+/// Whether `haystack` contains `needle` anywhere — a byte-level substring search, so it finds a
+/// credential regardless of how SQLite framed the page it landed on.
+fn contains_bytes(haystack: &[u8], needle: &[u8]) -> bool {
+    haystack.windows(needle.len()).any(|w| w == needle)
 }
 
 /// Runs `body` with a panic hook that counts any panic (including from spawned core tasks) so a
@@ -365,6 +477,804 @@ fn boundary_failures_map_to_actionable_errors() {
         matches!(terminal, Terminal::Failed(ApiError::NotFound)),
         "expected NotFound, got {terminal:?}"
     );
+}
+
+#[test]
+fn the_handshake_names_the_exact_core_build() {
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let handshake = harness.core.handshake();
+    assert!(!handshake.core_version.is_empty());
+    assert!(handshake.schema_version > 0);
+    assert_eq!(handshake.boundary_version, core_api::BOUNDARY_VERSION);
+    // The diagnostics screen shows this so a support thread can name the build (PRD §6.9). It is
+    // "unknown" only where git metadata is genuinely absent — never empty, never a panic.
+    assert!(
+        !handshake.core_git_revision.is_empty(),
+        "the git revision must always report something"
+    );
+}
+
+#[test]
+fn a_fresh_install_is_fully_configured_without_a_single_stored_setting() {
+    // PRD §6.9's headline promise — "the app must be fully usable without ever opening
+    // settings" — asserted at the boundary rather than assumed.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let settings = rt.block_on(harness.core.settings().snapshot()).unwrap();
+    assert_eq!(settings, AppSettings::default());
+    assert!(settings.recents_enabled, "recents record by default");
+    assert_eq!(
+        settings.default_engine, None,
+        "the platform default must need no stored choice"
+    );
+    assert_eq!(
+        settings.epg_window_ahead_hours, 72,
+        "PRD §6.6: 3 days ahead by default"
+    );
+}
+
+#[test]
+fn settings_persist_across_a_restart_because_the_core_owns_them() {
+    // The core is the single source of truth: a shell that forgets everything on relaunch must
+    // still find the user's choices intact.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("spidola.sqlite");
+    {
+        let core = open_core(
+            &rt,
+            &db_path,
+            RecordingSink::default(),
+            FakeSecrets::default(),
+        );
+        let settings = core.settings();
+        rt.block_on(settings.set_subtitle_size(SubtitleSize::Large))
+            .unwrap();
+        rt.block_on(settings.set_buffering(BufferingProfile::Low))
+            .unwrap();
+        rt.block_on(settings.set_log_level(LogLevel::Error))
+            .unwrap();
+        rt.block_on(settings.set_engine_for_source(7, Some("mpv".to_owned())))
+            .unwrap();
+    } // dropped: releases the process-global host-sink slot for the next Core
+
+    let core = open_core(
+        &rt,
+        &db_path,
+        RecordingSink::default(),
+        FakeSecrets::default(),
+    );
+    let settings = rt.block_on(core.settings().snapshot()).unwrap();
+    assert_eq!(settings.subtitle_size, SubtitleSize::Large);
+    assert_eq!(settings.buffering, BufferingProfile::Low);
+    assert_eq!(
+        settings.log_level,
+        LogLevel::Error,
+        "a chosen log level must survive a restart, not revert to the start-up directives"
+    );
+    assert_eq!(
+        rt.block_on(core.settings().engine_for_source(7))
+            .unwrap()
+            .as_deref(),
+        Some("mpv")
+    );
+    assert_eq!(
+        rt.block_on(core.settings().engine_for_source(8)).unwrap(),
+        None,
+        "one source's engine override must not leak onto another"
+    );
+}
+
+#[test]
+fn all_three_engine_tiers_are_storable_and_independent() {
+    // PRD §6.3's selection policy is channel → source → platform default. All three tiers must
+    // exist at the boundary and must not clobber each other. This test exists because Phase 6's
+    // typed-settings rewrite briefly shipped without the channel tier: the Rust suite stayed
+    // green the whole time, because the only thing that noticed was the shells' playback slice
+    // on the far side of the FFI.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let settings = harness.core.settings();
+
+    rt.block_on(settings.set_default_engine(Some("mpv".to_owned())))
+        .unwrap();
+    rt.block_on(settings.set_engine_for_source(1, Some("avplayer".to_owned())))
+        .unwrap();
+    rt.block_on(settings.set_engine_for_channel(1, 42, Some("mpv".to_owned())))
+        .unwrap();
+
+    assert_eq!(
+        rt.block_on(settings.snapshot())
+            .unwrap()
+            .default_engine
+            .as_deref(),
+        Some("mpv")
+    );
+    assert_eq!(
+        rt.block_on(settings.engine_for_source(1))
+            .unwrap()
+            .as_deref(),
+        Some("avplayer"),
+        "the source tier must not be clobbered by the global one"
+    );
+    assert_eq!(
+        rt.block_on(settings.engine_for_channel(1, 42))
+            .unwrap()
+            .as_deref(),
+        Some("mpv"),
+        "the channel tier must not be clobbered by the source one"
+    );
+
+    // Scoping: another channel of the same source, and the same identity under another source,
+    // are both untouched.
+    assert_eq!(
+        rt.block_on(settings.engine_for_channel(1, 43)).unwrap(),
+        None
+    );
+    assert_eq!(
+        rt.block_on(settings.engine_for_channel(2, 42)).unwrap(),
+        None
+    );
+
+    // Clearing the channel tier falls back to the source tier rather than to nothing.
+    rt.block_on(settings.set_engine_for_channel(1, 42, None))
+        .unwrap();
+    assert_eq!(
+        rt.block_on(settings.engine_for_channel(1, 42)).unwrap(),
+        None
+    );
+    assert_eq!(
+        rt.block_on(settings.engine_for_source(1))
+            .unwrap()
+            .as_deref(),
+        Some("avplayer"),
+        "clearing a channel override must leave the source override standing"
+    );
+}
+
+#[test]
+fn clearing_an_optional_setting_restores_its_default() {
+    // "Unset" and "set to the default" stay the same state, so a future change to a default
+    // still reaches users who never touched the setting.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let settings = harness.core.settings();
+    rt.block_on(settings.set_language(Some("da".to_owned())))
+        .unwrap();
+    assert_eq!(
+        rt.block_on(settings.snapshot())
+            .unwrap()
+            .language
+            .as_deref(),
+        Some("da")
+    );
+    rt.block_on(settings.set_language(None)).unwrap();
+    assert_eq!(
+        rt.block_on(settings.snapshot()).unwrap().language,
+        None,
+        "clearing the language must fall back to following the system"
+    );
+}
+
+#[test]
+fn secrets_never_reach_sqlite_or_the_log_stream() {
+    // Phase 6's exit criterion, and TECH_SPEC §12's central claim, asserted rather than asserted
+    // *about*: add a real Xtream account through the real boundary against a headend that mirrors
+    // the password back the way real panels do, then go looking for that password everywhere it
+    // must not be.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("spidola.sqlite");
+    let sink = RecordingSink::default();
+    let secrets = FakeSecrets::default();
+    let core = open_core(&rt, &db_path, sink.clone(), secrets.clone());
+
+    let base = spawn_xtream_stub(1);
+    let source = rt
+        .block_on(core.sources().add_xtream(
+            "Home headend".to_owned(),
+            base,
+            XTREAM_USER.to_owned(),
+            XTREAM_PASSWORD.to_owned(),
+        ))
+        .expect("the stub accepts the account");
+
+    // 1. The password went to the host store — the only place it may rest — under a key that is
+    //    genuinely opaque rather than a dressed-up copy of the credential.
+    let key = {
+        let stored = secrets.store.lock().unwrap();
+        assert!(
+            stored.values().any(|value| value == XTREAM_PASSWORD),
+            "the password must reach the host secure store"
+        );
+        let key = stored.keys().next().expect("exactly one key").clone();
+        assert!(
+            !key.contains(XTREAM_PASSWORD) && !key.contains(XTREAM_USER),
+            "the host-secrets key must not embed the credential: {key}"
+        );
+        key
+    };
+
+    // 2. The database references only that opaque key. Checked over the raw bytes of every file
+    //    SQLite owns, so neither a column we forgot nor a page still sitting in the WAL can hide
+    //    a credential from this assertion.
+    let on_disk = everything_on_disk(dir.path());
+    assert!(
+        !contains_bytes(&on_disk, XTREAM_PASSWORD.as_bytes()),
+        "the Xtream password reached the database file"
+    );
+    assert!(
+        contains_bytes(&on_disk, key.as_bytes()),
+        "the database should store the opaque key that names the password"
+    );
+
+    // 3. Nothing the user can export, and nothing the host sink received, carries it — including
+    //    from the handshake response, which echoed the password straight back at us.
+    let exported = core.export_logs();
+    assert!(
+        !exported.iter().any(|line| line.contains(XTREAM_PASSWORD)),
+        "the password reached the diagnostics log export"
+    );
+    let records = sink.records.lock().unwrap();
+    assert!(
+        !records
+            .iter()
+            .any(|record| record.message.contains(XTREAM_PASSWORD)),
+        "the password reached the host log sink"
+    );
+    drop(records);
+
+    // 4. The boundary record itself cannot carry it — `Source::Xtream` has no password field, so
+    //    this is a compile-time guarantee; the assertion pins the username/kind that *is* there.
+    match source {
+        Source::Xtream {
+            username, common, ..
+        } => {
+            assert_eq!(username, XTREAM_USER);
+            assert_eq!(common.name, "Home headend");
+        }
+        other => panic!("expected an Xtream source, got {other:?}"),
+    }
+}
+
+#[test]
+fn an_xtream_stream_is_playable_only_through_the_resolver() {
+    // The other half of the credential-free-catalog bargain: if nothing puts the password back at
+    // play time, an Xtream channel imports, browses, and favorites perfectly — and then cannot be
+    // played. This asserts the round trip the zap path depends on.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("spidola.sqlite");
+    let secrets = FakeSecrets::default();
+    let core = open_core(&rt, &db_path, RecordingSink::default(), secrets.clone());
+
+    let base = spawn_xtream_stub(1);
+    let source = rt
+        .block_on(core.sources().add_xtream(
+            "Home headend".to_owned(),
+            base.clone(),
+            XTREAM_USER.to_owned(),
+            XTREAM_PASSWORD.to_owned(),
+        ))
+        .expect("the stub accepts the account");
+    let id = match &source {
+        Source::Xtream { id, .. } => *id,
+        other => panic!("expected an Xtream source, got {other:?}"),
+    };
+
+    // The shape `core-xtream` persists: credential-free, `{server}/{kind}/{id}.{ext}`.
+    let stored = format!("{base}/live/4242.ts");
+    let playable = rt
+        .block_on(core.sources().resolve_stream(id, stored.clone()))
+        .expect("a stored Xtream locator resolves");
+
+    assert!(
+        !stored.contains(XTREAM_PASSWORD),
+        "the stored locator must be credential-free — that is the whole point"
+    );
+    assert!(
+        playable.contains(XTREAM_PASSWORD) && playable.contains(XTREAM_USER),
+        "the resolved URL must carry the credentials an engine needs"
+    );
+    assert!(
+        playable.contains("/live/") && playable.ends_with("4242.ts"),
+        "the resolved URL must still name the same stream: {playable}"
+    );
+
+    // Resolving must not leak it into the diagnostics the user can export.
+    assert!(
+        !core
+            .export_logs()
+            .iter()
+            .any(|l| l.contains(XTREAM_PASSWORD)),
+        "resolving a stream leaked the password into the log export"
+    );
+}
+
+#[test]
+fn an_m3u_locator_resolves_unchanged_so_the_zap_path_needs_no_per_kind_branch() {
+    // Kind-agnostic by contract: the shell asks for a playable URL and gets one, whatever the
+    // source is. An M3U URL is already playable and must come back untouched.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let source = rt
+        .block_on(harness.core.sources().add_m3u_url(
+            "Playlist".to_owned(),
+            "http://host.example/list.m3u".to_owned(),
+            None,
+            false,
+        ))
+        .expect("added");
+    let id = match &source {
+        Source::M3uUrl { id, .. } => *id,
+        other => panic!("expected an M3U source, got {other:?}"),
+    };
+    let stream = "http://host.example/live/7.ts".to_owned();
+    assert_eq!(
+        rt.block_on(harness.core.sources().resolve_stream(id, stream.clone()))
+            .expect("an M3U locator resolves"),
+        stream,
+        "an already-playable locator must pass through unchanged"
+    );
+}
+
+#[test]
+fn deleting_an_xtream_source_removes_its_stored_credential() {
+    // The row is the only record of which opaque key belongs to this account, so a delete that
+    // skipped the store would strand the password in the keychain with nothing able to name it.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("spidola.sqlite");
+    let secrets = FakeSecrets::default();
+    let core = open_core(&rt, &db_path, RecordingSink::default(), secrets.clone());
+
+    let base = spawn_xtream_stub(1);
+    let source = rt
+        .block_on(core.sources().add_xtream(
+            "Home headend".to_owned(),
+            base,
+            XTREAM_USER.to_owned(),
+            XTREAM_PASSWORD.to_owned(),
+        ))
+        .expect("the stub accepts the account");
+    assert_eq!(secrets.store.lock().unwrap().len(), 1);
+
+    let id = match &source {
+        Source::Xtream { id, .. } => *id,
+        other => panic!("expected an Xtream source, got {other:?}"),
+    };
+    rt.block_on(core.sources().delete(id)).expect("delete");
+
+    assert!(
+        secrets.store.lock().unwrap().is_empty(),
+        "deleting the source must delete its password from the host store"
+    );
+}
+
+#[test]
+fn an_add_that_cannot_write_its_row_takes_its_credential_back() {
+    // The password is stored before the row that names it, deliberately — but that leaves a
+    // window where the keychain holds a secret nothing has ever heard of. Nothing else can close
+    // it: a later `delete` finds out which key belongs to an account by reading the account's
+    // row, and the row is exactly what did not get written. So the add cleans up after itself,
+    // and here is where that is true rather than assumed.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("spidola.sqlite");
+    let secrets = FakeSecrets::default();
+    let core = open_core(&rt, &db_path, RecordingSink::default(), secrets.clone());
+    refuse_source_inserts(&db_path);
+
+    let base = spawn_xtream_stub(1);
+    let result = rt.block_on(core.sources().add_xtream(
+        "Home headend".to_owned(),
+        base,
+        XTREAM_USER.to_owned(),
+        XTREAM_PASSWORD.to_owned(),
+    ));
+
+    assert!(
+        result.is_err(),
+        "a refused insert must fail the add, not report a source that does not exist"
+    );
+    assert!(
+        secrets.store.lock().unwrap().is_empty(),
+        "a failed add must not strand its password in the host store"
+    );
+    assert!(
+        rt.block_on(core.sources().list()).unwrap().is_empty(),
+        "a failed add must leave no source behind"
+    );
+}
+
+#[test]
+fn a_store_that_refuses_the_password_leaves_the_source_deletable() {
+    // The credential goes before the row because the row is the only thing that can name it, and
+    // a store saying no is the only way to see that order. The delete must fail with the source
+    // still listed: pressing delete again then finishes the job, where the other order would
+    // leave a password nothing could ever reach.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("spidola.sqlite");
+    let secrets = FakeSecrets::default();
+    let core = open_core(&rt, &db_path, RecordingSink::default(), secrets.clone());
+
+    let base = spawn_xtream_stub(1);
+    let source = rt
+        .block_on(core.sources().add_xtream(
+            "Home headend".to_owned(),
+            base,
+            XTREAM_USER.to_owned(),
+            XTREAM_PASSWORD.to_owned(),
+        ))
+        .expect("the stub accepts the account");
+    let id = match &source {
+        Source::Xtream { id, .. } => *id,
+        other => panic!("expected an Xtream source, got {other:?}"),
+    };
+
+    secrets.refuse_deletes.store(true, Ordering::SeqCst);
+    assert!(
+        rt.block_on(core.sources().delete(id)).is_err(),
+        "a store that refuses the password must fail the delete rather than log past it"
+    );
+    assert_eq!(
+        rt.block_on(core.sources().list()).unwrap().len(),
+        1,
+        "the row that names the credential must survive, or nothing can ever name it again"
+    );
+    assert_eq!(
+        secrets.store.lock().unwrap().len(),
+        1,
+        "nothing was removed, so both halves must still be there"
+    );
+
+    // Unlocked, the same call the user already made converges: no source, no password.
+    secrets.refuse_deletes.store(false, Ordering::SeqCst);
+    rt.block_on(core.sources().delete(id))
+        .expect("the retry deletes");
+    assert!(rt.block_on(core.sources().list()).unwrap().is_empty());
+    assert!(
+        secrets.store.lock().unwrap().is_empty(),
+        "the retry must finish what the refused delete started"
+    );
+}
+
+#[test]
+fn a_rejected_xtream_account_is_never_persisted() {
+    // Verifying before storing is what makes a wrong password a sentence on the add screen rather
+    // than a mystery on the next refresh — and it must leave nothing behind when it fails.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+
+    // No stub: nothing is listening on this port, so the handshake cannot succeed.
+    let dead = {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        drop(listener);
+        format!("http://{addr}")
+    };
+    let result = rt.block_on(harness.core.sources().add_xtream(
+        "Nope".to_owned(),
+        dead,
+        XTREAM_USER.to_owned(),
+        XTREAM_PASSWORD.to_owned(),
+    ));
+    assert!(result.is_err(), "an unreachable headend must not be added");
+    let sources = rt.block_on(harness.core.sources().list()).unwrap();
+    assert!(
+        sources.is_empty(),
+        "a failed add must leave no source behind"
+    );
+}
+
+#[test]
+fn the_pairing_server_serves_the_agpl_source_link_and_stops_with_its_screen() {
+    // The server exists only while its screen is visible (TECH_SPEC §12), and every page it
+    // serves carries the AGPL §13 offer (PRD §10). Both are asserted here against the real
+    // service, over a real socket, from the shell's side of the boundary.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+
+    // Advertise loopback explicitly — the "shell supplies the address" path, which is what a
+    // shipping shell does anyway. Asking the core to infer it would make this test depend on the
+    // host's routing table, and it would fail on any machine behind a full-tunnel VPN.
+    let listener = RecordingPairingListener::default();
+    let session = rt
+        .block_on(
+            harness
+                .core
+                .pairing()
+                .start(Some("127.0.0.1".to_owned()), Box::new(listener.clone())),
+        )
+        .expect("the pairing server starts");
+
+    assert_eq!(
+        session.token.len(),
+        6,
+        "the token must be typeable: {session:?}"
+    );
+    assert!(session.port > 0);
+    assert!(
+        session.url.ends_with(&session.port.to_string()),
+        "the advertised URL must name the port it is served on: {session:?}"
+    );
+
+    let page = fetch_pairing_page(session.port);
+    assert!(
+        page.contains("AGPL-3.0") && page.contains("Source code"),
+        "every served page must carry the AGPL §13 source offer:\n{page}"
+    );
+
+    rt.block_on(harness.core.pairing().stop());
+    assert!(
+        std::net::TcpStream::connect(("127.0.0.1", session.port)).is_err(),
+        "the server must not outlive the screen that started it"
+    );
+}
+
+/// Fetches `GET /` from the pairing server and returns the whole response.
+fn fetch_pairing_page(port: u16) -> String {
+    let mut stream = std::net::TcpStream::connect(("127.0.0.1", port)).expect("the server answers");
+    stream
+        .write_all(b"GET / HTTP/1.1\r\nHost: tv.local\r\n\r\n")
+        .unwrap();
+    let mut body = String::new();
+    stream.read_to_string(&mut body).unwrap();
+    body
+}
+
+/// POSTs a urlencoded `body` to the pairing server and returns the whole response.
+fn post_pairing_form(port: u16, body: &str) -> String {
+    let mut stream = std::net::TcpStream::connect(("127.0.0.1", port)).expect("the server answers");
+    let request = format!(
+        "POST / HTTP/1.1\r\nHost: tv.local\r\nContent-Type: application/x-www-form-urlencoded\r\n\
+         Content-Length: {}\r\n\r\n{}",
+        body.len(),
+        body
+    );
+    stream.write_all(request.as_bytes()).unwrap();
+    let mut response = String::new();
+    stream.read_to_string(&mut response).unwrap();
+    response
+}
+
+#[test]
+fn a_phone_submission_reaches_the_shell_only_with_the_session_token() {
+    // The whole pairing loop, end to end through the real boundary: the token gates the POST,
+    // and an accepted submission arrives at the shell as a pre-filled add-source flow (PRD §6.1).
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+
+    let listener = RecordingPairingListener::default();
+    let session = rt
+        .block_on(
+            harness
+                .core
+                .pairing()
+                .start(Some("127.0.0.1".to_owned()), Box::new(listener.clone())),
+        )
+        .expect("the pairing server starts");
+
+    // A wrong token is refused, and nothing reaches the shell — this is the property that makes
+    // "a person on the network cannot inject a source into a TV they cannot see" true (§12).
+    let refused = post_pairing_form(
+        session.port,
+        "token=ZZZZZZ&kind=m3u-url&url=http%3A%2F%2Fhost.example%2Flist.m3u",
+    );
+    assert!(
+        refused.starts_with("HTTP/1.1 403"),
+        "a wrong token must be refused:\n{refused}"
+    );
+    assert!(
+        listener.seen.lock().unwrap().is_empty(),
+        "a refused submission must never reach the shell"
+    );
+
+    // The real token is accepted, and the submission lands parsed.
+    let accepted = post_pairing_form(
+        session.port,
+        &format!(
+            "token={}&kind=m3u-url&url=http%3A%2F%2Fhost.example%2Flist.m3u",
+            session.token
+        ),
+    );
+    assert!(
+        accepted.starts_with("HTTP/1.1 200"),
+        "the session token must be accepted:\n{accepted}"
+    );
+    let seen = listener.seen.lock().unwrap();
+    assert_eq!(seen.len(), 1, "exactly one submission should have landed");
+    match &seen[0] {
+        PairingSubmission::M3uUrl { url } => {
+            assert_eq!(url, "http://host.example/list.m3u");
+        }
+        other @ PairingSubmission::Xtream { .. } => {
+            panic!("expected an M3U submission, got {other:?}")
+        }
+    }
+    drop(seen);
+
+    rt.block_on(harness.core.pairing().stop());
+}
+
+#[test]
+fn racing_starts_leave_exactly_one_server_on_the_lan() {
+    // Two screens — or one screen re-entered before the first start finished — can ask for a
+    // session at the same moment, and only one server may come out of it: a listener nobody is
+    // showing a token for is a way into this TV that no one is watching (§12).
+    //
+    // What that rests on is the *order*, which is why the load-bearing assertion here reads the
+    // log rather than the sockets. Whether a socket is still open cannot tell the two designs
+    // apart — `PairServer`'s `Drop` signals shutdown as well, so an overwritten slot closes the
+    // loser's listener either way, and the port probe below passes even against a start that
+    // never stopped anything. What only serialization can produce is the first server being
+    // stopped *before* the second one starts listening: `start` takes the lock, stops what it
+    // finds, and only then binds. Two interleaved starts cannot do that in any order — they both
+    // read the slot before either has stored anything, so both listeners are up before the first
+    // one is taken down.
+    //
+    // `biased;` pins the polling order so the interleaving under test is the one described,
+    // rather than whichever `join!` happened to rotate to.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let pairing = harness.core.pairing();
+
+    let (first, second) = rt.block_on(async {
+        tokio::join!(
+            biased;
+            pairing.start(
+                Some("127.0.0.1".to_owned()),
+                Box::new(RecordingPairingListener::default()),
+            ),
+            pairing.start(
+                Some("127.0.0.1".to_owned()),
+                Box::new(RecordingPairingListener::default()),
+            ),
+        )
+    });
+    let first = first.expect("the first start succeeds");
+    let second = second.expect("the second start succeeds");
+    assert_ne!(
+        first.token, second.token,
+        "each start must mint its own token, never reuse the last: {first:?} {second:?}"
+    );
+    let lifecycle = pairing_lifecycle(&harness.sink);
+    let listens: Vec<usize> = positions_of(&lifecycle, "listening");
+    let stops: Vec<usize> = positions_of(&lifecycle, "stopped");
+    assert_eq!(
+        listens.len(),
+        2,
+        "both starts bound a listener: {lifecycle:?}"
+    );
+    assert!(
+        stops
+            .first()
+            .is_some_and(|first_stop| *first_stop < listens[1]),
+        "the first server must be stopped before the second starts listening; the two starts ran \
+         on top of each other instead: {lifecycle:?}"
+    );
+
+    // The consequence, and cheap to check even though it holds for the wrong reasons too.
+    // Deduplicated because the loser's socket is closed before the winner binds, which frees its
+    // number for the OS to hand straight back — the same port twice is a pass, not a collision.
+    let mut ports = vec![first.port, second.port];
+    ports.sort_unstable();
+    ports.dedup();
+    let live = ports
+        .iter()
+        .filter(|port| std::net::TcpStream::connect(("127.0.0.1", **port)).is_ok())
+        .count();
+    assert_eq!(live, 1, "exactly one of {ports:?} may answer");
+
+    // And the survivor is the one the service holds, so the screen closing still closes it.
+    rt.block_on(pairing.stop());
+    for port in ports {
+        assert!(
+            std::net::TcpStream::connect(("127.0.0.1", port)).is_err(),
+            "port {port} still answers after stop"
+        );
+    }
+}
+
+/// Every pairing server's birth and death as the log saw them, oldest first.
+///
+/// `core-pair` announces both ends of a server's life on this target, and announces the death
+/// from inside the accept task that `PairServer::stop` awaits — so a "stopped" here is a socket
+/// that is provably closed, not one that has merely been asked to close. That is what makes the
+/// sequence worth reading: the question of whether two starts ran in turn or on top of each
+/// other is exactly the question of where the stops fall between the listens.
+///
+/// Deliberately not a count. `core-pair` and `PairingService` log the same sentence on the same
+/// target when a server goes down, so one stop can produce two records — the ordering carries
+/// the meaning, the tally does not.
+fn pairing_lifecycle(sink: &RecordingSink) -> Vec<&'static str> {
+    sink.records
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|record| record.target == "spidola::pair")
+        .filter_map(|record| {
+            if record.message.contains("pairing server listening") {
+                Some("listening")
+            } else if record.message.contains("pairing server stopped") {
+                Some("stopped")
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+/// Where `event` occurs in a lifecycle sequence.
+fn positions_of(lifecycle: &[&str], event: &str) -> Vec<usize> {
+    lifecycle
+        .iter()
+        .enumerate()
+        .filter_map(|(at, seen)| (*seen == event).then_some(at))
+        .collect()
+}
+
+#[test]
+fn a_stop_racing_a_start_still_leaves_nothing_listening() {
+    // The ordering that makes `stop` mean what the shell means by it. A shell drives start and
+    // stop from its screen lifecycle, so a stop can arrive while a start is still binding — and
+    // must not slip between the bind and the moment the service remembers it, stopping nothing
+    // and returning while the listener it was called to close goes live behind it.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let pairing = harness.core.pairing();
+
+    let session = rt.block_on(async {
+        let (started, ()) = tokio::join!(
+            biased;
+            pairing.start(
+                Some("127.0.0.1".to_owned()),
+                Box::new(RecordingPairingListener::default()),
+            ),
+            pairing.stop(),
+        );
+        started.expect("the pairing server starts")
+    });
+
+    assert!(
+        std::net::TcpStream::connect(("127.0.0.1", session.port)).is_err(),
+        "the stop was overtaken: port {} is still listening with no screen behind it",
+        session.port
+    );
+}
+
+#[test]
+fn setting_the_epg_window_moves_both_bounds() {
+    // One window, one call, one transaction (PRD §6.6) — the pair the user chose is the pair
+    // they read back.
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let settings = harness.core.settings();
+
+    rt.block_on(settings.set_epg_window(24, 6)).unwrap();
+
+    let snapshot = rt.block_on(settings.snapshot()).unwrap();
+    assert_eq!(snapshot.epg_window_ahead_hours, 24);
+    assert_eq!(snapshot.epg_window_behind_hours, 6);
 }
 
 #[test]

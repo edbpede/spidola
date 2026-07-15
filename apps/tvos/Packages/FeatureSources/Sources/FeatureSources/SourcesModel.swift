@@ -25,10 +25,10 @@ public enum AutoRefreshOption: Sendable, CaseIterable, Identifiable {
 
   public var label: String {
     switch self {
-    case .off: "Manual only"
-    case .hourly: "Every hour"
-    case .sixHourly: "Every 6 hours"
-    case .daily: "Every day"
+    case .off: String(localized: "Manual only", bundle: .module)
+    case .hourly: String(localized: "Every hour", bundle: .module)
+    case .sixHourly: String(localized: "Every 6 hours", bundle: .module)
+    case .daily: String(localized: "Every day", bundle: .module)
     }
   }
 

@@ -4,8 +4,7 @@
 //! `services` — one file per service (paged-by-contract read paths, TECH_SPEC §4.6).
 //!
 //! Each service is a UniFFI object composed by [`crate::Core`] over the shared runtime and
-//! database handles. `catalog`, `epg`, and `pairing` cover the wider surface; `epg` and
-//! `pairing` stay Phase-0 stubs until Phases 8 and 6 respectively.
+//! database handles. `epg` stays a Phase-0 stub until Phase 8, when EPG ingest lands.
 //! (This module cannot `#![forbid(unsafe_code)]` — it hosts `#[uniffi::export]` impls whose
 //! generated FFI scaffolding contains `unsafe`; the workspace warns on `unsafe` instead.)
 pub mod catalog;
@@ -19,6 +18,7 @@ pub mod source;
 
 pub use catalog::CatalogService;
 pub use favorites::FavoritesService;
+pub use pairing::{PairingListener, PairingService, PairingSession, PairingSubmission};
 pub use recents::RecentsService;
 pub use search::SearchService;
 pub use settings::SettingsService;

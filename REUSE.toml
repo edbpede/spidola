@@ -22,6 +22,24 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Spidola contributors"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
 
+# JSON fixtures (the Xtream corpus, Phase 6) cannot carry an inline header: JSON has no
+# comment syntax, and the listing fixtures are top-level arrays, which cannot hold a note key
+# either. Their provenance notes live in the sibling README.md per the corpus convention.
+[[annotations]]
+path = ["fixtures/**/*.json"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Spidola contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+# String Catalogs are JSON and cannot carry an inline header (same constraint as the fixtures
+# above). These are authored, not generated: they are the shells' English-first localization
+# source (PRD §6.10).
+[[annotations]]
+path = ["apps/tvos/Packages/**/*.xcstrings"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Spidola contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
 # Canonical project logo used by the repository documentation.
 [[annotations]]
 path = ["spidola-logo.svg"]

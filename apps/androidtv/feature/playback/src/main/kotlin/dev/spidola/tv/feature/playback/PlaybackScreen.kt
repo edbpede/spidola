@@ -38,6 +38,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -87,6 +88,9 @@ fun PlaybackScreen(
 
     val failure = state.playback.failure
     val hasOverlay = isShowingOptions || state.fallbackOffer != null || failure != null
+
+    // Resolved out here because `semantics {}` is not a composable scope.
+    val nowPlaying = stringResource(R.string.playback_now_playing, state.channel.name)
 
     val rootFocus = remember { FocusRequester() }
     LaunchedEffect(hasOverlay) {
@@ -142,10 +146,7 @@ fun PlaybackScreen(
                 .background(SpidolaPalette.Studio)
                 // The video itself cannot be announced, and D-pad zapping is invisible to a screen
                 // reader that is never told about it (PRD §6.10).
-                .semantics {
-                    contentDescription =
-                        "Playing ${state.channel.name}. Press up or down to change channel."
-                }
+                .semantics { contentDescription = nowPlaying }
                 .focusRequester(rootFocus)
                 .focusable()
                 .onPreviewKeyEvent { event ->
@@ -263,7 +264,7 @@ private fun BoxScope.LoadingTreatment(channelName: String) {
             color = SpidolaPalette.BroadcastWhite,
         )
         Text(
-            text = "Tuning…",
+            text = stringResource(R.string.playback_tuning),
             style = MaterialTheme.typography.labelMedium,
             color = SpidolaPalette.TestCardAmber,
         )

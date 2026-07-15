@@ -21,6 +21,36 @@ final class PlaybackModelTests: XCTestCase {
     XCTAssertEqual(harness.built.map(\.rawValue), ["mpv"])
   }
 
+  // MARK: - Play-time stream resolution
+
+  func testPlaysTheResolvedLocatorRatherThanTheStoredOne() async {
+    // An Xtream catalog stores a credential-free locator (TECH_SPEC §12), so the row the viewer
+    // picked is not playable on its own. Without this the engine is handed an address that cannot
+    // open, and the failure looks like a broken stream rather than a missing step.
+    let harness = Harness()
+    let model = harness.model()
+    await model.start()
+    XCTAssertEqual(
+      harness.engines.first?.loaded.map(\.locator), ["resolved://http://host.example/10.ts"],
+      "the engine must be loaded with the resolver's URL, not the stored locator")
+    XCTAssertEqual(
+      harness.access.resolvedCalls, ["http://host.example/10.ts"],
+      "resolution must be asked for exactly once per load, not cached")
+  }
+
+  func testFallsBackToTheStoredLocatorWhenResolutionFails() async {
+    // For an M3U source the two are identical, so the fallback is exact; for an Xtream source the
+    // engine then fails with its own EngineError — the loud, actionable path (PRD §6.3) — rather
+    // than this silently loading nothing.
+    let harness = Harness()
+    harness.access.resolveFailure = FakeResolveError.unavailable
+    let model = harness.model()
+    await model.start()
+    XCTAssertEqual(
+      harness.engines.first?.loaded.map(\.locator), ["http://host.example/10.ts"],
+      "a failed resolution must still hand the engine the stored locator")
+  }
+
   func testHonoursChannelOverrideOverSource() async {
     let harness = Harness()
     harness.access.channelEngines["1-10"] = "avplayer"
@@ -297,6 +327,10 @@ private final class FakePlaybackAccess: PlaybackAccess {
   var sourceEngines: [Int64: String] = [:]
   var recorded: [PlayableChannel] = []
   var buffering: String?
+  /// Locators the model asked to have resolved, in order.
+  var resolvedCalls: [String] = []
+  /// Makes resolution fail, standing in for a source deleted or a secret gone from the keychain.
+  var resolveFailure: (any Error)?
   /// Forces the window's current row to a different identity, as a refresh would.
   var windowIdentityOverride: Int64?
   /// Holds `channelEngine` mid-flight. The other lookups return without ever suspending, so this is
@@ -339,9 +373,24 @@ private final class FakePlaybackAccess: PlaybackAccess {
 
   func sourceEngine(sourceId: Int64) async throws -> String? { sourceEngines[sourceId] }
 
+  /// Stands in for the core's play-time credential resolution. Prefixed rather than echoed so a
+  /// test can tell a resolved locator from a stored one, which is the only way to prove the model
+  /// plays what the resolver returned instead of what the catalog holds.
+  func resolveStream(sourceId: Int64, locator: String) async throws -> String {
+    if let resolveFailure { throw resolveFailure }
+    resolvedCalls.append(locator)
+    return "resolved://\(locator)"
+  }
+
   func bufferingProfile() async throws -> String? { buffering }
 
   func setBufferingProfile(_ profile: String) async throws { buffering = profile }
 
   func recordRecent(_ channel: PlayableChannel) async throws { recorded.append(channel) }
+}
+
+/// A resolution failure, standing in for a source deleted mid-play or a secret gone from the
+/// keychain. Its identity does not matter — the model only needs to see it throw.
+private enum FakeResolveError: Error {
+  case unavailable
 }

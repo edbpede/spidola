@@ -31,6 +31,7 @@ data class BrowseNavigator(
     val openChannel: (channel: PlayableChannel, context: ZapContext, offset: UInt) -> Unit,
     val openSearch: () -> Unit,
     val manageSources: () -> Unit,
+    val openSettings: () -> Unit,
 )
 
 /**

@@ -12,5 +12,19 @@ repository.workspace = true
 description = "Xtream Codes API client and mapping into core-model types."
 publish = false
 
+[dependencies]
+core-model = { path = "../core-model" }
+core-fetch = { path = "../core-fetch" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+# `url` builds every request and stream URL: its path-segment writer percent-encodes the
+# credential segments by construction, which is what makes `crate::urls` auditable (§12).
+url = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
+
 [lints]
 workspace = true

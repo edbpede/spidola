@@ -16,6 +16,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.MaterialTheme
@@ -59,9 +63,9 @@ fun PlaybackOptionsView(
             verticalArrangement = Arrangement.spacedBy(SpidolaSpacing.l, Alignment.CenterVertically),
         ) {
             val audio = tracks.tracksOf(TrackKind.AUDIO)
-            Section("Audio") {
+            Section(stringResource(R.string.playback_options_audio)) {
                 if (audio.isEmpty()) {
-                    EmptyRow("Only one audio track")
+                    EmptyRow(stringResource(R.string.playback_options_single_audio))
                 } else {
                     audio.forEach { track ->
                         OptionRow(
@@ -73,9 +77,9 @@ fun PlaybackOptionsView(
                 }
             }
 
-            Section("Subtitles") {
+            Section(stringResource(R.string.playback_options_subtitles)) {
                 OptionRow(
-                    title = "Off",
+                    title = stringResource(R.string.playback_options_subtitles_off),
                     isOn = tracks.selectedSubtitle == null,
                     onClick = onClearSubtitle,
                 )
@@ -88,8 +92,8 @@ fun PlaybackOptionsView(
                 }
             }
 
-            Section("Picture") {
-                OptionRow(title = aspect.label, isOn = false, onClick = onCycleAspect)
+            Section(stringResource(R.string.playback_options_picture)) {
+                OptionRow(title = aspect.label(), isOn = false, onClick = onCycleAspect)
             }
         }
     }
@@ -110,15 +114,25 @@ private fun Section(
     }
 }
 
+/**
+ * One option, checked when it is the one in use. The check announces itself as the row's state
+ * rather than as a glyph, since a screen reader that reads "✓" aloud names the ornament and not the
+ * fact (PRD §6.10). Only a checked row has state to report: the picture row cycles rather than
+ * chooses and is never on, so "not selected" would answer a question it never asked.
+ */
 @Composable
 private fun OptionRow(
     title: String,
     isOn: Boolean,
     onClick: () -> Unit,
 ) {
+    val selected = stringResource(R.string.playback_options_selected)
     Surface(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .then(if (isOn) Modifier.semantics { stateDescription = selected } else Modifier),
         shape = ClickableSurfaceDefaults.shape(shape = SpidolaFocus.cardShape),
         colors =
             ClickableSurfaceDefaults.colors(
@@ -135,7 +149,12 @@ private fun OptionRow(
         ) {
             Text(text = title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
             if (isOn) {
-                Text(text = "✓", style = MaterialTheme.typography.bodyLarge, color = SpidolaPalette.TestCardAmber)
+                Text(
+                    text = "✓",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = SpidolaPalette.TestCardAmber,
+                    modifier = Modifier.clearAndSetSemantics { },
+                )
             }
         }
     }
@@ -152,10 +171,12 @@ private fun EmptyRow(text: String) {
 }
 
 /** Prefers the stream's language tag, since "English" beats "Track 2" from the couch. */
+@Composable
 private fun label(track: MediaTrack): String {
     val language = track.language
     if (!language.isNullOrEmpty()) {
-        return if (track.label.isEmpty()) language else "${track.label} · $language"
+        if (track.label.isEmpty()) return language
+        return stringResource(R.string.playback_track_label, track.label, language)
     }
     return track.label
 }
