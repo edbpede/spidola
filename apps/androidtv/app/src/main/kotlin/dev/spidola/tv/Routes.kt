@@ -174,3 +174,19 @@ data object ManageSourcesRoute : NavKey
 
 @Serializable
 data object AddSourceRoute : NavKey
+
+@Serializable
+data object SettingsRoute : NavKey
+
+/**
+ * The option list for one setting (PRD §6.9). The picker travels as its enum name, like every other
+ * enum in this file, so the whole back stack restores across process death without a custom
+ * serializer.
+ */
+@Serializable
+data class SettingsPickerRoute(
+    val pickerName: String,
+) : NavKey
+
+@Serializable
+data object DiagnosticsRoute : NavKey

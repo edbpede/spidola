@@ -18,6 +18,11 @@ import dev.spidola.tv.feature.browse.HomeScreen
 import dev.spidola.tv.feature.browse.SourceBrowseScreen
 import dev.spidola.tv.feature.playback.PlaybackScreen
 import dev.spidola.tv.feature.search.SearchScreen
+import dev.spidola.tv.feature.settings.DiagnosticsScreen
+import dev.spidola.tv.feature.settings.SettingsNavigator
+import dev.spidola.tv.feature.settings.SettingsPicker
+import dev.spidola.tv.feature.settings.SettingsPickerScreen
+import dev.spidola.tv.feature.settings.SettingsScreen
 import dev.spidola.tv.feature.sources.AddSourceScreen
 import dev.spidola.tv.feature.sources.SourcesScreen
 import uniffi.core_api.MediaKind
@@ -48,6 +53,14 @@ fun SpidolaNavHost(
                 },
                 openSearch = { backStack.add(SearchRoute) },
                 manageSources = { backStack.add(ManageSourcesRoute) },
+                openSettings = { backStack.add(SettingsRoute) },
+            )
+        }
+    val settingsNavigator =
+        remember(backStack) {
+            SettingsNavigator(
+                openPicker = { picker -> backStack.add(SettingsPickerRoute(picker.name)) },
+                openDiagnostics = { backStack.add(DiagnosticsRoute) },
             )
         }
 
@@ -101,6 +114,30 @@ fun SpidolaNavHost(
                 }
                 entry<AddSourceRoute> {
                     AddSourceScreen(access = core, onFinished = { backStack.removeLastOrNull() })
+                }
+                entry<SettingsRoute> {
+                    SettingsScreen(
+                        access = core,
+                        navigator = settingsNavigator,
+                        onGoBack = { backStack.removeLastOrNull() },
+                    )
+                }
+                entry<SettingsPickerRoute> { route ->
+                    SettingsPickerScreen(
+                        picker = SettingsPicker.valueOf(route.pickerName),
+                        access = core,
+                        onClose = { backStack.removeLastOrNull() },
+                    )
+                }
+                entry<DiagnosticsRoute> {
+                    DiagnosticsScreen(
+                        access = core,
+                        // The one place the app's own version is known; the feature module must not
+                        // reach up into the shell's BuildConfig to read it.
+                        appVersion = BuildConfig.VERSION_NAME,
+                        onOpenLogLevel = { backStack.add(SettingsPickerRoute(SettingsPicker.LOG_LEVEL.name)) },
+                        onGoBack = { backStack.removeLastOrNull() },
+                    )
                 }
             },
     )

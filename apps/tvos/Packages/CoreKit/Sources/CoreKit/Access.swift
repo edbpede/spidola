@@ -52,6 +52,54 @@ public protocol SearchAccess: Sendable {
     async throws -> SearchPage
 }
 
+/// The narrow core surface the **settings** slice needs: the one-shot snapshot the root screen
+/// renders every row from, one setter per closed-set setting, the recently-watched off-switch and
+/// its clear action, the log buffer, and the startup handshake the diagnostics screen reports.
+///
+/// Three deliberate absences, each of which would otherwise look like an oversight:
+///
+/// - **The recents off-switch is not a settings setter.** `settingsSnapshot()` *reports* it, but
+///   `RecentsService` stays its only writer because that service is what enforces it — so the
+///   toggle routes to `setRecentsEnabled` (shared with `HomeAccess`) and the settings vocabulary
+///   never writes it. Mirrors the ownership the core states in `services/settings.rs`.
+/// - **No EPG window.** The core's vocabulary carries it because PRD §6.9 lists it, but EPG ingest
+///   is Phase 8; a setting that changed nothing a viewer could see would be a UX bug, so the slice
+///   does not ask for it and this protocol does not offer it. It lands with the EPG screens.
+/// - **No per-source engine override.** This surface owns the *global* default player; a per-source
+///   choice belongs to the screen about that source, not to a list of app-wide preferences.
+public protocol SettingsAccess: Sendable {
+  /// Every setting resolved to a value — stored where the user set one, core default otherwise —
+  /// so a screen renders each row's current value from a single read taken at one instant.
+  func settingsSnapshot() async throws -> AppSettings
+
+  /// Sets the global default engine, or clears it with `nil` to follow the platform default. The
+  /// key is opaque to the core; `PlayerContract` owns the spellings (TECH_SPEC §8).
+  func setDefaultEngine(_ engine: String?) async throws
+  func setBuffering(_ profile: BufferingProfile) async throws
+  func setSubtitleSize(_ size: SubtitleSize) async throws
+  func setSubtitleBackground(_ background: SubtitleBackground) async throws
+  /// Sets the UI language as a BCP-47 tag, or clears it with `nil` to follow the system language.
+  func setLanguage(_ tag: String?) async throws
+  func setDensity(_ density: InterfaceDensity) async throws
+  func setRecentsRetentionDays(_ days: UInt32) async throws
+  func setImageCacheMaxMb(_ megabytes: UInt32) async throws
+  /// Persists the level *and* applies it to the running filter in one call, so the stored value
+  /// and the live filter cannot disagree (core `SettingsService`).
+  func setLogLevel(_ level: LogLevel) async throws
+
+  /// The recently-watched off-switch and its history, owned by the core's `RecentsService`.
+  func recentsEnabled() async throws -> Bool
+  func setRecentsEnabled(_ enabled: Bool) async throws
+  func clearRecents() async throws
+
+  /// The in-memory log ring, oldest first. On tvOS this *is* "export logs" (PRD §6.9): there is no
+  /// user-visible file system and no share sheet worth the name, so the diagnostics screen shows
+  /// the lines on screen rather than writing a file nobody could reach.
+  func exportLogs() -> [String]
+  /// The core / schema / boundary versions, reported on the diagnostics screen.
+  func handshake() -> Handshake
+}
+
 /// The narrow core surface the **home** screen needs: the favorites row, the recents row with its
 /// off-switch, and the enabled source list to browse into.
 public protocol HomeAccess: Sendable {

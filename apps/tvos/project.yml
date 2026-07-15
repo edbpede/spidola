@@ -61,6 +61,7 @@ targets:
       - UITests
       - Packages/FeatureBrowse/Tests/FeatureBrowseTests
       - Packages/FeatureSearch/Tests/FeatureSearchTests
+      - Packages/FeatureSettings/Tests/FeatureSettingsTests
       - Packages/FeatureSources/Tests/FeatureSourcesTests
       - Packages/PlayerContract/Tests/PlayerContractTests
       - Packages/FeaturePlayback/Tests/FeaturePlaybackTests
@@ -71,6 +72,7 @@ targets:
       - package: CoreKit
       - package: FeatureBrowse
       - package: FeatureSearch
+      - package: FeatureSettings
       - package: FeatureSources
       - package: PlayerContract
       - package: FeaturePlayback

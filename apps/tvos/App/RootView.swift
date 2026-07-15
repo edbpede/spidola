@@ -6,6 +6,7 @@ import DesignSystem
 import FeatureBrowse
 import FeaturePlayback
 import FeatureSearch
+import FeatureSettings
 import FeatureSources
 import PlayerContract
 import SwiftUI
@@ -25,6 +26,12 @@ enum Route: Hashable {
   case search
   case manageSources
   case addSource
+  case settings
+  /// A picker for one closed-set setting. The payload is the field itself, so the settings slice
+  /// gets one picker screen instead of nine, and the app stays a route table rather than learning
+  /// what any individual setting means.
+  case settingsOptions(SettingsField)
+  case diagnostics
 }
 
 /// The state-driven navigation shell: a `NavigationStack` whose path is plain state and whose
@@ -55,7 +62,8 @@ struct RootView: View {
         path.append(.channel(channel, context, offset))
       },
       openSearch: { path.append(.search) },
-      manageSources: { path.append(.manageSources) })
+      manageSources: { path.append(.manageSources) },
+      openSettings: { path.append(.settings) })
   }
 
   @ViewBuilder private func destination(_ route: Route) -> some View {
@@ -84,7 +92,27 @@ struct RootView: View {
       SourcesView(access: core, onAddSource: { path.append(.addSource) })
     case .addSource:
       AddSourceView(access: core, onFinished: popToManageSources)
+    case .settings:
+      SettingsView(access: core, navigator: settingsNavigator)
+    case .settingsOptions(let field):
+      // Popping is the app's job, not the slice's: the slice knows the write landed, the stack
+      // knows what to do about it.
+      SettingsOptionsView(field: field, access: core, onFinished: popSettingsOptions)
+    case .diagnostics:
+      DiagnosticsView(access: core, navigator: settingsNavigator)
     }
+  }
+
+  private var settingsNavigator: SettingsNavigator {
+    SettingsNavigator(
+      openOptions: { field in path.append(.settingsOptions(field)) },
+      openDiagnostics: { path.append(.diagnostics) })
+  }
+
+  /// Returns from a picker to whichever screen opened it — the settings root or diagnostics, both
+  /// of which re-read their snapshot when they reappear.
+  private func popSettingsOptions() {
+    if let last = path.last, case .settingsOptions = last { path.removeLast() }
   }
 
   /// Returns from the add-source screen to the sources list, which reloads on reappear.

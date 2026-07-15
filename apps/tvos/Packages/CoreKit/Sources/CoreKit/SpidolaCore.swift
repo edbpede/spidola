@@ -25,7 +25,7 @@ public enum ImportEvent: Sendable {
 /// core's task handle. UniFFI async methods arrive back on the caller's continuation; callback
 /// events are trampolined to the caller's isolation by the stream.
 public final class SpidolaCore: CatalogAccess, SourcesAccess, BrowseAccess, SearchAccess,
-  HomeAccess, PlaybackAccess
+  HomeAccess, PlaybackAccess, SettingsAccess
 {
   private let core: Core
 
@@ -183,6 +183,51 @@ public final class SpidolaCore: CatalogAccess, SourcesAccess, BrowseAccess, Sear
       positionSecs: nil)
   }
 
+  // MARK: - Settings
+
+  public func settingsSnapshot() async throws -> AppSettings {
+    try await core.settings().snapshot()
+  }
+
+  public func setDefaultEngine(_ engine: String?) async throws {
+    try await core.settings().setDefaultEngine(engine: engine)
+  }
+
+  public func setBuffering(_ profile: BufferingProfile) async throws {
+    try await core.settings().setBuffering(profile: profile)
+  }
+
+  public func setSubtitleSize(_ size: SubtitleSize) async throws {
+    try await core.settings().setSubtitleSize(size: size)
+  }
+
+  public func setSubtitleBackground(_ background: SubtitleBackground) async throws {
+    try await core.settings().setSubtitleBackground(background: background)
+  }
+
+  public func setLanguage(_ tag: String?) async throws {
+    try await core.settings().setLanguage(tag: tag)
+  }
+
+  public func setDensity(_ density: InterfaceDensity) async throws {
+    try await core.settings().setDensity(density: density)
+  }
+
+  public func setRecentsRetentionDays(_ days: UInt32) async throws {
+    try await core.settings().setRecentsRetentionDays(days: days)
+  }
+
+  public func setImageCacheMaxMb(_ megabytes: UInt32) async throws {
+    try await core.settings().setImageCacheMaxMb(megabytes: megabytes)
+  }
+
+  public func setLogLevel(_ level: LogLevel) async throws {
+    try await core.settings().setLogLevel(level: level)
+  }
+
+  /// The core's in-memory log ring (TECH_SPEC §4.8), already redacted core-side.
+  public func exportLogs() -> [String] { core.exportLogs() }
+
   // MARK: - Search
 
   public func search(
@@ -235,29 +280,33 @@ public final class SpidolaCore: CatalogAccess, SourcesAccess, BrowseAccess, Sear
   }
 
   public func channelEngine(sourceId: Int64, identity: Int64) async throws -> String? {
-    try await core.settings().get(
-      key: PlaybackSettingKey.channelEngine(sourceId: sourceId, identity: identity))
+    try await core.settings().engineForChannel(sourceId: sourceId, identity: identity)
   }
 
   public func setChannelEngine(sourceId: Int64, identity: Int64, engine: String?) async throws {
-    let key = PlaybackSettingKey.channelEngine(sourceId: sourceId, identity: identity)
-    if let engine {
-      try await core.settings().set(key: key, value: engine)
-    } else {
-      try await core.settings().remove(key: key)
-    }
+    try await core.settings().setEngineForChannel(
+      sourceId: sourceId, identity: identity, engine: engine)
   }
 
   public func sourceEngine(sourceId: Int64) async throws -> String? {
-    try await core.settings().get(key: PlaybackSettingKey.sourceEngine(sourceId: sourceId))
+    try await core.settings().engineForSource(sourceId: sourceId)
   }
 
+  // The playback slice speaks `PlayerContract.BufferingProfile` and the core speaks its own
+  // mirror of it; the two carry identical cases and identical stored spellings, so this adapter
+  // is the one seam that translates between them. `PlaybackAccess` deliberately keeps the raw
+  // value rather than either enum — CoreKit does not depend on PlayerContract (the dependency
+  // runs the other way), and pushing a core FFI type through would make the playback slice
+  // depend on the boundary's shape.
+  //
+  // Never `nil` in practice: the core resolves the profile through its default, so the optional
+  // exists only because `PlaybackAccess` predates the typed settings vocabulary.
   public func bufferingProfile() async throws -> String? {
-    try await core.settings().get(key: PlaybackSettingKey.bufferingProfile)
+    try await core.settings().snapshot().buffering.playbackKey
   }
 
   public func setBufferingProfile(_ profile: String) async throws {
-    try await core.settings().set(key: PlaybackSettingKey.bufferingProfile, value: profile)
+    try await core.settings().setBuffering(profile: .init(playbackKey: profile))
   }
 }
 

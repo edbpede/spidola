@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: 2026 Spidola contributors -->
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!--
+  Every user-facing string in the settings slice (PRD §6.10: English-first, string infrastructure
+  ready from day one). Copy is written from the couch (PRD §8.6): controls say what they do, in the
+  active voice, and no system jargon reaches the screen — "Keep history for", never "Retention
+  policy"; "Storage format", never "schema version".
+-->
+<resources>
+
+    <!-- Settings list -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_loading">Loading settings…</string>
+
+    <!-- Playback section -->
+    <string name="settings_section_playback">Playback</string>
+    <string name="settings_default_player">Default player</string>
+    <string name="settings_default_player_explainer">Which player Spidola uses for a channel.</string>
+    <string name="settings_engine_automatic">Automatic</string>
+    <string name="settings_engine_exoplayer">ExoPlayer</string>
+    <string name="settings_engine_mpv">MPV</string>
+    <string name="settings_buffering">Buffering</string>
+    <string name="settings_buffering_explainer">The trade between starting quickly and playing smoothly.</string>
+    <!--
+      These three name the trade, not the buffer, and match `player-contract`'s BufferingProfile
+      labels word for word: the same vocabulary appears in the in-playback options, and a viewer who
+      picks "Fastest start" here must see the same words there.
+    -->
+    <string name="settings_buffering_low">Fastest start</string>
+    <string name="settings_buffering_balanced">Balanced</string>
+    <string name="settings_buffering_generous">Smoothest playback</string>
+
+    <!-- Subtitles section -->
+    <string name="settings_section_subtitles">Subtitles</string>
+    <string name="settings_subtitle_size">Size</string>
+    <string name="settings_subtitle_size_explainer">How large subtitles appear.</string>
+    <string name="settings_subtitle_size_small">Small</string>
+    <string name="settings_subtitle_size_medium">Medium</string>
+    <string name="settings_subtitle_size_large">Large</string>
+    <string name="settings_subtitle_background">Background</string>
+    <string name="settings_subtitle_background_explainer">What sits behind subtitles to keep them readable.</string>
+    <string name="settings_subtitle_background_none">None</string>
+    <string name="settings_subtitle_background_shadow">Shadow</string>
+    <string name="settings_subtitle_background_solid">Solid</string>
+
+    <!-- Interface section -->
+    <string name="settings_section_interface">Interface</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_explainer">The language Spidola\'s own text appears in.</string>
+    <string name="settings_language_system">System</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_density">Density</string>
+    <string name="settings_density_explainer">How much fits on screen at once.</string>
+    <string name="settings_density_comfortable">Comfortable</string>
+    <string name="settings_density_compact">Compact</string>
+
+    <!-- Privacy section -->
+    <string name="settings_section_privacy">Privacy</string>
+    <string name="settings_recents">Recently watched</string>
+    <string name="settings_recents_explainer">Keep a list of what you\'ve watched.</string>
+    <string name="settings_on">On</string>
+    <string name="settings_off">Off</string>
+    <string name="settings_retention">Keep history for</string>
+    <string name="settings_retention_explainer">How long Spidola remembers what you watched.</string>
+    <plurals name="settings_retention_days">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <string name="settings_clear_history">Clear history now</string>
+    <string name="settings_clear_history_explainer">Forget everything you\'ve watched.</string>
+    <string name="settings_clear_history_confirm">Clear history — press again</string>
+    <string name="settings_clear_history_warning">Can\'t be undone</string>
+    <string name="settings_clear_history_done">History cleared.</string>
+
+    <!-- Storage section -->
+    <string name="settings_section_storage">Storage</string>
+    <string name="settings_image_cache">Image cache</string>
+    <string name="settings_image_cache_explainer">How much space channel logos may use.</string>
+    <string name="settings_image_cache_megabytes">%1$d MB</string>
+
+    <!-- Diagnostics -->
+    <string name="settings_section_diagnostics">Diagnostics</string>
+    <string name="settings_diagnostics">Diagnostics</string>
+    <string name="settings_diagnostics_explainer">Recent activity and version details for support.</string>
+    <string name="diagnostics_title">Diagnostics</string>
+    <string name="diagnostics_loading">Loading diagnostics…</string>
+    <string name="diagnostics_log_level">Detail recorded</string>
+    <string name="diagnostics_log_level_explainer">How much Spidola writes down about what it does.</string>
+    <string name="diagnostics_log_level_error">Errors only</string>
+    <string name="diagnostics_log_level_warn">Warnings</string>
+    <string name="diagnostics_log_level_info">Normal</string>
+    <string name="diagnostics_log_level_debug">Detailed</string>
+    <string name="diagnostics_log_level_trace">Everything</string>
+    <string name="diagnostics_recent_activity">Recent activity</string>
+    <string name="diagnostics_recent_activity_empty">Nothing recorded yet.</string>
+    <string name="diagnostics_versions">Versions</string>
+    <string name="diagnostics_version_app">Spidola</string>
+    <string name="diagnostics_version_core">Core</string>
+    <string name="diagnostics_version_core_revision">Core build</string>
+    <string name="diagnostics_version_schema">Storage format</string>
+    <string name="diagnostics_version_boundary">Core boundary</string>
+
+    <!-- Picker screens -->
+    <string name="settings_picker_selected">Selected</string>
+
+</resources>

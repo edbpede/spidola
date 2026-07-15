@@ -4,12 +4,19 @@
 package dev.spidola.tv.core.corekit
 
 import kotlinx.coroutines.flow.Flow
+import uniffi.core_api.AppSettings
 import uniffi.core_api.BrowseGroupPage
+import uniffi.core_api.BufferingProfile
 import uniffi.core_api.ChannelPage
+import uniffi.core_api.Handshake
+import uniffi.core_api.InterfaceDensity
+import uniffi.core_api.LogLevel
 import uniffi.core_api.MediaKind
 import uniffi.core_api.Recent
 import uniffi.core_api.SearchPage
 import uniffi.core_api.Source
+import uniffi.core_api.SubtitleBackground
+import uniffi.core_api.SubtitleSize
 
 /**
  * The narrow core surface the **sources** slice needs (add / list / manage / import). Feature code
@@ -122,6 +129,58 @@ interface SearchAccess {
         offset: UInt,
         limit: UInt,
     ): SearchPage
+}
+
+/**
+ * The narrow core surface the **settings** slice needs: the whole settings snapshot, one setter per
+ * setting the app surfaces, the recents off-switch and clear, the log export, and the handshake for
+ * the diagnostics versions block (PRD §6.9).
+ *
+ * Two ownership notes the shape encodes deliberately:
+ *  - The recents off-switch belongs to the core's **recents** service, not its settings service.
+ *    [settings] only *reports* `recentsEnabled`; [setRecentsEnabled] and [clearRecents] route to the
+ *    owning service, so the flag has exactly one writer.
+ *  - There is no EPG-window setter here, though the core has one. EPG ingest lands in a later phase,
+ *    and a settings row that changes nothing the viewer can observe is a UX bug, not a feature — so
+ *    the shell does not offer the window until there is a guide to window (PRD §6.6).
+ */
+interface SettingsAccess {
+    /** Every persisted setting in one read; the settings screen's single source of truth. */
+    suspend fun settings(): AppSettings
+
+    /** Sets the global default engine, or clears it with `null` to fall back to the platform
+     * default. The key is opaque here exactly as it is to the core — engine identity is the player
+     * layer's concept (TECH_SPEC §8), and corekit must not depend on player-contract to name it. */
+    suspend fun setDefaultEngine(engine: String?)
+
+    suspend fun setBuffering(profile: BufferingProfile)
+
+    suspend fun setSubtitleSize(size: SubtitleSize)
+
+    suspend fun setSubtitleBackground(background: SubtitleBackground)
+
+    /** Sets the UI language as a BCP-47 tag, or `null` to follow the system language. */
+    suspend fun setLanguage(tag: String?)
+
+    suspend fun setDensity(density: InterfaceDensity)
+
+    suspend fun setRecentsRetentionDays(days: UInt)
+
+    suspend fun setImageCacheMaxMb(megabytes: UInt)
+
+    suspend fun setLogLevel(level: LogLevel)
+
+    /** The recents off-switch, routed to the core's recents service — see the note above. */
+    suspend fun setRecentsEnabled(enabled: Boolean)
+
+    /** Drops the recently-watched history — see the note above. */
+    suspend fun clearRecents()
+
+    /** The buffered recent log lines for the diagnostics viewer (TECH_SPEC §4.8). */
+    suspend fun exportLogs(): List<String>
+
+    /** Core / schema / boundary versions for the diagnostics versions block (PRD §6.9). */
+    fun handshake(): Handshake
 }
 
 /** The narrow core surface the **home** screen needs: the favorites row, the recents row with its

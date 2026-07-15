@@ -156,6 +156,14 @@ public struct HomeView: View {
         }
         .focused($focused, equals: .manage)
         .accessibilityIdentifier("home-manage")
+        SpidolaRow(
+          title: "Settings", accessory: .symbol("gearshape"),
+          isFocused: focused == .settings
+        ) {
+          navigator.openSettings()
+        }
+        .focused($focused, equals: .settings)
+        .accessibilityIdentifier("home-settings")
       }
       .padding(.horizontal, SpidolaSpacing.safeHorizontal)
     }
@@ -169,6 +177,7 @@ public struct HomeView: View {
     case source(Int64)
     case search
     case manage
+    case settings
     case recentsToggle
     case recentsClear
   }

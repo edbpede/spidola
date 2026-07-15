@@ -31,6 +31,15 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Spidola contributors"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
 
+# String Catalogs are JSON and cannot carry an inline header (same constraint as the fixtures
+# above). These are authored, not generated: they are the shells' English-first localization
+# source (PRD §6.10).
+[[annotations]]
+path = ["apps/tvos/Packages/**/*.xcstrings"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Spidola contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
 # Canonical project logo used by the repository documentation.
 [[annotations]]
 path = ["spidola-logo.svg"]

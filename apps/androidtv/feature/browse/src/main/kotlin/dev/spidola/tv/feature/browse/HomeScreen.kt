@@ -170,6 +170,14 @@ private fun HomeReady(
             )
         }
         item {
+            SpidolaRow(
+                title = "Settings",
+                onClick = navigator.openSettings,
+                modifier =
+                    Modifier.padding(horizontal = SpidolaSpacing.safeHorizontal).testTag("home-settings"),
+            )
+        }
+        item {
             Text(
                 text = "Recently watched",
                 style = MaterialTheme.typography.titleLarge,
