@@ -678,6 +678,15 @@ internal interface UniffiCallbackInterfaceSecretStoreMethod1 : com.sun.jna.Callb
 internal interface UniffiCallbackInterfaceSecretStoreMethod2 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`key`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceEpgRefreshListenerMethod0 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`progress`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfaceEpgRefreshListenerMethod1 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`outcome`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfaceEpgRefreshListenerMethod2 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`error`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 internal interface UniffiCallbackInterfacePairingListenerMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`submission`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
@@ -750,6 +759,31 @@ internal open class UniffiVTableCallbackInterfaceSecretStore(
     }
 
 }
+@Structure.FieldOrder("uniffiFree", "uniffiClone", "onProgress", "onComplete", "onFailed")
+internal open class UniffiVTableCallbackInterfaceEpgRefreshListener(
+    @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+    @JvmField internal var `uniffiClone`: UniffiCallbackInterfaceClone? = null,
+    @JvmField internal var `onProgress`: UniffiCallbackInterfaceEpgRefreshListenerMethod0? = null,
+    @JvmField internal var `onComplete`: UniffiCallbackInterfaceEpgRefreshListenerMethod1? = null,
+    @JvmField internal var `onFailed`: UniffiCallbackInterfaceEpgRefreshListenerMethod2? = null,
+) : Structure() {
+    class UniffiByValue(
+        `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+        `uniffiClone`: UniffiCallbackInterfaceClone? = null,
+        `onProgress`: UniffiCallbackInterfaceEpgRefreshListenerMethod0? = null,
+        `onComplete`: UniffiCallbackInterfaceEpgRefreshListenerMethod1? = null,
+        `onFailed`: UniffiCallbackInterfaceEpgRefreshListenerMethod2? = null,
+    ): UniffiVTableCallbackInterfaceEpgRefreshListener(`uniffiFree`,`uniffiClone`,`onProgress`,`onComplete`,`onFailed`,), Structure.ByValue
+
+   internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceEpgRefreshListener) {
+        `uniffiFree` = other.`uniffiFree`
+        `uniffiClone` = other.`uniffiClone`
+        `onProgress` = other.`onProgress`
+        `onComplete` = other.`onComplete`
+        `onFailed` = other.`onFailed`
+    }
+
+}
 @Structure.FieldOrder("uniffiFree", "uniffiClone", "onSubmission")
 internal open class UniffiVTableCallbackInterfacePairingListener(
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
@@ -794,6 +828,10 @@ internal object IntegrityCheckingUniffiLib {
     }
     external fun uniffi_core_api_checksum_method_core_catalog(
     ): Int
+    external fun uniffi_core_api_checksum_method_core_custom_channels(
+    ): Int
+    external fun uniffi_core_api_checksum_method_core_epg(
+    ): Int
     external fun uniffi_core_api_checksum_method_core_export_logs(
     ): Int
     external fun uniffi_core_api_checksum_method_core_favorites(
@@ -813,6 +851,8 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_core_api_checksum_method_core_sources(
     ): Int
     external fun uniffi_core_api_checksum_method_taskhandle_cancel(
+    ): Int
+    external fun uniffi_core_api_checksum_method_customchannelexport_contents(
     ): Int
     external fun uniffi_core_api_checksum_method_resolvedheader_name(
     ): Int
@@ -840,6 +880,48 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_core_api_checksum_method_catalogservice_set_hidden(
     ): Int
+    external fun uniffi_core_api_checksum_method_customchannelservice_create(
+    ): Int
+    external fun uniffi_core_api_checksum_method_customchannelservice_create_group(
+    ): Int
+    external fun uniffi_core_api_checksum_method_customchannelservice_delete(
+    ): Int
+    external fun uniffi_core_api_checksum_method_customchannelservice_delete_group(
+    ): Int
+    external fun uniffi_core_api_checksum_method_customchannelservice_export_portable(
+    ): Int
+    external fun uniffi_core_api_checksum_method_customchannelservice_groups(
+    ): Int
+    external fun uniffi_core_api_checksum_method_customchannelservice_import_portable(
+    ): Int
+    external fun uniffi_core_api_checksum_method_customchannelservice_list(
+    ): Int
+    external fun uniffi_core_api_checksum_method_customchannelservice_move_after(
+    ): Int
+    external fun uniffi_core_api_checksum_method_customchannelservice_move_before(
+    ): Int
+    external fun uniffi_core_api_checksum_method_customchannelservice_move_group_after(
+    ): Int
+    external fun uniffi_core_api_checksum_method_customchannelservice_move_group_before(
+    ): Int
+    external fun uniffi_core_api_checksum_method_customchannelservice_rename_group(
+    ): Int
+    external fun uniffi_core_api_checksum_method_customchannelservice_resolve(
+    ): Int
+    external fun uniffi_core_api_checksum_method_customchannelservice_update(
+    ): Int
+    external fun uniffi_core_api_checksum_method_epgservice_clear_xmltv_feed(
+    ): Int
+    external fun uniffi_core_api_checksum_method_epgservice_has_feed(
+    ): Int
+    external fun uniffi_core_api_checksum_method_epgservice_now_next(
+    ): Int
+    external fun uniffi_core_api_checksum_method_epgservice_refresh(
+    ): Int
+    external fun uniffi_core_api_checksum_method_epgservice_set_xmltv_feed(
+    ): Int
+    external fun uniffi_core_api_checksum_method_epgservice_window(
+    ): Int
     external fun uniffi_core_api_checksum_method_favoritesservice_add(
     ): Int
     external fun uniffi_core_api_checksum_method_favoritesservice_favorite_channels(
@@ -847,6 +929,10 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_core_api_checksum_method_favoritesservice_is_favorite(
     ): Int
     external fun uniffi_core_api_checksum_method_favoritesservice_list(
+    ): Int
+    external fun uniffi_core_api_checksum_method_favoritesservice_move_after(
+    ): Int
+    external fun uniffi_core_api_checksum_method_favoritesservice_move_before(
     ): Int
     external fun uniffi_core_api_checksum_method_favoritesservice_remove(
     ): Int
@@ -922,6 +1008,10 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_core_api_checksum_constructor_core_new(
     ): Int
+    external fun uniffi_core_api_checksum_constructor_customchanneldraft_new(
+    ): Int
+    external fun uniffi_core_api_checksum_constructor_resolvedheader_from_parts(
+    ): Int
     external fun uniffi_core_api_checksum_method_importlistener_on_progress(
     ): Int
     external fun uniffi_core_api_checksum_method_importlistener_on_complete(
@@ -935,6 +1025,12 @@ internal object IntegrityCheckingUniffiLib {
     external fun uniffi_core_api_checksum_method_secretstore_set(
     ): Int
     external fun uniffi_core_api_checksum_method_secretstore_delete(
+    ): Int
+    external fun uniffi_core_api_checksum_method_epgrefreshlistener_on_progress(
+    ): Int
+    external fun uniffi_core_api_checksum_method_epgrefreshlistener_on_complete(
+    ): Int
+    external fun uniffi_core_api_checksum_method_epgrefreshlistener_on_failed(
     ): Int
     external fun uniffi_core_api_checksum_method_pairinglistener_on_submission(
     ): Int
@@ -954,6 +1050,7 @@ internal object UniffiLib {
 
     init {
         Native.register(UniffiLib::class.java, findLibraryName(componentName = "core_api"))
+        uniffiCallbackInterfaceEpgRefreshListener.register(this)
         uniffiCallbackInterfaceImportListener.register(this)
         uniffiCallbackInterfaceLogSink.register(this)
         uniffiCallbackInterfacePairingListener.register(this)
@@ -967,6 +1064,10 @@ internal object UniffiLib {
     external fun uniffi_core_api_fn_constructor_core_new(`config`: RustBuffer.ByValue,`secrets`: Long,`logSink`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
     external fun uniffi_core_api_fn_method_core_catalog(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_core_api_fn_method_core_custom_channels(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_core_api_fn_method_core_epg(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
     external fun uniffi_core_api_fn_method_core_export_logs(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -992,10 +1093,24 @@ internal object UniffiLib {
     ): Unit
     external fun uniffi_core_api_fn_method_taskhandle_cancel(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    external fun uniffi_core_api_fn_clone_customchanneldraft(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_core_api_fn_free_customchanneldraft(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_core_api_fn_constructor_customchanneldraft_new(`groupId`: RustBuffer.ByValue,`name`: RustBuffer.ByValue,`logo`: RustBuffer.ByValue,`locator`: RustBuffer.ByValue,`userAgent`: RustBuffer.ByValue,`headers`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_core_api_fn_clone_customchannelexport(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_core_api_fn_free_customchannelexport(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_core_api_fn_method_customchannelexport_contents(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     external fun uniffi_core_api_fn_clone_resolvedheader(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
     external fun uniffi_core_api_fn_free_resolvedheader(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    external fun uniffi_core_api_fn_constructor_resolvedheader_from_parts(`name`: RustBuffer.ByValue,`value`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
     external fun uniffi_core_api_fn_method_resolvedheader_name(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     external fun uniffi_core_api_fn_method_resolvedheader_value(`ptr`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1030,6 +1145,56 @@ internal object UniffiLib {
     ): Long
     external fun uniffi_core_api_fn_method_catalogservice_set_hidden(`ptr`: Long,`sourceId`: Long,`identity`: Long,`hidden`: Byte,
     ): Long
+    external fun uniffi_core_api_fn_clone_customchannelservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_core_api_fn_free_customchannelservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_core_api_fn_method_customchannelservice_create(`ptr`: Long,`draft`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_customchannelservice_create_group(`ptr`: Long,`name`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_core_api_fn_method_customchannelservice_delete(`ptr`: Long,`id`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_customchannelservice_delete_group(`ptr`: Long,`id`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_customchannelservice_export_portable(`ptr`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_customchannelservice_groups(`ptr`: Long,`offset`: Int,`limit`: Int,
+    ): Long
+    external fun uniffi_core_api_fn_method_customchannelservice_import_portable(`ptr`: Long,`contents`: RustBuffer.ByValue,`mode`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_core_api_fn_method_customchannelservice_list(`ptr`: Long,`groupId`: RustBuffer.ByValue,`offset`: Int,`limit`: Int,
+    ): Long
+    external fun uniffi_core_api_fn_method_customchannelservice_move_after(`ptr`: Long,`id`: Long,`anchorId`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_customchannelservice_move_before(`ptr`: Long,`id`: Long,`anchorId`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_customchannelservice_move_group_after(`ptr`: Long,`id`: Long,`anchorId`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_customchannelservice_move_group_before(`ptr`: Long,`id`: Long,`anchorId`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_customchannelservice_rename_group(`ptr`: Long,`id`: Long,`name`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_core_api_fn_method_customchannelservice_resolve(`ptr`: Long,`id`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_customchannelservice_update(`ptr`: Long,`id`: Long,`draft`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_clone_epgservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_core_api_fn_free_epgservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    external fun uniffi_core_api_fn_method_epgservice_clear_xmltv_feed(`ptr`: Long,`sourceId`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_epgservice_has_feed(`ptr`: Long,`sourceId`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_epgservice_now_next(`ptr`: Long,`sourceId`: Long,`channelIdentity`: Long,`nowUnix`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_epgservice_refresh(`ptr`: Long,`sourceId`: Long,`nowUnix`: Long,`listener`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    ): Long
+    external fun uniffi_core_api_fn_method_epgservice_set_xmltv_feed(`ptr`: Long,`sourceId`: Long,`url`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_core_api_fn_method_epgservice_window(`ptr`: Long,`sourceId`: Long,`channelIdentity`: Long,`earliestUnix`: Long,`latestUnix`: Long,`offset`: Int,`limit`: Int,
+    ): Long
     external fun uniffi_core_api_fn_clone_favoritesservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
     external fun uniffi_core_api_fn_free_favoritesservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
@@ -1041,6 +1206,10 @@ internal object UniffiLib {
     external fun uniffi_core_api_fn_method_favoritesservice_is_favorite(`ptr`: Long,`sourceId`: Long,`identity`: Long,
     ): Long
     external fun uniffi_core_api_fn_method_favoritesservice_list(`ptr`: Long,`sourceId`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_favoritesservice_move_after(`ptr`: Long,`sourceId`: Long,`identity`: Long,`anchorSourceId`: Long,`anchorIdentity`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_favoritesservice_move_before(`ptr`: Long,`sourceId`: Long,`identity`: Long,`anchorSourceId`: Long,`anchorIdentity`: Long,
     ): Long
     external fun uniffi_core_api_fn_method_favoritesservice_remove(`ptr`: Long,`sourceId`: Long,`identity`: Long,
     ): Long
@@ -1139,6 +1308,8 @@ internal object UniffiLib {
     external fun uniffi_core_api_fn_init_callback_vtable_logsink(`vtable`: UniffiVTableCallbackInterfaceLogSink,
     ): Unit
     external fun uniffi_core_api_fn_init_callback_vtable_secretstore(`vtable`: UniffiVTableCallbackInterfaceSecretStore,
+    ): Unit
+    external fun uniffi_core_api_fn_init_callback_vtable_epgrefreshlistener(`vtable`: UniffiVTableCallbackInterfaceEpgRefreshListener,
     ): Unit
     external fun uniffi_core_api_fn_init_callback_vtable_pairinglistener(`vtable`: UniffiVTableCallbackInterfacePairingListener,
     ): Unit
@@ -1264,6 +1435,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_core_catalog() != 35453) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_core_api_checksum_method_core_custom_channels() != 54841) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_core_epg() != 41985) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_core_api_checksum_method_core_export_logs() != 14800) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1292,6 +1469,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_taskhandle_cancel() != 14297) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_customchannelexport_contents() != 17390) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_resolvedheader_name() != 49329) {
@@ -1333,6 +1513,69 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_catalogservice_set_hidden() != 49226) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_core_api_checksum_method_customchannelservice_create() != 40789) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_customchannelservice_create_group() != 65405) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_customchannelservice_delete() != 904) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_customchannelservice_delete_group() != 24496) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_customchannelservice_export_portable() != 9467) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_customchannelservice_groups() != 33461) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_customchannelservice_import_portable() != 33648) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_customchannelservice_list() != 19946) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_customchannelservice_move_after() != 7571) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_customchannelservice_move_before() != 35724) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_customchannelservice_move_group_after() != 49957) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_customchannelservice_move_group_before() != 36098) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_customchannelservice_rename_group() != 35408) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_customchannelservice_resolve() != 17393) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_customchannelservice_update() != 8369) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_epgservice_clear_xmltv_feed() != 62892) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_epgservice_has_feed() != 6123) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_epgservice_now_next() != 61560) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_epgservice_refresh() != 1227) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_epgservice_set_xmltv_feed() != 63099) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_epgservice_window() != 32305) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_core_api_checksum_method_favoritesservice_add() != 53981) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1343,6 +1586,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_favoritesservice_list() != 38599) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_favoritesservice_move_after() != 24167) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_favoritesservice_move_before() != 27019) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_favoritesservice_remove() != 49667) {
@@ -1456,6 +1705,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_constructor_core_new() != 15257) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_core_api_checksum_constructor_customchanneldraft_new() != 32699) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_constructor_resolvedheader_from_parts() != 15784) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_core_api_checksum_method_importlistener_on_progress() != 23344) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1475,6 +1730,15 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_secretstore_delete() != 41764) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_epgrefreshlistener_on_progress() != 52983) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_epgrefreshlistener_on_complete() != 13986) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_epgrefreshlistener_on_failed() != 34732) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_pairinglistener_on_submission() != 45457) {
@@ -2525,6 +2789,16 @@ public interface CoreInterface {
     fun `catalog`(): CatalogService
     
     /**
+     * User-created channels and portable sharing.
+     */
+    fun `customChannels`(): CustomChannelService
+    
+    /**
+     * The rolling EPG query service.
+     */
+    fun `epg`(): EpgService
+    
+    /**
      * Snapshots the recent log lines for the diagnostics log-export (redaction proven in
      * `logging`).
      */
@@ -2715,6 +2989,38 @@ open class Core: Disposable, AutoCloseable, CoreInterface
     callWithHandle {
     uniffiRustCall() { _status ->
     UniffiLib.uniffi_core_api_fn_method_core_catalog(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * User-created channels and portable sharing.
+     */override fun `customChannels`(): CustomChannelService {
+            return FfiConverterTypeCustomChannelService.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_core_api_fn_method_core_custom_channels(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * The rolling EPG query service.
+     */override fun `epg`(): EpgService {
+            return FfiConverterTypeEpgService.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_core_api_fn_method_core_epg(
         it,
         _status)
 }
@@ -3013,6 +3319,1794 @@ public object FfiConverterTypeCore: FfiConverter<Core, Long> {
 
 
 /**
+ * Opaque create/edit payload so locator and request details cannot appear in generated
+ * record diagnostics.
+ */
+public interface CustomChannelDraftInterface {
+    
+    companion object
+}
+
+/**
+ * Opaque create/edit payload so locator and request details cannot appear in generated
+ * record diagnostics.
+ */
+open class CustomChannelDraft: Disposable, AutoCloseable, CustomChannelDraftInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+    constructor(`groupId`: kotlin.Long?, `name`: kotlin.String, `logo`: kotlin.String?, `locator`: kotlin.String, `userAgent`: kotlin.String?, `headers`: List<ResolvedHeader>) :
+        this(UniffiWithHandle, 
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_core_api_fn_constructor_customchanneldraft_new(
+    
+        
+        FfiConverterOptionalLong.lower(`groupId`),
+        FfiConverterString.lower(`name`),
+        FfiConverterOptionalString.lower(`logo`),
+        FfiConverterString.lower(`locator`),
+        FfiConverterOptionalString.lower(`userAgent`),
+        FfiConverterSequenceTypeResolvedHeader.lower(`headers`),_status)
+}
+    )
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    /**
+     * Whether the current object has been destroyed and its reference is gone in the Rust side.
+     */
+    val uniffiIsDestroyed: Boolean get() = wasDestroyed.get()
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_core_api_fn_free_customchanneldraft(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_core_api_fn_clone_customchanneldraft(handle, status)
+        }
+    }
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCustomChannelDraft: FfiConverter<CustomChannelDraft, Long> {
+    override fun lower(value: CustomChannelDraft): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): CustomChannelDraft {
+        return CustomChannelDraft(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): CustomChannelDraft {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: CustomChannelDraft) = 8UL
+
+    override fun write(value: CustomChannelDraft, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Opaque portable export. The contents may include user-supplied credentials and are exposed
+ * only through the explicit getter used by the platform document exporter.
+ */
+public interface CustomChannelExportInterface {
+    
+    /**
+     * Returns the versioned JSON for immediate writing to a user-chosen file. Never log it.
+     */
+    fun `contents`(): kotlin.String
+    
+    companion object
+}
+
+/**
+ * Opaque portable export. The contents may include user-supplied credentials and are exposed
+ * only through the explicit getter used by the platform document exporter.
+ */
+open class CustomChannelExport: Disposable, AutoCloseable, CustomChannelExportInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    /**
+     * Whether the current object has been destroyed and its reference is gone in the Rust side.
+     */
+    val uniffiIsDestroyed: Boolean get() = wasDestroyed.get()
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_core_api_fn_free_customchannelexport(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_core_api_fn_clone_customchannelexport(handle, status)
+        }
+    }
+
+    
+    /**
+     * Returns the versioned JSON for immediate writing to a user-chosen file. Never log it.
+     */override fun `contents`(): kotlin.String {
+            return FfiConverterString.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_core_api_fn_method_customchannelexport_contents(
+        it,
+        _status)
+}
+    }
+    )
+    }
+    
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCustomChannelExport: FfiConverter<CustomChannelExport, Long> {
+    override fun lower(value: CustomChannelExport): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): CustomChannelExport {
+        return CustomChannelExport(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): CustomChannelExport {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: CustomChannelExport) = 8UL
+
+    override fun write(value: CustomChannelExport, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+public interface CustomChannelServiceInterface {
+    
+    /**
+     * Creates a sealed custom channel.
+     *
+     * # Errors
+     * Returns an input, not-found, storage, or secure-store error.
+     */
+    suspend fun `create`(`draft`: CustomChannelDraft): kotlin.Long
+    
+    /**
+     * Creates a named custom group at the end of the lineup.
+     *
+     * # Errors
+     * Returns an input error for a blank name or a storage error if insertion fails.
+     */
+    suspend fun `createGroup`(`name`: kotlin.String): kotlin.Long
+    
+    /**
+     * Deletes a custom channel idempotently.
+     *
+     * # Errors
+     * Returns a storage error if the delete fails.
+     */
+    suspend fun `delete`(`id`: kotlin.Long)
+    
+    /**
+     * Deletes a group while keeping its channels in the ungrouped lineup.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    suspend fun `deleteGroup`(`id`: kotlin.Long)
+    
+    /**
+     * Produces a versioned portable document. The returned object redacts diagnostics.
+     *
+     * # Errors
+     * Returns a storage or integrity error if the catalog cannot be exported safely.
+     */
+    suspend fun `exportPortable`(): CustomChannelExport
+    
+    /**
+     * Lists a bounded page of groups in user-defined order.
+     *
+     * # Errors
+     * Returns a storage error if the page cannot be read.
+     */
+    suspend fun `groups`(`offset`: kotlin.UInt, `limit`: kotlin.UInt): List<CustomGroup>
+    
+    /**
+     * Imports a versioned portable document with explicit conflict behavior.
+     *
+     * # Errors
+     * Returns an input, storage, or integrity error. Replace mode is atomic.
+     */
+    suspend fun `importPortable`(`contents`: kotlin.String, `mode`: CustomImportMode): kotlin.ULong
+    
+    /**
+     * Lists one group's custom channels in user-defined order.
+     *
+     * # Errors
+     * Returns a storage error if the page cannot be decoded.
+     */
+    suspend fun `list`(`groupId`: kotlin.Long?, `offset`: kotlin.UInt, `limit`: kotlin.UInt): List<CustomChannelSummary>
+    
+    /**
+     * Moves a channel immediately after another, including across groups.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    suspend fun `moveAfter`(`id`: kotlin.Long, `anchorId`: kotlin.Long)
+    
+    /**
+     * Moves a channel immediately before another, including across groups.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    suspend fun `moveBefore`(`id`: kotlin.Long, `anchorId`: kotlin.Long)
+    
+    /**
+     * Moves a group immediately after another.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    suspend fun `moveGroupAfter`(`id`: kotlin.Long, `anchorId`: kotlin.Long)
+    
+    /**
+     * Moves a group immediately before another.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    suspend fun `moveGroupBefore`(`id`: kotlin.Long, `anchorId`: kotlin.Long)
+    
+    /**
+     * Renames an existing group.
+     *
+     * # Errors
+     * Returns `NotFound`, an input error, or a storage error.
+     */
+    suspend fun `renameGroup`(`id`: kotlin.Long, `name`: kotlin.String)
+    
+    /**
+     * Opens a custom channel only for immediate engine construction.
+     *
+     * # Errors
+     * Returns `NotFound`, a storage error, or an integrity error for a damaged envelope.
+     */
+    suspend fun `resolve`(`id`: kotlin.Long): ResolvedStream
+    
+    /**
+     * Replaces an existing channel's editable fields.
+     *
+     * # Errors
+     * Returns an input, not-found, storage, or secure-store error.
+     */
+    suspend fun `update`(`id`: kotlin.Long, `draft`: CustomChannelDraft)
+    
+    companion object
+}
+
+open class CustomChannelService: Disposable, AutoCloseable, CustomChannelServiceInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    /**
+     * Whether the current object has been destroyed and its reference is gone in the Rust side.
+     */
+    val uniffiIsDestroyed: Boolean get() = wasDestroyed.get()
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_core_api_fn_free_customchannelservice(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_core_api_fn_clone_customchannelservice(handle, status)
+        }
+    }
+
+    
+    /**
+     * Creates a sealed custom channel.
+     *
+     * # Errors
+     * Returns an input, not-found, storage, or secure-store error.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `create`(`draft`: CustomChannelDraft) : kotlin.Long {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_customchannelservice_create(
+                uniffiHandle,
+                
+        FfiConverterTypeCustomChannelDraft.lower(`draft`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_i64(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_i64(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_i64(future) },
+        // lift function
+        { FfiConverterLong.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Creates a named custom group at the end of the lineup.
+     *
+     * # Errors
+     * Returns an input error for a blank name or a storage error if insertion fails.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `createGroup`(`name`: kotlin.String) : kotlin.Long {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_customchannelservice_create_group(
+                uniffiHandle,
+                
+        FfiConverterString.lower(`name`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_i64(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_i64(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_i64(future) },
+        // lift function
+        { FfiConverterLong.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Deletes a custom channel idempotently.
+     *
+     * # Errors
+     * Returns a storage error if the delete fails.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `delete`(`id`: kotlin.Long) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_customchannelservice_delete(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`id`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Deletes a group while keeping its channels in the ungrouped lineup.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `deleteGroup`(`id`: kotlin.Long) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_customchannelservice_delete_group(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`id`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Produces a versioned portable document. The returned object redacts diagnostics.
+     *
+     * # Errors
+     * Returns a storage or integrity error if the catalog cannot be exported safely.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `exportPortable`() : CustomChannelExport {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_customchannelservice_export_portable(
+                uniffiHandle,
+                
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_u64(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_u64(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_u64(future) },
+        // lift function
+        { FfiConverterTypeCustomChannelExport.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Lists a bounded page of groups in user-defined order.
+     *
+     * # Errors
+     * Returns a storage error if the page cannot be read.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `groups`(`offset`: kotlin.UInt, `limit`: kotlin.UInt) : List<CustomGroup> {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_customchannelservice_groups(
+                uniffiHandle,
+                
+        FfiConverterUInt.lower(`offset`),
+        FfiConverterUInt.lower(`limit`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterSequenceTypeCustomGroup.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Imports a versioned portable document with explicit conflict behavior.
+     *
+     * # Errors
+     * Returns an input, storage, or integrity error. Replace mode is atomic.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `importPortable`(`contents`: kotlin.String, `mode`: CustomImportMode) : kotlin.ULong {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_customchannelservice_import_portable(
+                uniffiHandle,
+                
+        FfiConverterString.lower(`contents`),
+        FfiConverterTypeCustomImportMode.lower(`mode`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_u64(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_u64(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_u64(future) },
+        // lift function
+        { FfiConverterULong.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Lists one group's custom channels in user-defined order.
+     *
+     * # Errors
+     * Returns a storage error if the page cannot be decoded.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `list`(`groupId`: kotlin.Long?, `offset`: kotlin.UInt, `limit`: kotlin.UInt) : List<CustomChannelSummary> {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_customchannelservice_list(
+                uniffiHandle,
+                
+        FfiConverterOptionalLong.lower(`groupId`),
+        FfiConverterUInt.lower(`offset`),
+        FfiConverterUInt.lower(`limit`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterSequenceTypeCustomChannelSummary.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Moves a channel immediately after another, including across groups.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `moveAfter`(`id`: kotlin.Long, `anchorId`: kotlin.Long) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_customchannelservice_move_after(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`id`),
+        FfiConverterLong.lower(`anchorId`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Moves a channel immediately before another, including across groups.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `moveBefore`(`id`: kotlin.Long, `anchorId`: kotlin.Long) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_customchannelservice_move_before(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`id`),
+        FfiConverterLong.lower(`anchorId`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Moves a group immediately after another.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `moveGroupAfter`(`id`: kotlin.Long, `anchorId`: kotlin.Long) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_customchannelservice_move_group_after(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`id`),
+        FfiConverterLong.lower(`anchorId`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Moves a group immediately before another.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `moveGroupBefore`(`id`: kotlin.Long, `anchorId`: kotlin.Long) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_customchannelservice_move_group_before(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`id`),
+        FfiConverterLong.lower(`anchorId`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Renames an existing group.
+     *
+     * # Errors
+     * Returns `NotFound`, an input error, or a storage error.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `renameGroup`(`id`: kotlin.Long, `name`: kotlin.String) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_customchannelservice_rename_group(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`id`),
+        FfiConverterString.lower(`name`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Opens a custom channel only for immediate engine construction.
+     *
+     * # Errors
+     * Returns `NotFound`, a storage error, or an integrity error for a damaged envelope.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `resolve`(`id`: kotlin.Long) : ResolvedStream {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_customchannelservice_resolve(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`id`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_u64(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_u64(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_u64(future) },
+        // lift function
+        { FfiConverterTypeResolvedStream.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Replaces an existing channel's editable fields.
+     *
+     * # Errors
+     * Returns an input, not-found, storage, or secure-store error.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `update`(`id`: kotlin.Long, `draft`: CustomChannelDraft) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_customchannelservice_update(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`id`),
+        FfiConverterTypeCustomChannelDraft.lower(`draft`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCustomChannelService: FfiConverter<CustomChannelService, Long> {
+    override fun lower(value: CustomChannelService): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): CustomChannelService {
+        return CustomChannelService(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): CustomChannelService {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: CustomChannelService) = 8UL
+
+    override fun write(value: CustomChannelService, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
+ * Manages source-scoped guide feeds and reads the rolling EPG store.
+ */
+public interface EpgServiceInterface {
+    
+    /**
+     * Removes a configured XMLTV feed and its secure-store value.
+     *
+     * # Errors
+     * Returns a secure-store or storage error.
+     */
+    suspend fun `clearXmltvFeed`(`sourceId`: kotlin.Long)
+    
+    /**
+     * Whether this source can refresh a guide. Xtream accounts provide their own endpoint.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    suspend fun `hasFeed`(`sourceId`: kotlin.Long): kotlin.Boolean
+    
+    /**
+     * Returns current and next programme for one channel.
+     *
+     * # Errors
+     * Returns a storage error if the rolling guide cannot be read.
+     */
+    suspend fun `nowNext`(`sourceId`: kotlin.Long, `channelIdentity`: kotlin.Long, `nowUnix`: kotlin.Long): NowNext
+    
+    /**
+     * Refreshes XMLTV in the background with cancellation at parser batch boundaries.
+     */
+    fun `refresh`(`sourceId`: kotlin.Long, `nowUnix`: kotlin.Long, `listener`: EpgRefreshListener): TaskHandle
+    
+    /**
+     * Stores an XMLTV URL for an M3U source. The URL lives only in platform secure storage.
+     *
+     * # Errors
+     * Returns an input, not-found, secure-store, or storage error.
+     */
+    suspend fun `setXmltvFeed`(`sourceId`: kotlin.Long, `url`: kotlin.String)
+    
+    /**
+     * Returns a bounded page intersecting the requested time window.
+     *
+     * # Errors
+     * Returns a storage error if the rolling guide cannot be read.
+     */
+    suspend fun `window`(`sourceId`: kotlin.Long, `channelIdentity`: kotlin.Long, `earliestUnix`: kotlin.Long, `latestUnix`: kotlin.Long, `offset`: kotlin.UInt, `limit`: kotlin.UInt): EpgPage
+    
+    companion object
+}
+
+/**
+ * Manages source-scoped guide feeds and reads the rolling EPG store.
+ */
+open class EpgService: Disposable, AutoCloseable, EpgServiceInterface
+{
+
+    @Suppress("UNUSED_PARAMETER")
+    /**
+     * @suppress
+     */
+    constructor(withHandle: UniffiWithHandle, handle: Long) {
+        this.handle = handle
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(handle))
+    }
+
+    /**
+     * @suppress
+     *
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noHandle: NoHandle) {
+        this.handle = 0
+        this.cleanable = null
+    }
+
+    protected val handle: Long
+    protected val cleanable: UniffiCleaner.Cleanable?
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    /**
+     * Whether the current object has been destroyed and its reference is gone in the Rust side.
+     */
+    val uniffiIsDestroyed: Boolean get() = wasDestroyed.get()
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithHandle(block: (handle: Long) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the handle being freed concurrently.
+        try {
+            return block(this.uniffiCloneHandle())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable?.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val handle: Long) : Runnable {
+        override fun run() {
+            if (handle == 0.toLong()) {
+                // Fake object created with `NoHandle`, don't try to free.
+                return;
+            }
+            uniffiRustCall { status ->
+                UniffiLib.uniffi_core_api_fn_free_epgservice(handle, status)
+            }
+        }
+    }
+
+    /**
+     * @suppress
+     */
+    fun uniffiCloneHandle(): Long {
+        if (handle == 0.toLong()) {
+            throw InternalException("uniffiCloneHandle() called on NoHandle object");
+        }
+        return uniffiRustCall() { status ->
+            UniffiLib.uniffi_core_api_fn_clone_epgservice(handle, status)
+        }
+    }
+
+    
+    /**
+     * Removes a configured XMLTV feed and its secure-store value.
+     *
+     * # Errors
+     * Returns a secure-store or storage error.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `clearXmltvFeed`(`sourceId`: kotlin.Long) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_epgservice_clear_xmltv_feed(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Whether this source can refresh a guide. Xtream accounts provide their own endpoint.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `hasFeed`(`sourceId`: kotlin.Long) : kotlin.Boolean {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_epgservice_has_feed(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_i8(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_i8(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_i8(future) },
+        // lift function
+        { FfiConverterBoolean.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Returns current and next programme for one channel.
+     *
+     * # Errors
+     * Returns a storage error if the rolling guide cannot be read.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `nowNext`(`sourceId`: kotlin.Long, `channelIdentity`: kotlin.Long, `nowUnix`: kotlin.Long) : NowNext {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_epgservice_now_next(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterLong.lower(`channelIdentity`),
+        FfiConverterLong.lower(`nowUnix`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterTypeNowNext.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Refreshes XMLTV in the background with cancellation at parser batch boundaries.
+     */override fun `refresh`(`sourceId`: kotlin.Long, `nowUnix`: kotlin.Long, `listener`: EpgRefreshListener): TaskHandle {
+            return FfiConverterTypeTaskHandle.lift(
+    callWithHandle {
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_core_api_fn_method_epgservice_refresh(
+        it,
+        
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterLong.lower(`nowUnix`),
+        FfiConverterTypeEpgRefreshListener.lower(`listener`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    /**
+     * Stores an XMLTV URL for an M3U source. The URL lives only in platform secure storage.
+     *
+     * # Errors
+     * Returns an input, not-found, secure-store, or storage error.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `setXmltvFeed`(`sourceId`: kotlin.Long, `url`: kotlin.String) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_epgservice_set_xmltv_feed(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterString.lower(`url`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Returns a bounded page intersecting the requested time window.
+     *
+     * # Errors
+     * Returns a storage error if the rolling guide cannot be read.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `window`(`sourceId`: kotlin.Long, `channelIdentity`: kotlin.Long, `earliestUnix`: kotlin.Long, `latestUnix`: kotlin.Long, `offset`: kotlin.UInt, `limit`: kotlin.UInt) : EpgPage {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_epgservice_window(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterLong.lower(`channelIdentity`),
+        FfiConverterLong.lower(`earliestUnix`),
+        FfiConverterLong.lower(`latestUnix`),
+        FfiConverterUInt.lower(`offset`),
+        FfiConverterUInt.lower(`limit`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterTypeEpgPage.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+
+    
+
+
+    
+    
+    /**
+     * @suppress
+     */
+    companion object
+    
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpgService: FfiConverter<EpgService, Long> {
+    override fun lower(value: EpgService): Long {
+        return value.uniffiCloneHandle()
+    }
+
+    override fun lift(value: Long): EpgService {
+        return EpgService(UniffiWithHandle, value)
+    }
+
+    override fun read(buf: ByteBuffer): EpgService {
+        return lift(buf.getLong())
+    }
+
+    override fun allocationSize(value: EpgService) = 8UL
+
+    override fun write(value: EpgService, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a handle
+// to the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque handle to the underlying Rust struct.
+//     Method calls need to read this handle from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its handle should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the handle, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the handle, but is interrupted
+//      before it can pass the handle over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read handle value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+/**
  * Manages favorite channels.
  */
 public interface FavoritesServiceInterface {
@@ -3051,6 +5145,22 @@ public interface FavoritesServiceInterface {
      * Returns [`ApiError::StorageCorrupt`] on a query failure.
      */
     suspend fun `list`(`sourceId`: kotlin.Long): List<Favorite>
+    
+    /**
+     * Moves one favorite immediately after another without transferring the whole lineup.
+     *
+     * # Errors
+     * Returns `NotFound` when either favorite is absent, or a storage error.
+     */
+    suspend fun `moveAfter`(`sourceId`: kotlin.Long, `identity`: kotlin.Long, `anchorSourceId`: kotlin.Long, `anchorIdentity`: kotlin.Long)
+    
+    /**
+     * Moves one favorite immediately before another without transferring the whole lineup.
+     *
+     * # Errors
+     * Returns `NotFound` when either favorite is absent, or a storage error.
+     */
+    suspend fun `moveBefore`(`sourceId`: kotlin.Long, `identity`: kotlin.Long, `anchorSourceId`: kotlin.Long, `anchorIdentity`: kotlin.Long)
     
     /**
      * Removes a favorite (idempotent).
@@ -3281,6 +5391,70 @@ open class FavoritesService: Disposable, AutoCloseable, FavoritesServiceInterfac
         { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
         // lift function
         { FfiConverterSequenceTypeFavorite.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Moves one favorite immediately after another without transferring the whole lineup.
+     *
+     * # Errors
+     * Returns `NotFound` when either favorite is absent, or a storage error.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `moveAfter`(`sourceId`: kotlin.Long, `identity`: kotlin.Long, `anchorSourceId`: kotlin.Long, `anchorIdentity`: kotlin.Long) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_favoritesservice_move_after(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterLong.lower(`identity`),
+        FfiConverterLong.lower(`anchorSourceId`),
+        FfiConverterLong.lower(`anchorIdentity`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Moves one favorite immediately before another without transferring the whole lineup.
+     *
+     * # Errors
+     * Returns `NotFound` when either favorite is absent, or a storage error.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `moveBefore`(`sourceId`: kotlin.Long, `identity`: kotlin.Long, `anchorSourceId`: kotlin.Long, `anchorIdentity`: kotlin.Long) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_favoritesservice_move_before(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterLong.lower(`identity`),
+        FfiConverterLong.lower(`anchorSourceId`),
+        FfiConverterLong.lower(`anchorIdentity`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_void(future) },
+        // lift function
+        { Unit },
+        
         // Error FFI converter
         ApiException.ErrorHandler,
     )
@@ -4403,11 +6577,25 @@ open class ResolvedHeader: Disposable, AutoCloseable, ResolvedHeaderInterface
 
 
     
-    
+    companion object {
+        
     /**
-     * @suppress
-     */
-    companion object
+     * Constructs an opaque header for a create/edit request.
+     */ fun `fromParts`(`name`: kotlin.String, `value`: kotlin.String): ResolvedHeader {
+            return FfiConverterTypeResolvedHeader.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.uniffi_core_api_fn_constructor_resolvedheader_from_parts(
+    
+        
+        FfiConverterString.lower(`name`),
+        FfiConverterString.lower(`value`),_status)
+}
+    )
+    }
+    
+
+        
+    }
     
 }
 
@@ -7438,6 +9626,317 @@ public object FfiConverterTypeCoreConfig: FfiConverterRustBuffer<CoreConfig> {
 
 
 /**
+ * Secret-safe summary of a user-created channel.
+ */
+data class CustomChannelSummary (
+    var `id`: kotlin.Long
+    , 
+    var `groupId`: kotlin.Long?
+    , 
+    var `name`: kotlin.String
+    , 
+    var `logo`: kotlin.String?
+    , 
+    var `hasUserAgent`: kotlin.Boolean
+    , 
+    var `headerCount`: kotlin.UInt
+    , 
+    var `position`: kotlin.Long
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCustomChannelSummary: FfiConverterRustBuffer<CustomChannelSummary> {
+    override fun read(buf: ByteBuffer): CustomChannelSummary {
+        return CustomChannelSummary(
+            FfiConverterLong.read(buf),
+            FfiConverterOptionalLong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterBoolean.read(buf),
+            FfiConverterUInt.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: CustomChannelSummary) = (
+            FfiConverterLong.allocationSize(value.`id`) +
+            FfiConverterOptionalLong.allocationSize(value.`groupId`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterOptionalString.allocationSize(value.`logo`) +
+            FfiConverterBoolean.allocationSize(value.`hasUserAgent`) +
+            FfiConverterUInt.allocationSize(value.`headerCount`) +
+            FfiConverterLong.allocationSize(value.`position`)
+    )
+
+    override fun write(value: CustomChannelSummary, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`id`, buf)
+            FfiConverterOptionalLong.write(value.`groupId`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterOptionalString.write(value.`logo`, buf)
+            FfiConverterBoolean.write(value.`hasUserAgent`, buf)
+            FfiConverterUInt.write(value.`headerCount`, buf)
+            FfiConverterLong.write(value.`position`, buf)
+    }
+}
+
+
+
+/**
+ * A user-created channel group.
+ */
+data class CustomGroup (
+    var `id`: kotlin.Long
+    , 
+    var `name`: kotlin.String
+    , 
+    var `position`: kotlin.Long
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCustomGroup: FfiConverterRustBuffer<CustomGroup> {
+    override fun read(buf: ByteBuffer): CustomGroup {
+        return CustomGroup(
+            FfiConverterLong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: CustomGroup) = (
+            FfiConverterLong.allocationSize(value.`id`) +
+            FfiConverterString.allocationSize(value.`name`) +
+            FfiConverterLong.allocationSize(value.`position`)
+    )
+
+    override fun write(value: CustomGroup, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`id`, buf)
+            FfiConverterString.write(value.`name`, buf)
+            FfiConverterLong.write(value.`position`, buf)
+    }
+}
+
+
+
+/**
+ * A bounded EPG page.
+ */
+data class EpgPage (
+    var `programmes`: List<EpgProgramme>
+    , 
+    var `offset`: kotlin.UInt
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpgPage: FfiConverterRustBuffer<EpgPage> {
+    override fun read(buf: ByteBuffer): EpgPage {
+        return EpgPage(
+            FfiConverterSequenceTypeEpgProgramme.read(buf),
+            FfiConverterUInt.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EpgPage) = (
+            FfiConverterSequenceTypeEpgProgramme.allocationSize(value.`programmes`) +
+            FfiConverterUInt.allocationSize(value.`offset`)
+    )
+
+    override fun write(value: EpgPage, buf: ByteBuffer) {
+            FfiConverterSequenceTypeEpgProgramme.write(value.`programmes`, buf)
+            FfiConverterUInt.write(value.`offset`, buf)
+    }
+}
+
+
+
+/**
+ * One programme in the rolling EPG window.
+ */
+data class EpgProgramme (
+    var `id`: kotlin.Long
+    , 
+    var `sourceId`: kotlin.Long
+    , 
+    var `channelIdentity`: kotlin.Long
+    , 
+    var `title`: kotlin.String
+    , 
+    var `description`: kotlin.String?
+    , 
+    var `startUnix`: kotlin.Long
+    , 
+    var `endUnix`: kotlin.Long
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpgProgramme: FfiConverterRustBuffer<EpgProgramme> {
+    override fun read(buf: ByteBuffer): EpgProgramme {
+        return EpgProgramme(
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterOptionalString.read(buf),
+            FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EpgProgramme) = (
+            FfiConverterLong.allocationSize(value.`id`) +
+            FfiConverterLong.allocationSize(value.`sourceId`) +
+            FfiConverterLong.allocationSize(value.`channelIdentity`) +
+            FfiConverterString.allocationSize(value.`title`) +
+            FfiConverterOptionalString.allocationSize(value.`description`) +
+            FfiConverterLong.allocationSize(value.`startUnix`) +
+            FfiConverterLong.allocationSize(value.`endUnix`)
+    )
+
+    override fun write(value: EpgProgramme, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`id`, buf)
+            FfiConverterLong.write(value.`sourceId`, buf)
+            FfiConverterLong.write(value.`channelIdentity`, buf)
+            FfiConverterString.write(value.`title`, buf)
+            FfiConverterOptionalString.write(value.`description`, buf)
+            FfiConverterLong.write(value.`startUnix`, buf)
+            FfiConverterLong.write(value.`endUnix`, buf)
+    }
+}
+
+
+
+/**
+ * Terminal result of a committed guide refresh.
+ */
+data class EpgRefreshOutcome (
+    var `inserted`: kotlin.ULong
+    , 
+    var `emitted`: kotlin.ULong
+    , 
+    var `skipped`: kotlin.ULong
+    , 
+    var `unmapped`: kotlin.ULong
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpgRefreshOutcome: FfiConverterRustBuffer<EpgRefreshOutcome> {
+    override fun read(buf: ByteBuffer): EpgRefreshOutcome {
+        return EpgRefreshOutcome(
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EpgRefreshOutcome) = (
+            FfiConverterULong.allocationSize(value.`inserted`) +
+            FfiConverterULong.allocationSize(value.`emitted`) +
+            FfiConverterULong.allocationSize(value.`skipped`) +
+            FfiConverterULong.allocationSize(value.`unmapped`)
+    )
+
+    override fun write(value: EpgRefreshOutcome, buf: ByteBuffer) {
+            FfiConverterULong.write(value.`inserted`, buf)
+            FfiConverterULong.write(value.`emitted`, buf)
+            FfiConverterULong.write(value.`skipped`, buf)
+            FfiConverterULong.write(value.`unmapped`, buf)
+    }
+}
+
+
+
+/**
+ * Progress from a running guide refresh.
+ */
+data class EpgRefreshProgress (
+    var `stage`: EpgRefreshStage
+    , 
+    var `programmesSeen`: kotlin.ULong
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpgRefreshProgress: FfiConverterRustBuffer<EpgRefreshProgress> {
+    override fun read(buf: ByteBuffer): EpgRefreshProgress {
+        return EpgRefreshProgress(
+            FfiConverterTypeEpgRefreshStage.read(buf),
+            FfiConverterULong.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: EpgRefreshProgress) = (
+            FfiConverterTypeEpgRefreshStage.allocationSize(value.`stage`) +
+            FfiConverterULong.allocationSize(value.`programmesSeen`)
+    )
+
+    override fun write(value: EpgRefreshProgress, buf: ByteBuffer) {
+            FfiConverterTypeEpgRefreshStage.write(value.`stage`, buf)
+            FfiConverterULong.write(value.`programmesSeen`, buf)
+    }
+}
+
+
+
+/**
  * A user-marked favorite channel.
  */
 data class Favorite (
@@ -7455,6 +9954,11 @@ data class Favorite (
      * When it was favorited, Unix seconds.
      */
     var `createdAtUnix`: kotlin.Long
+    , 
+    /**
+     * Explicit user-defined lineup position.
+     */
+    var `position`: kotlin.Long
     
 ){
     
@@ -7474,19 +9978,22 @@ public object FfiConverterTypeFavorite: FfiConverterRustBuffer<Favorite> {
             FfiConverterLong.read(buf),
             FfiConverterLong.read(buf),
             FfiConverterLong.read(buf),
+            FfiConverterLong.read(buf),
         )
     }
 
     override fun allocationSize(value: Favorite) = (
             FfiConverterLong.allocationSize(value.`sourceId`) +
             FfiConverterLong.allocationSize(value.`identity`) +
-            FfiConverterLong.allocationSize(value.`createdAtUnix`)
+            FfiConverterLong.allocationSize(value.`createdAtUnix`) +
+            FfiConverterLong.allocationSize(value.`position`)
     )
 
     override fun write(value: Favorite, buf: ByteBuffer) {
             FfiConverterLong.write(value.`sourceId`, buf)
             FfiConverterLong.write(value.`identity`, buf)
             FfiConverterLong.write(value.`createdAtUnix`, buf)
+            FfiConverterLong.write(value.`position`, buf)
     }
 }
 
@@ -7782,6 +10289,47 @@ public object FfiConverterTypeLogRecord: FfiConverterRustBuffer<LogRecord> {
 
 
 /**
+ * Current and next programme for one channel.
+ */
+data class NowNext (
+    var `current`: EpgProgramme?
+    , 
+    var `next`: EpgProgramme?
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeNowNext: FfiConverterRustBuffer<NowNext> {
+    override fun read(buf: ByteBuffer): NowNext {
+        return NowNext(
+            FfiConverterOptionalTypeEpgProgramme.read(buf),
+            FfiConverterOptionalTypeEpgProgramme.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: NowNext) = (
+            FfiConverterOptionalTypeEpgProgramme.allocationSize(value.`current`) +
+            FfiConverterOptionalTypeEpgProgramme.allocationSize(value.`next`)
+    )
+
+    override fun write(value: NowNext, buf: ByteBuffer) {
+            FfiConverterOptionalTypeEpgProgramme.write(value.`current`, buf)
+            FfiConverterOptionalTypeEpgProgramme.write(value.`next`, buf)
+    }
+}
+
+
+
+/**
  * What the pairing screen renders while the server is up.
  */
 data class PairingSession (
@@ -8035,7 +10583,7 @@ public object FfiConverterTypeSourceCommon: FfiConverterRustBuffer<SourceCommon>
 
 
 /**
- * The stable, user-mappable error surface the shells receive across the FFI.
+ * The stable, code-and-data error surface the shells receive across the FFI.
  */
 sealed class ApiException: kotlin.Exception() {
     
@@ -8080,13 +10628,12 @@ sealed class ApiException: kotlin.Exception() {
      */
     class InvalidInput(
         
-        /**
-         * A short, plain-language reason (never contains secret material).
-         */
-        val `reason`: kotlin.String
+        val `field`: InputField, 
+        
+        val `issue`: InputIssue
         ) : ApiException() {
         override val message
-            get() = "reason=${ `reason` }"
+            get() = "field=${ `field` }, issue=${ `issue` }"
     }
     
     /**
@@ -8159,7 +10706,8 @@ public object FfiConverterTypeApiError : FfiConverterRustBuffer<ApiException> {
             3 -> ApiException.Unauthorized()
             4 -> ApiException.NotFound()
             5 -> ApiException.InvalidInput(
-                FfiConverterString.read(buf),
+                FfiConverterTypeInputField.read(buf),
+                FfiConverterTypeInputIssue.read(buf),
                 )
             6 -> ApiException.ParseFailed(
                 FfiConverterULong.read(buf),
@@ -8193,7 +10741,8 @@ public object FfiConverterTypeApiError : FfiConverterRustBuffer<ApiException> {
             is ApiException.InvalidInput -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
                 4UL
-                + FfiConverterString.allocationSize(value.`reason`)
+                + FfiConverterTypeInputField.allocationSize(value.`field`)
+                + FfiConverterTypeInputIssue.allocationSize(value.`issue`)
             )
             is ApiException.ParseFailed -> (
                 // Add the size for the Int that specifies the variant plus the size needed for all fields
@@ -8236,7 +10785,8 @@ public object FfiConverterTypeApiError : FfiConverterRustBuffer<ApiException> {
             }
             is ApiException.InvalidInput -> {
                 buf.putInt(5)
-                FfiConverterString.write(value.`reason`, buf)
+                FfiConverterTypeInputField.write(value.`field`, buf)
+                FfiConverterTypeInputIssue.write(value.`issue`, buf)
                 Unit
             }
             is ApiException.ParseFailed -> {
@@ -8321,6 +10871,96 @@ public object FfiConverterTypeBufferingProfile: FfiConverterRustBuffer<Buffering
 
 
 /**
+ * Conflict behavior for portable custom-channel imports.
+ */
+
+enum class CustomImportMode {
+    
+    /**
+     * Keep existing channels and add imported rows after them.
+     */
+    MERGE,
+    /**
+     * Replace the complete custom-channel catalog atomically.
+     */
+    REPLACE;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeCustomImportMode: FfiConverterRustBuffer<CustomImportMode> {
+    override fun read(buf: ByteBuffer) = try {
+        CustomImportMode.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: CustomImportMode) = 4UL
+
+    override fun write(value: CustomImportMode, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Stage of a running guide refresh.
+ */
+
+enum class EpgRefreshStage {
+    
+    /**
+     * Resolving the configured feed and opening the connection.
+     */
+    CONNECTING,
+    /**
+     * Streaming and parsing XMLTV.
+     */
+    DOWNLOADING,
+    /**
+     * Atomically replacing the rolling schedule.
+     */
+    FINALIZING;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeEpgRefreshStage: FfiConverterRustBuffer<EpgRefreshStage> {
+    override fun read(buf: ByteBuffer) = try {
+        EpgRefreshStage.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: EpgRefreshStage) = 4UL
+
+    override fun write(value: EpgRefreshStage, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
  * Which phase of an import is currently running.
  */
 
@@ -8359,6 +10999,87 @@ public object FfiConverterTypeImportStage: FfiConverterRustBuffer<ImportStage> {
     override fun allocationSize(value: ImportStage) = 4UL
 
     override fun write(value: ImportStage, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Which user-controlled field failed validation. Shell resources turn this code into words.
+ */
+
+enum class InputField {
+    
+    ADDRESS,
+    SERVER,
+    NAME,
+    HEADER,
+    LOG_LEVEL,
+    FILE,
+    SOURCE;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeInputField: FfiConverterRustBuffer<InputField> {
+    override fun read(buf: ByteBuffer) = try {
+        InputField.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: InputField) = 4UL
+
+    override fun write(value: InputField, buf: ByteBuffer) {
+        buf.putInt(value.ordinal + 1)
+    }
+}
+
+
+
+
+
+/**
+ * Why an input field is unusable. Shell resources own the sentence and grammar.
+ */
+
+enum class InputIssue {
+    
+    EMPTY,
+    INVALID,
+    UNSUPPORTED,
+    UNAVAILABLE;
+
+    
+
+
+    companion object
+}
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeInputIssue: FfiConverterRustBuffer<InputIssue> {
+    override fun read(buf: ByteBuffer) = try {
+        InputIssue.values()[buf.getInt() - 1]
+    } catch (e: IndexOutOfBoundsException) {
+        throw RuntimeException("invalid enum value, something is very wrong!!", e)
+    }
+
+    override fun allocationSize(value: InputIssue) = 4UL
+
+    override fun write(value: InputIssue, buf: ByteBuffer) {
         buf.putInt(value.ordinal + 1)
     }
 }
@@ -8964,6 +11685,99 @@ public object FfiConverterTypeSubtitleSize: FfiConverterRustBuffer<SubtitleSize>
 
 
 /**
+ * Listener for a long-running guide refresh. Calls may arrive on any core thread.
+ */
+public interface EpgRefreshListener {
+    
+    fun `onProgress`(`progress`: EpgRefreshProgress)
+    
+    fun `onComplete`(`outcome`: EpgRefreshOutcome)
+    
+    fun `onFailed`(`error`: ApiException)
+    
+    companion object
+}
+
+
+
+// Put the implementation in an object so we don't pollute the top-level namespace
+internal object uniffiCallbackInterfaceEpgRefreshListener {
+    internal object `onProgress`: UniffiCallbackInterfaceEpgRefreshListenerMethod0 {
+        override fun callback(`uniffiHandle`: Long,`progress`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeEpgRefreshListener.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`onProgress`(
+                    FfiConverterTypeEpgRefreshProgress.lift(`progress`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `onComplete`: UniffiCallbackInterfaceEpgRefreshListenerMethod1 {
+        override fun callback(`uniffiHandle`: Long,`outcome`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeEpgRefreshListener.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`onComplete`(
+                    FfiConverterTypeEpgRefreshOutcome.lift(`outcome`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `onFailed`: UniffiCallbackInterfaceEpgRefreshListenerMethod2 {
+        override fun callback(`uniffiHandle`: Long,`error`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeEpgRefreshListener.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`onFailed`(
+                    FfiConverterTypeApiError.lift(`error`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+
+    internal object uniffiFree: UniffiCallbackInterfaceFree {
+        override fun callback(handle: Long) {
+            FfiConverterTypeEpgRefreshListener.handleMap.remove(handle)
+        }
+    }
+
+    internal object uniffiClone: UniffiCallbackInterfaceClone {
+        override fun callback(handle: Long): Long {
+            return FfiConverterTypeEpgRefreshListener.handleMap.clone(handle)
+        }
+    }
+
+    internal var vtable = UniffiVTableCallbackInterfaceEpgRefreshListener.UniffiByValue(
+        uniffiFree,
+        uniffiClone,
+        `onProgress`,
+        `onComplete`,
+        `onFailed`,
+    )
+
+    // Registers the foreign callback with the Rust side.
+    // This method is generated for each callback interface.
+    internal fun register(lib: UniffiLib) {
+        lib.uniffi_core_api_fn_init_callback_vtable_epgrefreshlistener(vtable)
+    }
+}
+
+/**
+ * The ffiConverter which transforms the Callbacks in to handles to pass to Rust.
+ *
+ * @suppress
+ */
+public object FfiConverterTypeEpgRefreshListener: FfiConverterCallbackInterface<EpgRefreshListener>()
+
+
+
+
+
+/**
  * The listener a shell registers to observe an import.
  *
  * Foreign-implemented only, so this is a UniFFI callback interface. **Threading contract:**
@@ -9471,6 +12285,38 @@ public object FfiConverterOptionalTypeChannel: FfiConverterRustBuffer<Channel?> 
 /**
  * @suppress
  */
+public object FfiConverterOptionalTypeEpgProgramme: FfiConverterRustBuffer<EpgProgramme?> {
+    override fun read(buf: ByteBuffer): EpgProgramme? {
+        if (buf.get().toInt() == 0) {
+            return null
+        }
+        return FfiConverterTypeEpgProgramme.read(buf)
+    }
+
+    override fun allocationSize(value: EpgProgramme?): ULong {
+        if (value == null) {
+            return 1UL
+        } else {
+            return 1UL + FfiConverterTypeEpgProgramme.allocationSize(value)
+        }
+    }
+
+    override fun write(value: EpgProgramme?, buf: ByteBuffer) {
+        if (value == null) {
+            buf.put(0)
+        } else {
+            buf.put(1)
+            FfiConverterTypeEpgProgramme.write(value, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterOptionalTypeMediaKind: FfiConverterRustBuffer<MediaKind?> {
     override fun read(buf: ByteBuffer): MediaKind? {
         if (buf.get().toInt() == 0) {
@@ -9605,6 +12451,90 @@ public object FfiConverterSequenceTypeChannel: FfiConverterRustBuffer<List<Chann
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeChannel.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeCustomChannelSummary: FfiConverterRustBuffer<List<CustomChannelSummary>> {
+    override fun read(buf: ByteBuffer): List<CustomChannelSummary> {
+        val len = buf.getInt()
+        return List<CustomChannelSummary>(len) {
+            FfiConverterTypeCustomChannelSummary.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<CustomChannelSummary>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeCustomChannelSummary.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<CustomChannelSummary>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeCustomChannelSummary.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeCustomGroup: FfiConverterRustBuffer<List<CustomGroup>> {
+    override fun read(buf: ByteBuffer): List<CustomGroup> {
+        val len = buf.getInt()
+        return List<CustomGroup>(len) {
+            FfiConverterTypeCustomGroup.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<CustomGroup>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeCustomGroup.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<CustomGroup>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeCustomGroup.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeEpgProgramme: FfiConverterRustBuffer<List<EpgProgramme>> {
+    override fun read(buf: ByteBuffer): List<EpgProgramme> {
+        val len = buf.getInt()
+        return List<EpgProgramme>(len) {
+            FfiConverterTypeEpgProgramme.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<EpgProgramme>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeEpgProgramme.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<EpgProgramme>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeEpgProgramme.write(it, buf)
         }
     }
 }

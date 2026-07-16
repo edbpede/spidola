@@ -982,6 +982,16 @@ public protocol CoreProtocol: AnyObject, Sendable {
     func catalog()  -> CatalogService
     
     /**
+     * User-created channels and portable sharing.
+     */
+    func customChannels()  -> CustomChannelService
+    
+    /**
+     * The rolling EPG query service.
+     */
+    func epg()  -> EpgService
+    
+    /**
      * Snapshots the recent log lines for the diagnostics log-export (redaction proven in
      * `logging`).
      */
@@ -1121,6 +1131,30 @@ open func catalog() -> CatalogService  {
     return try!  FfiConverterTypeCatalogService_lift(try! rustCall() {
         uniffiCallStatus in
     uniffi_core_api_fn_method_core_catalog(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * User-created channels and portable sharing.
+     */
+open func customChannels() -> CustomChannelService  {
+    return try!  FfiConverterTypeCustomChannelService_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_core_api_fn_method_core_custom_channels(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * The rolling EPG query service.
+     */
+open func epg() -> EpgService  {
+    return try!  FfiConverterTypeEpgService_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_core_api_fn_method_core_epg(
             self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
@@ -1295,6 +1329,1103 @@ public func FfiConverterTypeCore_lower(_ value: Core) -> UInt64 {
 
 
 /**
+ * Opaque create/edit payload so locator and request details cannot appear in generated
+ * record diagnostics.
+ */
+public protocol CustomChannelDraftProtocol: AnyObject, Sendable {
+    
+}
+/**
+ * Opaque create/edit payload so locator and request details cannot appear in generated
+ * record diagnostics.
+ */
+open class CustomChannelDraft: CustomChannelDraftProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_core_api_fn_clone_customchanneldraft(self.handle, $0) }
+    }
+public convenience init(groupId: Int64?, name: String, logo: String?, locator: String, userAgent: String?, headers: [ResolvedHeader]) {
+    let handle =
+        try! rustCall() {
+        uniffiCallStatus in
+    uniffi_core_api_fn_constructor_customchanneldraft_new(
+        FfiConverterOptionInt64.lower(groupId),
+        FfiConverterString.lower(name),
+        FfiConverterOptionString.lower(logo),
+        FfiConverterString.lower(locator),
+        FfiConverterOptionString.lower(userAgent),
+        FfiConverterSequenceTypeResolvedHeader.lower(headers),uniffiCallStatus
+    )
+}
+    self.init(unsafeFromHandle: handle)
+}
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_core_api_fn_free_customchanneldraft(handle, $0) }
+    }
+
+    
+
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCustomChannelDraft: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = CustomChannelDraft
+
+    public static func lift(_ handle: UInt64) throws -> CustomChannelDraft {
+        return CustomChannelDraft(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: CustomChannelDraft) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CustomChannelDraft {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: CustomChannelDraft, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCustomChannelDraft_lift(_ handle: UInt64) throws -> CustomChannelDraft {
+    return try FfiConverterTypeCustomChannelDraft.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCustomChannelDraft_lower(_ value: CustomChannelDraft) -> UInt64 {
+    return FfiConverterTypeCustomChannelDraft.lower(value)
+}
+
+
+
+
+
+
+/**
+ * Opaque portable export. The contents may include user-supplied credentials and are exposed
+ * only through the explicit getter used by the platform document exporter.
+ */
+public protocol CustomChannelExportProtocol: AnyObject, Sendable {
+    
+    /**
+     * Returns the versioned JSON for immediate writing to a user-chosen file. Never log it.
+     */
+    func contents()  -> String
+    
+}
+/**
+ * Opaque portable export. The contents may include user-supplied credentials and are exposed
+ * only through the explicit getter used by the platform document exporter.
+ */
+open class CustomChannelExport: CustomChannelExportProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_core_api_fn_clone_customchannelexport(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_core_api_fn_free_customchannelexport(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Returns the versioned JSON for immediate writing to a user-chosen file. Never log it.
+     */
+open func contents() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_core_api_fn_method_customchannelexport_contents(
+            self.uniffiCloneHandle(),uniffiCallStatus
+    )
+})
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCustomChannelExport: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = CustomChannelExport
+
+    public static func lift(_ handle: UInt64) throws -> CustomChannelExport {
+        return CustomChannelExport(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: CustomChannelExport) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CustomChannelExport {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: CustomChannelExport, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCustomChannelExport_lift(_ handle: UInt64) throws -> CustomChannelExport {
+    return try FfiConverterTypeCustomChannelExport.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCustomChannelExport_lower(_ value: CustomChannelExport) -> UInt64 {
+    return FfiConverterTypeCustomChannelExport.lower(value)
+}
+
+
+
+
+
+
+public protocol CustomChannelServiceProtocol: AnyObject, Sendable {
+    
+    /**
+     * Creates a sealed custom channel.
+     *
+     * # Errors
+     * Returns an input, not-found, storage, or secure-store error.
+     */
+    func create(draft: CustomChannelDraft) async throws  -> Int64
+    
+    /**
+     * Creates a named custom group at the end of the lineup.
+     *
+     * # Errors
+     * Returns an input error for a blank name or a storage error if insertion fails.
+     */
+    func createGroup(name: String) async throws  -> Int64
+    
+    /**
+     * Deletes a custom channel idempotently.
+     *
+     * # Errors
+     * Returns a storage error if the delete fails.
+     */
+    func delete(id: Int64) async throws 
+    
+    /**
+     * Deletes a group while keeping its channels in the ungrouped lineup.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    func deleteGroup(id: Int64) async throws 
+    
+    /**
+     * Produces a versioned portable document. The returned object redacts diagnostics.
+     *
+     * # Errors
+     * Returns a storage or integrity error if the catalog cannot be exported safely.
+     */
+    func exportPortable() async throws  -> CustomChannelExport
+    
+    /**
+     * Lists a bounded page of groups in user-defined order.
+     *
+     * # Errors
+     * Returns a storage error if the page cannot be read.
+     */
+    func groups(offset: UInt32, limit: UInt32) async throws  -> [CustomGroup]
+    
+    /**
+     * Imports a versioned portable document with explicit conflict behavior.
+     *
+     * # Errors
+     * Returns an input, storage, or integrity error. Replace mode is atomic.
+     */
+    func importPortable(contents: String, mode: CustomImportMode) async throws  -> UInt64
+    
+    /**
+     * Lists one group's custom channels in user-defined order.
+     *
+     * # Errors
+     * Returns a storage error if the page cannot be decoded.
+     */
+    func list(groupId: Int64?, offset: UInt32, limit: UInt32) async throws  -> [CustomChannelSummary]
+    
+    /**
+     * Moves a channel immediately after another, including across groups.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    func moveAfter(id: Int64, anchorId: Int64) async throws 
+    
+    /**
+     * Moves a channel immediately before another, including across groups.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    func moveBefore(id: Int64, anchorId: Int64) async throws 
+    
+    /**
+     * Moves a group immediately after another.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    func moveGroupAfter(id: Int64, anchorId: Int64) async throws 
+    
+    /**
+     * Moves a group immediately before another.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    func moveGroupBefore(id: Int64, anchorId: Int64) async throws 
+    
+    /**
+     * Renames an existing group.
+     *
+     * # Errors
+     * Returns `NotFound`, an input error, or a storage error.
+     */
+    func renameGroup(id: Int64, name: String) async throws 
+    
+    /**
+     * Opens a custom channel only for immediate engine construction.
+     *
+     * # Errors
+     * Returns `NotFound`, a storage error, or an integrity error for a damaged envelope.
+     */
+    func resolve(id: Int64) async throws  -> ResolvedStream
+    
+    /**
+     * Replaces an existing channel's editable fields.
+     *
+     * # Errors
+     * Returns an input, not-found, storage, or secure-store error.
+     */
+    func update(id: Int64, draft: CustomChannelDraft) async throws 
+    
+}
+open class CustomChannelService: CustomChannelServiceProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_core_api_fn_clone_customchannelservice(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_core_api_fn_free_customchannelservice(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Creates a sealed custom channel.
+     *
+     * # Errors
+     * Returns an input, not-found, storage, or secure-store error.
+     */
+open func create(draft: CustomChannelDraft)async throws  -> Int64  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_customchannelservice_create(
+                        self.uniffiCloneHandle(),FfiConverterTypeCustomChannelDraft_lower(draft)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_i64,
+            completeFunc: ffi_core_api_rust_future_complete_i64,
+            freeFunc: ffi_core_api_rust_future_free_i64,
+            liftFunc: FfiConverterInt64.lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Creates a named custom group at the end of the lineup.
+     *
+     * # Errors
+     * Returns an input error for a blank name or a storage error if insertion fails.
+     */
+open func createGroup(name: String)async throws  -> Int64  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_customchannelservice_create_group(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(name)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_i64,
+            completeFunc: ffi_core_api_rust_future_complete_i64,
+            freeFunc: ffi_core_api_rust_future_free_i64,
+            liftFunc: FfiConverterInt64.lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Deletes a custom channel idempotently.
+     *
+     * # Errors
+     * Returns a storage error if the delete fails.
+     */
+open func delete(id: Int64)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_customchannelservice_delete(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(id)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Deletes a group while keeping its channels in the ungrouped lineup.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+open func deleteGroup(id: Int64)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_customchannelservice_delete_group(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(id)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Produces a versioned portable document. The returned object redacts diagnostics.
+     *
+     * # Errors
+     * Returns a storage or integrity error if the catalog cannot be exported safely.
+     */
+open func exportPortable()async throws  -> CustomChannelExport  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_customchannelservice_export_portable(
+                        self.uniffiCloneHandle()
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_u64,
+            completeFunc: ffi_core_api_rust_future_complete_u64,
+            freeFunc: ffi_core_api_rust_future_free_u64,
+            liftFunc: FfiConverterTypeCustomChannelExport_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Lists a bounded page of groups in user-defined order.
+     *
+     * # Errors
+     * Returns a storage error if the page cannot be read.
+     */
+open func groups(offset: UInt32, limit: UInt32)async throws  -> [CustomGroup]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_customchannelservice_groups(
+                        self.uniffiCloneHandle(),FfiConverterUInt32.lower(offset),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeCustomGroup.lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Imports a versioned portable document with explicit conflict behavior.
+     *
+     * # Errors
+     * Returns an input, storage, or integrity error. Replace mode is atomic.
+     */
+open func importPortable(contents: String, mode: CustomImportMode)async throws  -> UInt64  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_customchannelservice_import_portable(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(contents),FfiConverterTypeCustomImportMode_lower(mode)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_u64,
+            completeFunc: ffi_core_api_rust_future_complete_u64,
+            freeFunc: ffi_core_api_rust_future_free_u64,
+            liftFunc: FfiConverterUInt64.lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Lists one group's custom channels in user-defined order.
+     *
+     * # Errors
+     * Returns a storage error if the page cannot be decoded.
+     */
+open func list(groupId: Int64?, offset: UInt32, limit: UInt32)async throws  -> [CustomChannelSummary]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_customchannelservice_list(
+                        self.uniffiCloneHandle(),FfiConverterOptionInt64.lower(groupId),FfiConverterUInt32.lower(offset),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeCustomChannelSummary.lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Moves a channel immediately after another, including across groups.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+open func moveAfter(id: Int64, anchorId: Int64)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_customchannelservice_move_after(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(id),FfiConverterInt64.lower(anchorId)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Moves a channel immediately before another, including across groups.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+open func moveBefore(id: Int64, anchorId: Int64)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_customchannelservice_move_before(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(id),FfiConverterInt64.lower(anchorId)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Moves a group immediately after another.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+open func moveGroupAfter(id: Int64, anchorId: Int64)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_customchannelservice_move_group_after(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(id),FfiConverterInt64.lower(anchorId)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Moves a group immediately before another.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+open func moveGroupBefore(id: Int64, anchorId: Int64)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_customchannelservice_move_group_before(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(id),FfiConverterInt64.lower(anchorId)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Renames an existing group.
+     *
+     * # Errors
+     * Returns `NotFound`, an input error, or a storage error.
+     */
+open func renameGroup(id: Int64, name: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_customchannelservice_rename_group(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(id),FfiConverterString.lower(name)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Opens a custom channel only for immediate engine construction.
+     *
+     * # Errors
+     * Returns `NotFound`, a storage error, or an integrity error for a damaged envelope.
+     */
+open func resolve(id: Int64)async throws  -> ResolvedStream  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_customchannelservice_resolve(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(id)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_u64,
+            completeFunc: ffi_core_api_rust_future_complete_u64,
+            freeFunc: ffi_core_api_rust_future_free_u64,
+            liftFunc: FfiConverterTypeResolvedStream_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Replaces an existing channel's editable fields.
+     *
+     * # Errors
+     * Returns an input, not-found, storage, or secure-store error.
+     */
+open func update(id: Int64, draft: CustomChannelDraft)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_customchannelservice_update(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(id),FfiConverterTypeCustomChannelDraft_lower(draft)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCustomChannelService: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = CustomChannelService
+
+    public static func lift(_ handle: UInt64) throws -> CustomChannelService {
+        return CustomChannelService(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: CustomChannelService) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CustomChannelService {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: CustomChannelService, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCustomChannelService_lift(_ handle: UInt64) throws -> CustomChannelService {
+    return try FfiConverterTypeCustomChannelService.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCustomChannelService_lower(_ value: CustomChannelService) -> UInt64 {
+    return FfiConverterTypeCustomChannelService.lower(value)
+}
+
+
+
+
+
+
+/**
+ * Manages source-scoped guide feeds and reads the rolling EPG store.
+ */
+public protocol EpgServiceProtocol: AnyObject, Sendable {
+    
+    /**
+     * Removes a configured XMLTV feed and its secure-store value.
+     *
+     * # Errors
+     * Returns a secure-store or storage error.
+     */
+    func clearXmltvFeed(sourceId: Int64) async throws 
+    
+    /**
+     * Whether this source can refresh a guide. Xtream accounts provide their own endpoint.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+    func hasFeed(sourceId: Int64) async throws  -> Bool
+    
+    /**
+     * Returns current and next programme for one channel.
+     *
+     * # Errors
+     * Returns a storage error if the rolling guide cannot be read.
+     */
+    func nowNext(sourceId: Int64, channelIdentity: Int64, nowUnix: Int64) async throws  -> NowNext
+    
+    /**
+     * Refreshes XMLTV in the background with cancellation at parser batch boundaries.
+     */
+    func refresh(sourceId: Int64, nowUnix: Int64, listener: EpgRefreshListener)  -> TaskHandle
+    
+    /**
+     * Stores an XMLTV URL for an M3U source. The URL lives only in platform secure storage.
+     *
+     * # Errors
+     * Returns an input, not-found, secure-store, or storage error.
+     */
+    func setXmltvFeed(sourceId: Int64, url: String) async throws 
+    
+    /**
+     * Returns a bounded page intersecting the requested time window.
+     *
+     * # Errors
+     * Returns a storage error if the rolling guide cannot be read.
+     */
+    func window(sourceId: Int64, channelIdentity: Int64, earliestUnix: Int64, latestUnix: Int64, offset: UInt32, limit: UInt32) async throws  -> EpgPage
+    
+}
+/**
+ * Manages source-scoped guide feeds and reads the rolling EPG store.
+ */
+open class EpgService: EpgServiceProtocol, @unchecked Sendable {
+    fileprivate let handle: UInt64
+
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoHandle {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noHandle: NoHandle) {
+        self.handle = 0
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_core_api_fn_clone_epgservice(self.handle, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
+            return
+        }
+
+        try! rustCall { uniffi_core_api_fn_free_epgservice(handle, $0) }
+    }
+
+    
+
+    
+    /**
+     * Removes a configured XMLTV feed and its secure-store value.
+     *
+     * # Errors
+     * Returns a secure-store or storage error.
+     */
+open func clearXmltvFeed(sourceId: Int64)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_epgservice_clear_xmltv_feed(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Whether this source can refresh a guide. Xtream accounts provide their own endpoint.
+     *
+     * # Errors
+     * Returns `NotFound` or a storage error.
+     */
+open func hasFeed(sourceId: Int64)async throws  -> Bool  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_epgservice_has_feed(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_i8,
+            completeFunc: ffi_core_api_rust_future_complete_i8,
+            freeFunc: ffi_core_api_rust_future_free_i8,
+            liftFunc: FfiConverterBool.lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Returns current and next programme for one channel.
+     *
+     * # Errors
+     * Returns a storage error if the rolling guide cannot be read.
+     */
+open func nowNext(sourceId: Int64, channelIdentity: Int64, nowUnix: Int64)async throws  -> NowNext  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_epgservice_now_next(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterInt64.lower(channelIdentity),FfiConverterInt64.lower(nowUnix)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeNowNext_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Refreshes XMLTV in the background with cancellation at parser batch boundaries.
+     */
+open func refresh(sourceId: Int64, nowUnix: Int64, listener: EpgRefreshListener) -> TaskHandle  {
+    return try!  FfiConverterTypeTaskHandle_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_core_api_fn_method_epgservice_refresh(
+            self.uniffiCloneHandle(),
+        FfiConverterInt64.lower(sourceId),
+        FfiConverterInt64.lower(nowUnix),
+        FfiConverterCallbackInterfaceEpgRefreshListener_lower(listener),uniffiCallStatus
+    )
+})
+}
+    
+    /**
+     * Stores an XMLTV URL for an M3U source. The URL lives only in platform secure storage.
+     *
+     * # Errors
+     * Returns an input, not-found, secure-store, or storage error.
+     */
+open func setXmltvFeed(sourceId: Int64, url: String)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_epgservice_set_xmltv_feed(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterString.lower(url)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Returns a bounded page intersecting the requested time window.
+     *
+     * # Errors
+     * Returns a storage error if the rolling guide cannot be read.
+     */
+open func window(sourceId: Int64, channelIdentity: Int64, earliestUnix: Int64, latestUnix: Int64, offset: UInt32, limit: UInt32)async throws  -> EpgPage  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_epgservice_window(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterInt64.lower(channelIdentity),FfiConverterInt64.lower(earliestUnix),FfiConverterInt64.lower(latestUnix),FfiConverterUInt32.lower(offset),FfiConverterUInt32.lower(limit)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeEpgPage_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+
+    
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEpgService: FfiConverter {
+    typealias FfiType = UInt64
+    typealias SwiftType = EpgService
+
+    public static func lift(_ handle: UInt64) throws -> EpgService {
+        return EpgService(unsafeFromHandle: handle)
+    }
+
+    public static func lower(_ value: EpgService) -> UInt64 {
+        return value.uniffiCloneHandle()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EpgService {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+    public static func write(_ value: EpgService, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpgService_lift(_ handle: UInt64) throws -> EpgService {
+    return try FfiConverterTypeEpgService.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpgService_lower(_ value: EpgService) -> UInt64 {
+    return FfiConverterTypeEpgService.lower(value)
+}
+
+
+
+
+
+
+/**
  * Manages favorite channels.
  */
 public protocol FavoritesServiceProtocol: AnyObject, Sendable {
@@ -1333,6 +2464,22 @@ public protocol FavoritesServiceProtocol: AnyObject, Sendable {
      * Returns [`ApiError::StorageCorrupt`] on a query failure.
      */
     func list(sourceId: Int64) async throws  -> [Favorite]
+    
+    /**
+     * Moves one favorite immediately after another without transferring the whole lineup.
+     *
+     * # Errors
+     * Returns `NotFound` when either favorite is absent, or a storage error.
+     */
+    func moveAfter(sourceId: Int64, identity: Int64, anchorSourceId: Int64, anchorIdentity: Int64) async throws 
+    
+    /**
+     * Moves one favorite immediately before another without transferring the whole lineup.
+     *
+     * # Errors
+     * Returns `NotFound` when either favorite is absent, or a storage error.
+     */
+    func moveBefore(sourceId: Int64, identity: Int64, anchorSourceId: Int64, anchorIdentity: Int64) async throws 
     
     /**
      * Removes a favorite (idempotent).
@@ -1486,6 +2633,50 @@ open func list(sourceId: Int64)async throws  -> [Favorite]  {
             completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
             freeFunc: ffi_core_api_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeFavorite.lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Moves one favorite immediately after another without transferring the whole lineup.
+     *
+     * # Errors
+     * Returns `NotFound` when either favorite is absent, or a storage error.
+     */
+open func moveAfter(sourceId: Int64, identity: Int64, anchorSourceId: Int64, anchorIdentity: Int64)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_favoritesservice_move_after(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterInt64.lower(identity),FfiConverterInt64.lower(anchorSourceId),FfiConverterInt64.lower(anchorIdentity)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Moves one favorite immediately before another without transferring the whole lineup.
+     *
+     * # Errors
+     * Returns `NotFound` when either favorite is absent, or a storage error.
+     */
+open func moveBefore(sourceId: Int64, identity: Int64, anchorSourceId: Int64, anchorIdentity: Int64)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_favoritesservice_move_before(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterInt64.lower(identity),FfiConverterInt64.lower(anchorSourceId),FfiConverterInt64.lower(anchorIdentity)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_void,
+            completeFunc: ffi_core_api_rust_future_complete_void,
+            freeFunc: ffi_core_api_rust_future_free_void,
+            liftFunc: { $0 },
             errorHandler: FfiConverterTypeApiError_lift
         )
 }
@@ -2110,6 +3301,19 @@ open class ResolvedHeader: ResolvedHeaderProtocol, @unchecked Sendable {
         try! rustCall { uniffi_core_api_fn_free_resolvedheader(handle, $0) }
     }
 
+    
+    /**
+     * Constructs an opaque header for a create/edit request.
+     */
+public static func fromParts(name: String, value: String) -> ResolvedHeader  {
+    return try!  FfiConverterTypeResolvedHeader_lift(try! rustCall() {
+        uniffiCallStatus in
+    uniffi_core_api_fn_constructor_resolvedheader_from_parts(
+        FfiConverterString.lower(name),
+        FfiConverterString.lower(value),uniffiCallStatus
+    )
+})
+}
     
 
     
@@ -4497,6 +5701,400 @@ public func FfiConverterTypeCoreConfig_lower(_ value: CoreConfig) -> RustBuffer 
 
 
 /**
+ * Secret-safe summary of a user-created channel.
+ */
+public struct CustomChannelSummary: Equatable, Hashable {
+    public var id: Int64
+    public var groupId: Int64?
+    public var name: String
+    public var logo: String?
+    public var hasUserAgent: Bool
+    public var headerCount: UInt32
+    public var position: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: Int64, groupId: Int64?, name: String, logo: String?, hasUserAgent: Bool, headerCount: UInt32, position: Int64) {
+        self.id = id
+        self.groupId = groupId
+        self.name = name
+        self.logo = logo
+        self.hasUserAgent = hasUserAgent
+        self.headerCount = headerCount
+        self.position = position
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CustomChannelSummary: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCustomChannelSummary: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CustomChannelSummary {
+        return
+            try CustomChannelSummary(
+                id: FfiConverterInt64.read(from: &buf), 
+                groupId: FfiConverterOptionInt64.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                logo: FfiConverterOptionString.read(from: &buf), 
+                hasUserAgent: FfiConverterBool.read(from: &buf), 
+                headerCount: FfiConverterUInt32.read(from: &buf), 
+                position: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CustomChannelSummary, into buf: inout [UInt8]) {
+        FfiConverterInt64.write(value.id, into: &buf)
+        FfiConverterOptionInt64.write(value.groupId, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.logo, into: &buf)
+        FfiConverterBool.write(value.hasUserAgent, into: &buf)
+        FfiConverterUInt32.write(value.headerCount, into: &buf)
+        FfiConverterInt64.write(value.position, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCustomChannelSummary_lift(_ buf: RustBuffer) throws -> CustomChannelSummary {
+    return try FfiConverterTypeCustomChannelSummary.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCustomChannelSummary_lower(_ value: CustomChannelSummary) -> RustBuffer {
+    return FfiConverterTypeCustomChannelSummary.lower(value)
+}
+
+
+/**
+ * A user-created channel group.
+ */
+public struct CustomGroup: Equatable, Hashable {
+    public var id: Int64
+    public var name: String
+    public var position: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: Int64, name: String, position: Int64) {
+        self.id = id
+        self.name = name
+        self.position = position
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension CustomGroup: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCustomGroup: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CustomGroup {
+        return
+            try CustomGroup(
+                id: FfiConverterInt64.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                position: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: CustomGroup, into buf: inout [UInt8]) {
+        FfiConverterInt64.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterInt64.write(value.position, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCustomGroup_lift(_ buf: RustBuffer) throws -> CustomGroup {
+    return try FfiConverterTypeCustomGroup.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCustomGroup_lower(_ value: CustomGroup) -> RustBuffer {
+    return FfiConverterTypeCustomGroup.lower(value)
+}
+
+
+/**
+ * A bounded EPG page.
+ */
+public struct EpgPage: Equatable, Hashable {
+    public var programmes: [EpgProgramme]
+    public var offset: UInt32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(programmes: [EpgProgramme], offset: UInt32) {
+        self.programmes = programmes
+        self.offset = offset
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension EpgPage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEpgPage: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EpgPage {
+        return
+            try EpgPage(
+                programmes: FfiConverterSequenceTypeEpgProgramme.read(from: &buf), 
+                offset: FfiConverterUInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: EpgPage, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeEpgProgramme.write(value.programmes, into: &buf)
+        FfiConverterUInt32.write(value.offset, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpgPage_lift(_ buf: RustBuffer) throws -> EpgPage {
+    return try FfiConverterTypeEpgPage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpgPage_lower(_ value: EpgPage) -> RustBuffer {
+    return FfiConverterTypeEpgPage.lower(value)
+}
+
+
+/**
+ * One programme in the rolling EPG window.
+ */
+public struct EpgProgramme: Equatable, Hashable {
+    public var id: Int64
+    public var sourceId: Int64
+    public var channelIdentity: Int64
+    public var title: String
+    public var description: String?
+    public var startUnix: Int64
+    public var endUnix: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: Int64, sourceId: Int64, channelIdentity: Int64, title: String, description: String?, startUnix: Int64, endUnix: Int64) {
+        self.id = id
+        self.sourceId = sourceId
+        self.channelIdentity = channelIdentity
+        self.title = title
+        self.description = description
+        self.startUnix = startUnix
+        self.endUnix = endUnix
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension EpgProgramme: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEpgProgramme: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EpgProgramme {
+        return
+            try EpgProgramme(
+                id: FfiConverterInt64.read(from: &buf), 
+                sourceId: FfiConverterInt64.read(from: &buf), 
+                channelIdentity: FfiConverterInt64.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                description: FfiConverterOptionString.read(from: &buf), 
+                startUnix: FfiConverterInt64.read(from: &buf), 
+                endUnix: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: EpgProgramme, into buf: inout [UInt8]) {
+        FfiConverterInt64.write(value.id, into: &buf)
+        FfiConverterInt64.write(value.sourceId, into: &buf)
+        FfiConverterInt64.write(value.channelIdentity, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.description, into: &buf)
+        FfiConverterInt64.write(value.startUnix, into: &buf)
+        FfiConverterInt64.write(value.endUnix, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpgProgramme_lift(_ buf: RustBuffer) throws -> EpgProgramme {
+    return try FfiConverterTypeEpgProgramme.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpgProgramme_lower(_ value: EpgProgramme) -> RustBuffer {
+    return FfiConverterTypeEpgProgramme.lower(value)
+}
+
+
+/**
+ * Terminal result of a committed guide refresh.
+ */
+public struct EpgRefreshOutcome: Equatable, Hashable {
+    public var inserted: UInt64
+    public var emitted: UInt64
+    public var skipped: UInt64
+    public var unmapped: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(inserted: UInt64, emitted: UInt64, skipped: UInt64, unmapped: UInt64) {
+        self.inserted = inserted
+        self.emitted = emitted
+        self.skipped = skipped
+        self.unmapped = unmapped
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension EpgRefreshOutcome: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEpgRefreshOutcome: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EpgRefreshOutcome {
+        return
+            try EpgRefreshOutcome(
+                inserted: FfiConverterUInt64.read(from: &buf), 
+                emitted: FfiConverterUInt64.read(from: &buf), 
+                skipped: FfiConverterUInt64.read(from: &buf), 
+                unmapped: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: EpgRefreshOutcome, into buf: inout [UInt8]) {
+        FfiConverterUInt64.write(value.inserted, into: &buf)
+        FfiConverterUInt64.write(value.emitted, into: &buf)
+        FfiConverterUInt64.write(value.skipped, into: &buf)
+        FfiConverterUInt64.write(value.unmapped, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpgRefreshOutcome_lift(_ buf: RustBuffer) throws -> EpgRefreshOutcome {
+    return try FfiConverterTypeEpgRefreshOutcome.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpgRefreshOutcome_lower(_ value: EpgRefreshOutcome) -> RustBuffer {
+    return FfiConverterTypeEpgRefreshOutcome.lower(value)
+}
+
+
+/**
+ * Progress from a running guide refresh.
+ */
+public struct EpgRefreshProgress: Equatable, Hashable {
+    public var stage: EpgRefreshStage
+    public var programmesSeen: UInt64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(stage: EpgRefreshStage, programmesSeen: UInt64) {
+        self.stage = stage
+        self.programmesSeen = programmesSeen
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension EpgRefreshProgress: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEpgRefreshProgress: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EpgRefreshProgress {
+        return
+            try EpgRefreshProgress(
+                stage: FfiConverterTypeEpgRefreshStage.read(from: &buf), 
+                programmesSeen: FfiConverterUInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: EpgRefreshProgress, into buf: inout [UInt8]) {
+        FfiConverterTypeEpgRefreshStage.write(value.stage, into: &buf)
+        FfiConverterUInt64.write(value.programmesSeen, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpgRefreshProgress_lift(_ buf: RustBuffer) throws -> EpgRefreshProgress {
+    return try FfiConverterTypeEpgRefreshProgress.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpgRefreshProgress_lower(_ value: EpgRefreshProgress) -> RustBuffer {
+    return FfiConverterTypeEpgRefreshProgress.lower(value)
+}
+
+
+/**
  * A user-marked favorite channel.
  */
 public struct Favorite: Equatable, Hashable {
@@ -4512,6 +6110,10 @@ public struct Favorite: Equatable, Hashable {
      * When it was favorited, Unix seconds.
      */
     public var createdAtUnix: Int64
+    /**
+     * Explicit user-defined lineup position.
+     */
+    public var position: Int64
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
@@ -4524,10 +6126,14 @@ public struct Favorite: Equatable, Hashable {
          */identity: Int64, 
         /**
          * When it was favorited, Unix seconds.
-         */createdAtUnix: Int64) {
+         */createdAtUnix: Int64, 
+        /**
+         * Explicit user-defined lineup position.
+         */position: Int64) {
         self.sourceId = sourceId
         self.identity = identity
         self.createdAtUnix = createdAtUnix
+        self.position = position
     }
 
     
@@ -4548,7 +6154,8 @@ public struct FfiConverterTypeFavorite: FfiConverterRustBuffer {
             try Favorite(
                 sourceId: FfiConverterInt64.read(from: &buf), 
                 identity: FfiConverterInt64.read(from: &buf), 
-                createdAtUnix: FfiConverterInt64.read(from: &buf)
+                createdAtUnix: FfiConverterInt64.read(from: &buf), 
+                position: FfiConverterInt64.read(from: &buf)
         )
     }
 
@@ -4556,6 +6163,7 @@ public struct FfiConverterTypeFavorite: FfiConverterRustBuffer {
         FfiConverterInt64.write(value.sourceId, into: &buf)
         FfiConverterInt64.write(value.identity, into: &buf)
         FfiConverterInt64.write(value.createdAtUnix, into: &buf)
+        FfiConverterInt64.write(value.position, into: &buf)
     }
 }
 
@@ -4988,6 +6596,63 @@ public func FfiConverterTypeLogRecord_lower(_ value: LogRecord) -> RustBuffer {
 
 
 /**
+ * Current and next programme for one channel.
+ */
+public struct NowNext: Equatable, Hashable {
+    public var current: EpgProgramme?
+    public var next: EpgProgramme?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(current: EpgProgramme?, next: EpgProgramme?) {
+        self.current = current
+        self.next = next
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension NowNext: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeNowNext: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> NowNext {
+        return
+            try NowNext(
+                current: FfiConverterOptionTypeEpgProgramme.read(from: &buf), 
+                next: FfiConverterOptionTypeEpgProgramme.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: NowNext, into buf: inout [UInt8]) {
+        FfiConverterOptionTypeEpgProgramme.write(value.current, into: &buf)
+        FfiConverterOptionTypeEpgProgramme.write(value.next, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNowNext_lift(_ buf: RustBuffer) throws -> NowNext {
+    return try FfiConverterTypeNowNext.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeNowNext_lower(_ value: NowNext) -> RustBuffer {
+    return FfiConverterTypeNowNext.lower(value)
+}
+
+
+/**
  * What the pairing screen renders while the server is up.
  */
 public struct PairingSession: Equatable, Hashable {
@@ -5346,7 +7011,7 @@ public func FfiConverterTypeSourceCommon_lower(_ value: SourceCommon) -> RustBuf
 
 
 /**
- * The stable, user-mappable error surface the shells receive across the FFI.
+ * The stable, code-and-data error surface the shells receive across the FFI.
  */
 public 
 enum ApiError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
@@ -5372,10 +7037,7 @@ enum ApiError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
     /**
      * Input provided by the user was not usable.
      */
-    case InvalidInput(
-        /**
-         * A short, plain-language reason (never contains secret material).
-         */reason: String
+    case InvalidInput(field: InputField, issue: InputIssue
     )
     /**
      * The response was fetched but yielded no usable channels.
@@ -5434,7 +7096,8 @@ public struct FfiConverterTypeApiError: FfiConverterRustBuffer {
         case 3: return .Unauthorized
         case 4: return .NotFound
         case 5: return .InvalidInput(
-            reason: try FfiConverterString.read(from: &buf)
+            field: try FfiConverterTypeInputField.read(from: &buf), 
+            issue: try FfiConverterTypeInputIssue.read(from: &buf)
             )
         case 6: return .ParseFailed(
             emitted: try FfiConverterUInt64.read(from: &buf), 
@@ -5471,9 +7134,10 @@ public struct FfiConverterTypeApiError: FfiConverterRustBuffer {
             writeInt(&buf, Int32(4))
         
         
-        case let .InvalidInput(reason):
+        case let .InvalidInput(field,issue):
             writeInt(&buf, Int32(5))
-            FfiConverterString.write(reason, into: &buf)
+            FfiConverterTypeInputField.write(field, into: &buf)
+            FfiConverterTypeInputIssue.write(issue, into: &buf)
             
         
         case let .ParseFailed(emitted,skipped):
@@ -5608,6 +7272,166 @@ public func FfiConverterTypeBufferingProfile_lower(_ value: BufferingProfile) ->
 
 
 /**
+ * Conflict behavior for portable custom-channel imports.
+ */
+
+public enum CustomImportMode: Equatable, Hashable {
+    
+    /**
+     * Keep existing channels and add imported rows after them.
+     */
+    case merge
+    /**
+     * Replace the complete custom-channel catalog atomically.
+     */
+    case replace
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension CustomImportMode: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCustomImportMode: FfiConverterRustBuffer {
+    typealias SwiftType = CustomImportMode
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CustomImportMode {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .merge
+        
+        case 2: return .replace
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: CustomImportMode, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .merge:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .replace:
+            writeInt(&buf, Int32(2))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCustomImportMode_lift(_ buf: RustBuffer) throws -> CustomImportMode {
+    return try FfiConverterTypeCustomImportMode.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCustomImportMode_lower(_ value: CustomImportMode) -> RustBuffer {
+    return FfiConverterTypeCustomImportMode.lower(value)
+}
+
+
+
+/**
+ * Stage of a running guide refresh.
+ */
+
+public enum EpgRefreshStage: Equatable, Hashable {
+    
+    /**
+     * Resolving the configured feed and opening the connection.
+     */
+    case connecting
+    /**
+     * Streaming and parsing XMLTV.
+     */
+    case downloading
+    /**
+     * Atomically replacing the rolling schedule.
+     */
+    case finalizing
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension EpgRefreshStage: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEpgRefreshStage: FfiConverterRustBuffer {
+    typealias SwiftType = EpgRefreshStage
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EpgRefreshStage {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .connecting
+        
+        case 2: return .downloading
+        
+        case 3: return .finalizing
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: EpgRefreshStage, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .connecting:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .downloading:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .finalizing:
+            writeInt(&buf, Int32(3))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpgRefreshStage_lift(_ buf: RustBuffer) throws -> EpgRefreshStage {
+    return try FfiConverterTypeEpgRefreshStage.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEpgRefreshStage_lower(_ value: EpgRefreshStage) -> RustBuffer {
+    return FfiConverterTypeEpgRefreshStage.lower(value)
+}
+
+
+
+/**
  * Which phase of an import is currently running.
  */
 
@@ -5688,6 +7512,193 @@ public func FfiConverterTypeImportStage_lift(_ buf: RustBuffer) throws -> Import
 #endif
 public func FfiConverterTypeImportStage_lower(_ value: ImportStage) -> RustBuffer {
     return FfiConverterTypeImportStage.lower(value)
+}
+
+
+
+/**
+ * Which user-controlled field failed validation. Shell resources turn this code into words.
+ */
+
+public enum InputField: Equatable, Hashable {
+    
+    case address
+    case server
+    case name
+    case header
+    case logLevel
+    case file
+    case source
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension InputField: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInputField: FfiConverterRustBuffer {
+    typealias SwiftType = InputField
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InputField {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .address
+        
+        case 2: return .server
+        
+        case 3: return .name
+        
+        case 4: return .header
+        
+        case 5: return .logLevel
+        
+        case 6: return .file
+        
+        case 7: return .source
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: InputField, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .address:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .server:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .name:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .header:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .logLevel:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .file:
+            writeInt(&buf, Int32(6))
+        
+        
+        case .source:
+            writeInt(&buf, Int32(7))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInputField_lift(_ buf: RustBuffer) throws -> InputField {
+    return try FfiConverterTypeInputField.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInputField_lower(_ value: InputField) -> RustBuffer {
+    return FfiConverterTypeInputField.lower(value)
+}
+
+
+
+/**
+ * Why an input field is unusable. Shell resources own the sentence and grammar.
+ */
+
+public enum InputIssue: Equatable, Hashable {
+    
+    case empty
+    case invalid
+    case unsupported
+    case unavailable
+
+
+
+
+
+}
+
+#if compiler(>=6)
+extension InputIssue: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeInputIssue: FfiConverterRustBuffer {
+    typealias SwiftType = InputIssue
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> InputIssue {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .empty
+        
+        case 2: return .invalid
+        
+        case 3: return .unsupported
+        
+        case 4: return .unavailable
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: InputIssue, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .empty:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .invalid:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .unsupported:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .unavailable:
+            writeInt(&buf, Int32(4))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInputIssue_lift(_ buf: RustBuffer) throws -> InputIssue {
+    return try FfiConverterTypeInputIssue.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeInputIssue_lower(_ value: InputIssue) -> RustBuffer {
+    return FfiConverterTypeInputIssue.lower(value)
 }
 
 
@@ -6452,6 +8463,196 @@ public func FfiConverterTypeSubtitleSize_lower(_ value: SubtitleSize) -> RustBuf
     return FfiConverterTypeSubtitleSize.lower(value)
 }
 
+
+
+
+
+/**
+ * Listener for a long-running guide refresh. Calls may arrive on any core thread.
+ */
+public protocol EpgRefreshListener: AnyObject, Sendable {
+    
+    func onProgress(progress: EpgRefreshProgress) 
+    
+    func onComplete(outcome: EpgRefreshOutcome) 
+    
+    func onFailed(error: ApiError) 
+    
+}
+
+
+// Put the implementation in a struct so we don't pollute the top-level namespace
+fileprivate struct UniffiCallbackInterfaceEpgRefreshListener {
+
+    // Create the VTable using a series of closures.
+    // Swift automatically converts these into C callback functions.
+    //
+    // Store the vtable directly.
+    static let vtable: UniffiVTableCallbackInterfaceEpgRefreshListener = UniffiVTableCallbackInterfaceEpgRefreshListener(
+        uniffiFree: { (uniffiHandle: UInt64) -> () in
+            do {
+                try FfiConverterCallbackInterfaceEpgRefreshListener.handleMap.remove(handle: uniffiHandle)
+            } catch {
+                print("Uniffi callback interface EpgRefreshListener: handle missing in uniffiFree")
+            }
+        },
+        uniffiClone: { (uniffiHandle: UInt64) -> UInt64 in
+            do {
+                return try FfiConverterCallbackInterfaceEpgRefreshListener.handleMap.clone(handle: uniffiHandle)
+            } catch {
+                fatalError("Uniffi callback interface EpgRefreshListener: handle missing in uniffiClone")
+            }
+        },
+        onProgress: { (
+            uniffiHandle: UInt64,
+            progress: RustBuffer,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterCallbackInterfaceEpgRefreshListener.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.onProgress(
+                     progress: try FfiConverterTypeEpgRefreshProgress_lift(progress)
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        onComplete: { (
+            uniffiHandle: UInt64,
+            outcome: RustBuffer,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterCallbackInterfaceEpgRefreshListener.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.onComplete(
+                     outcome: try FfiConverterTypeEpgRefreshOutcome_lift(outcome)
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        },
+        onFailed: { (
+            uniffiHandle: UInt64,
+            error: RustBuffer,
+            uniffiOutReturn: UnsafeMutableRawPointer,
+            uniffiCallStatus: UnsafeMutablePointer<RustCallStatus>
+        ) in
+            let makeCall = {
+                () throws -> () in
+                guard let uniffiObj = try? FfiConverterCallbackInterfaceEpgRefreshListener.handleMap.get(handle: uniffiHandle) else {
+                    throw UniffiInternalError.unexpectedStaleHandle
+                }
+                return uniffiObj.onFailed(
+                     error: try FfiConverterTypeApiError_lift(error)
+                )
+            }
+
+            
+            let writeReturn = { () }
+            uniffiTraitInterfaceCall(
+                callStatus: uniffiCallStatus,
+                makeCall: makeCall,
+                writeReturn: writeReturn
+            )
+        }
+    )
+
+    // Rust stores this pointer for future callback invocations, so it must live
+    // for the process lifetime (not just for the init function call).
+    //
+    // `nonisolated(unsafe)` is needed under Swift 6 strict concurrency.
+    // This is safe because the pointee is initialized once during static init
+    // and never mutated by either side of the FFI.  Its fields are C function pointers.
+    nonisolated(unsafe) static let vtablePtr: UnsafePointer<UniffiVTableCallbackInterfaceEpgRefreshListener> = {
+        let ptr = UnsafeMutablePointer<UniffiVTableCallbackInterfaceEpgRefreshListener>.allocate(capacity: 1)
+        ptr.initialize(to: vtable)
+        return UnsafePointer(ptr)
+    }()
+}
+
+private func uniffiCallbackInitEpgRefreshListener() {
+    uniffi_core_api_fn_init_callback_vtable_epgrefreshlistener(UniffiCallbackInterfaceEpgRefreshListener.vtablePtr)
+}
+
+// FfiConverter protocol for callback interfaces
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterCallbackInterfaceEpgRefreshListener {
+    fileprivate static let handleMap = UniffiHandleMap<EpgRefreshListener>()
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+extension FfiConverterCallbackInterfaceEpgRefreshListener : FfiConverter {
+    typealias SwiftType = EpgRefreshListener
+    typealias FfiType = UInt64
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func lift(_ handle: UInt64) throws -> SwiftType {
+        try handleMap.get(handle: handle)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func lower(_ v: SwiftType) -> UInt64 {
+        return handleMap.insert(obj: v)
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public static func write(_ v: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(v))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterCallbackInterfaceEpgRefreshListener_lift(_ handle: UInt64) throws -> EpgRefreshListener {
+    return try FfiConverterCallbackInterfaceEpgRefreshListener.lift(handle)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterCallbackInterfaceEpgRefreshListener_lower(_ v: EpgRefreshListener) -> UInt64 {
+    return FfiConverterCallbackInterfaceEpgRefreshListener.lower(v)
+}
 
 
 
@@ -7263,6 +9464,30 @@ fileprivate struct FfiConverterOptionTypeChannel: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeEpgProgramme: FfiConverterRustBuffer {
+    typealias SwiftType = EpgProgramme?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeEpgProgramme.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeEpgProgramme.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeMediaKind: FfiConverterRustBuffer {
     typealias SwiftType = MediaKind?
 
@@ -7379,6 +9604,81 @@ fileprivate struct FfiConverterSequenceTypeChannel: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeChannel.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCustomChannelSummary: FfiConverterRustBuffer {
+    typealias SwiftType = [CustomChannelSummary]
+
+    public static func write(_ value: [CustomChannelSummary], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCustomChannelSummary.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CustomChannelSummary] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CustomChannelSummary]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCustomChannelSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeCustomGroup: FfiConverterRustBuffer {
+    typealias SwiftType = [CustomGroup]
+
+    public static func write(_ value: [CustomGroup], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeCustomGroup.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [CustomGroup] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [CustomGroup]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeCustomGroup.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeEpgProgramme: FfiConverterRustBuffer {
+    typealias SwiftType = [EpgProgramme]
+
+    public static func write(_ value: [EpgProgramme], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeEpgProgramme.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [EpgProgramme] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [EpgProgramme]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeEpgProgramme.read(from: &buf))
         }
         return seq
     }
@@ -7575,6 +9875,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_core_catalog() != 35453) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_core_api_checksum_method_core_custom_channels() != 54841) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_core_epg() != 41985) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_core_api_checksum_method_core_export_logs() != 14800) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7603,6 +9909,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_taskhandle_cancel() != 14297) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_customchannelexport_contents() != 17390) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_resolvedheader_name() != 49329) {
@@ -7644,6 +9953,69 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_catalogservice_set_hidden() != 49226) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_core_api_checksum_method_customchannelservice_create() != 40789) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_customchannelservice_create_group() != 65405) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_customchannelservice_delete() != 904) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_customchannelservice_delete_group() != 24496) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_customchannelservice_export_portable() != 9467) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_customchannelservice_groups() != 33461) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_customchannelservice_import_portable() != 33648) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_customchannelservice_list() != 19946) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_customchannelservice_move_after() != 7571) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_customchannelservice_move_before() != 35724) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_customchannelservice_move_group_after() != 49957) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_customchannelservice_move_group_before() != 36098) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_customchannelservice_rename_group() != 35408) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_customchannelservice_resolve() != 17393) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_customchannelservice_update() != 8369) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_epgservice_clear_xmltv_feed() != 62892) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_epgservice_has_feed() != 6123) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_epgservice_now_next() != 61560) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_epgservice_refresh() != 1227) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_epgservice_set_xmltv_feed() != 63099) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_epgservice_window() != 32305) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_core_api_checksum_method_favoritesservice_add() != 53981) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7654,6 +10026,12 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_favoritesservice_list() != 38599) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_favoritesservice_move_after() != 24167) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_favoritesservice_move_before() != 27019) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_favoritesservice_remove() != 49667) {
@@ -7767,6 +10145,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_constructor_core_new() != 15257) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_core_api_checksum_constructor_customchanneldraft_new() != 32699) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_constructor_resolvedheader_from_parts() != 15784) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_core_api_checksum_method_importlistener_on_progress() != 23344) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -7788,10 +10172,20 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_secretstore_delete() != 41764) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_core_api_checksum_method_epgrefreshlistener_on_progress() != 52983) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_epgrefreshlistener_on_complete() != 13986) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_epgrefreshlistener_on_failed() != 34732) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_core_api_checksum_method_pairinglistener_on_submission() != 45457) {
         return InitializationResult.apiChecksumMismatch
     }
 
+    uniffiCallbackInitEpgRefreshListener()
     uniffiCallbackInitImportListener()
     uniffiCallbackInitLogSink()
     uniffiCallbackInitPairingListener()

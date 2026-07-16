@@ -292,6 +292,27 @@ typedef void (*UniffiCallbackInterfaceSecretStoreMethod2)(uint64_t, RustBuffer, 
     );
 
 #endif
+#ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_EPG_REFRESH_LISTENER_METHOD0
+#define UNIFFI_FFIDEF_CALLBACK_INTERFACE_EPG_REFRESH_LISTENER_METHOD0
+typedef void (*UniffiCallbackInterfaceEpgRefreshListenerMethod0)(uint64_t, RustBuffer, void* _Nonnull, 
+        RustCallStatus *_Nonnull uniffiCallStatus
+    );
+
+#endif
+#ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_EPG_REFRESH_LISTENER_METHOD1
+#define UNIFFI_FFIDEF_CALLBACK_INTERFACE_EPG_REFRESH_LISTENER_METHOD1
+typedef void (*UniffiCallbackInterfaceEpgRefreshListenerMethod1)(uint64_t, RustBuffer, void* _Nonnull, 
+        RustCallStatus *_Nonnull uniffiCallStatus
+    );
+
+#endif
+#ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_EPG_REFRESH_LISTENER_METHOD2
+#define UNIFFI_FFIDEF_CALLBACK_INTERFACE_EPG_REFRESH_LISTENER_METHOD2
+typedef void (*UniffiCallbackInterfaceEpgRefreshListenerMethod2)(uint64_t, RustBuffer, void* _Nonnull, 
+        RustCallStatus *_Nonnull uniffiCallStatus
+    );
+
+#endif
 #ifndef UNIFFI_FFIDEF_CALLBACK_INTERFACE_PAIRING_LISTENER_METHOD0
 #define UNIFFI_FFIDEF_CALLBACK_INTERFACE_PAIRING_LISTENER_METHOD0
 typedef void (*UniffiCallbackInterfacePairingListenerMethod0)(uint64_t, RustBuffer, void* _Nonnull, 
@@ -330,6 +351,17 @@ typedef struct UniffiVTableCallbackInterfaceSecretStore {
 } UniffiVTableCallbackInterfaceSecretStore;
 
 #endif
+#ifndef UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_EPG_REFRESH_LISTENER
+#define UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_EPG_REFRESH_LISTENER
+typedef struct UniffiVTableCallbackInterfaceEpgRefreshListener {
+    UniffiCallbackInterfaceFree _Nonnull uniffiFree;
+    UniffiCallbackInterfaceClone _Nonnull uniffiClone;
+    UniffiCallbackInterfaceEpgRefreshListenerMethod0 _Nonnull onProgress;
+    UniffiCallbackInterfaceEpgRefreshListenerMethod1 _Nonnull onComplete;
+    UniffiCallbackInterfaceEpgRefreshListenerMethod2 _Nonnull onFailed;
+} UniffiVTableCallbackInterfaceEpgRefreshListener;
+
+#endif
 #ifndef UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_PAIRING_LISTENER
 #define UNIFFI_FFIDEF_V_TABLE_CALLBACK_INTERFACE_PAIRING_LISTENER
 typedef struct UniffiVTableCallbackInterfacePairingListener {
@@ -357,6 +389,16 @@ uint64_t uniffi_core_api_fn_constructor_core_new(RustBuffer config, uint64_t sec
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CORE_CATALOG
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CORE_CATALOG
 uint64_t uniffi_core_api_fn_method_core_catalog(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CORE_CUSTOM_CHANNELS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CORE_CUSTOM_CHANNELS
+uint64_t uniffi_core_api_fn_method_core_custom_channels(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CORE_EPG
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CORE_EPG
+uint64_t uniffi_core_api_fn_method_core_epg(uint64_t ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CORE_EXPORT_LOGS
@@ -419,6 +461,36 @@ void uniffi_core_api_fn_free_taskhandle(uint64_t handle, RustCallStatus *_Nonnul
 void uniffi_core_api_fn_method_taskhandle_cancel(uint64_t ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_CUSTOMCHANNELDRAFT
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_CUSTOMCHANNELDRAFT
+uint64_t uniffi_core_api_fn_clone_customchanneldraft(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_FREE_CUSTOMCHANNELDRAFT
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_FREE_CUSTOMCHANNELDRAFT
+void uniffi_core_api_fn_free_customchanneldraft(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CONSTRUCTOR_CUSTOMCHANNELDRAFT_NEW
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CONSTRUCTOR_CUSTOMCHANNELDRAFT_NEW
+uint64_t uniffi_core_api_fn_constructor_customchanneldraft_new(RustBuffer group_id, RustBuffer name, RustBuffer logo, RustBuffer locator, RustBuffer user_agent, RustBuffer headers, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_CUSTOMCHANNELEXPORT
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_CUSTOMCHANNELEXPORT
+uint64_t uniffi_core_api_fn_clone_customchannelexport(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_FREE_CUSTOMCHANNELEXPORT
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_FREE_CUSTOMCHANNELEXPORT
+void uniffi_core_api_fn_free_customchannelexport(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELEXPORT_CONTENTS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELEXPORT_CONTENTS
+RustBuffer uniffi_core_api_fn_method_customchannelexport_contents(uint64_t ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_RESOLVEDHEADER
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_RESOLVEDHEADER
 uint64_t uniffi_core_api_fn_clone_resolvedheader(uint64_t handle, RustCallStatus *_Nonnull out_status
@@ -427,6 +499,11 @@ uint64_t uniffi_core_api_fn_clone_resolvedheader(uint64_t handle, RustCallStatus
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_FREE_RESOLVEDHEADER
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_FREE_RESOLVEDHEADER
 void uniffi_core_api_fn_free_resolvedheader(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CONSTRUCTOR_RESOLVEDHEADER_FROM_PARTS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CONSTRUCTOR_RESOLVEDHEADER_FROM_PARTS
+uint64_t uniffi_core_api_fn_constructor_resolvedheader_from_parts(RustBuffer name, RustBuffer value, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_RESOLVEDHEADER_NAME
@@ -514,6 +591,131 @@ uint64_t uniffi_core_api_fn_method_catalogservice_kinds(uint64_t ptr, int64_t so
 uint64_t uniffi_core_api_fn_method_catalogservice_set_hidden(uint64_t ptr, int64_t source_id, int64_t identity, int8_t hidden
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_CUSTOMCHANNELSERVICE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_CUSTOMCHANNELSERVICE
+uint64_t uniffi_core_api_fn_clone_customchannelservice(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_FREE_CUSTOMCHANNELSERVICE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_FREE_CUSTOMCHANNELSERVICE
+void uniffi_core_api_fn_free_customchannelservice(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_CREATE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_CREATE
+uint64_t uniffi_core_api_fn_method_customchannelservice_create(uint64_t ptr, uint64_t draft
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_CREATE_GROUP
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_CREATE_GROUP
+uint64_t uniffi_core_api_fn_method_customchannelservice_create_group(uint64_t ptr, RustBuffer name
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_DELETE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_DELETE
+uint64_t uniffi_core_api_fn_method_customchannelservice_delete(uint64_t ptr, int64_t id
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_DELETE_GROUP
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_DELETE_GROUP
+uint64_t uniffi_core_api_fn_method_customchannelservice_delete_group(uint64_t ptr, int64_t id
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_EXPORT_PORTABLE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_EXPORT_PORTABLE
+uint64_t uniffi_core_api_fn_method_customchannelservice_export_portable(uint64_t ptr
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_GROUPS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_GROUPS
+uint64_t uniffi_core_api_fn_method_customchannelservice_groups(uint64_t ptr, uint32_t offset, uint32_t limit
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_IMPORT_PORTABLE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_IMPORT_PORTABLE
+uint64_t uniffi_core_api_fn_method_customchannelservice_import_portable(uint64_t ptr, RustBuffer contents, RustBuffer mode
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_LIST
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_LIST
+uint64_t uniffi_core_api_fn_method_customchannelservice_list(uint64_t ptr, RustBuffer group_id, uint32_t offset, uint32_t limit
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_MOVE_AFTER
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_MOVE_AFTER
+uint64_t uniffi_core_api_fn_method_customchannelservice_move_after(uint64_t ptr, int64_t id, int64_t anchor_id
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_MOVE_BEFORE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_MOVE_BEFORE
+uint64_t uniffi_core_api_fn_method_customchannelservice_move_before(uint64_t ptr, int64_t id, int64_t anchor_id
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_MOVE_GROUP_AFTER
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_MOVE_GROUP_AFTER
+uint64_t uniffi_core_api_fn_method_customchannelservice_move_group_after(uint64_t ptr, int64_t id, int64_t anchor_id
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_MOVE_GROUP_BEFORE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_MOVE_GROUP_BEFORE
+uint64_t uniffi_core_api_fn_method_customchannelservice_move_group_before(uint64_t ptr, int64_t id, int64_t anchor_id
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_RENAME_GROUP
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_RENAME_GROUP
+uint64_t uniffi_core_api_fn_method_customchannelservice_rename_group(uint64_t ptr, int64_t id, RustBuffer name
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_RESOLVE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_RESOLVE
+uint64_t uniffi_core_api_fn_method_customchannelservice_resolve(uint64_t ptr, int64_t id
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_UPDATE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CUSTOMCHANNELSERVICE_UPDATE
+uint64_t uniffi_core_api_fn_method_customchannelservice_update(uint64_t ptr, int64_t id, uint64_t draft
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_EPGSERVICE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_EPGSERVICE
+uint64_t uniffi_core_api_fn_clone_epgservice(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_FREE_EPGSERVICE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_FREE_EPGSERVICE
+void uniffi_core_api_fn_free_epgservice(uint64_t handle, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_EPGSERVICE_CLEAR_XMLTV_FEED
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_EPGSERVICE_CLEAR_XMLTV_FEED
+uint64_t uniffi_core_api_fn_method_epgservice_clear_xmltv_feed(uint64_t ptr, int64_t source_id
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_EPGSERVICE_HAS_FEED
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_EPGSERVICE_HAS_FEED
+uint64_t uniffi_core_api_fn_method_epgservice_has_feed(uint64_t ptr, int64_t source_id
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_EPGSERVICE_NOW_NEXT
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_EPGSERVICE_NOW_NEXT
+uint64_t uniffi_core_api_fn_method_epgservice_now_next(uint64_t ptr, int64_t source_id, int64_t channel_identity, int64_t now_unix
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_EPGSERVICE_REFRESH
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_EPGSERVICE_REFRESH
+uint64_t uniffi_core_api_fn_method_epgservice_refresh(uint64_t ptr, int64_t source_id, int64_t now_unix, uint64_t listener, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_EPGSERVICE_SET_XMLTV_FEED
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_EPGSERVICE_SET_XMLTV_FEED
+uint64_t uniffi_core_api_fn_method_epgservice_set_xmltv_feed(uint64_t ptr, int64_t source_id, RustBuffer url
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_EPGSERVICE_WINDOW
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_EPGSERVICE_WINDOW
+uint64_t uniffi_core_api_fn_method_epgservice_window(uint64_t ptr, int64_t source_id, int64_t channel_identity, int64_t earliest_unix, int64_t latest_unix, uint32_t offset, uint32_t limit
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_FAVORITESSERVICE
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_CLONE_FAVORITESSERVICE
 uint64_t uniffi_core_api_fn_clone_favoritesservice(uint64_t handle, RustCallStatus *_Nonnull out_status
@@ -542,6 +744,16 @@ uint64_t uniffi_core_api_fn_method_favoritesservice_is_favorite(uint64_t ptr, in
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_FAVORITESSERVICE_LIST
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_FAVORITESSERVICE_LIST
 uint64_t uniffi_core_api_fn_method_favoritesservice_list(uint64_t ptr, int64_t source_id
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_FAVORITESSERVICE_MOVE_AFTER
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_FAVORITESSERVICE_MOVE_AFTER
+uint64_t uniffi_core_api_fn_method_favoritesservice_move_after(uint64_t ptr, int64_t source_id, int64_t identity, int64_t anchor_source_id, int64_t anchor_identity
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_FAVORITESSERVICE_MOVE_BEFORE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_FAVORITESSERVICE_MOVE_BEFORE
+uint64_t uniffi_core_api_fn_method_favoritesservice_move_before(uint64_t ptr, int64_t source_id, int64_t identity, int64_t anchor_source_id, int64_t anchor_identity
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_FAVORITESSERVICE_REMOVE
@@ -787,6 +999,11 @@ void uniffi_core_api_fn_init_callback_vtable_logsink(const UniffiVTableCallbackI
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_INIT_CALLBACK_VTABLE_SECRETSTORE
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_INIT_CALLBACK_VTABLE_SECRETSTORE
 void uniffi_core_api_fn_init_callback_vtable_secretstore(const UniffiVTableCallbackInterfaceSecretStore* _Nonnull vtable
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_INIT_CALLBACK_VTABLE_EPGREFRESHLISTENER
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_INIT_CALLBACK_VTABLE_EPGREFRESHLISTENER
+void uniffi_core_api_fn_init_callback_vtable_epgrefreshlistener(const UniffiVTableCallbackInterfaceEpgRefreshListener* _Nonnull vtable
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_INIT_CALLBACK_VTABLE_PAIRINGLISTENER
@@ -1060,6 +1277,18 @@ uint16_t uniffi_core_api_checksum_method_core_catalog(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CORE_CUSTOM_CHANNELS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CORE_CUSTOM_CHANNELS
+uint16_t uniffi_core_api_checksum_method_core_custom_channels(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CORE_EPG
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CORE_EPG
+uint16_t uniffi_core_api_checksum_method_core_epg(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CORE_EXPORT_LOGS
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CORE_EXPORT_LOGS
 uint16_t uniffi_core_api_checksum_method_core_export_logs(void
@@ -1117,6 +1346,12 @@ uint16_t uniffi_core_api_checksum_method_core_sources(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_TASKHANDLE_CANCEL
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_TASKHANDLE_CANCEL
 uint16_t uniffi_core_api_checksum_method_taskhandle_cancel(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELEXPORT_CONTENTS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELEXPORT_CONTENTS
+uint16_t uniffi_core_api_checksum_method_customchannelexport_contents(void
     
 );
 #endif
@@ -1198,6 +1433,132 @@ uint16_t uniffi_core_api_checksum_method_catalogservice_set_hidden(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_CREATE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_CREATE
+uint16_t uniffi_core_api_checksum_method_customchannelservice_create(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_CREATE_GROUP
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_CREATE_GROUP
+uint16_t uniffi_core_api_checksum_method_customchannelservice_create_group(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_DELETE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_DELETE
+uint16_t uniffi_core_api_checksum_method_customchannelservice_delete(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_DELETE_GROUP
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_DELETE_GROUP
+uint16_t uniffi_core_api_checksum_method_customchannelservice_delete_group(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_EXPORT_PORTABLE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_EXPORT_PORTABLE
+uint16_t uniffi_core_api_checksum_method_customchannelservice_export_portable(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_GROUPS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_GROUPS
+uint16_t uniffi_core_api_checksum_method_customchannelservice_groups(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_IMPORT_PORTABLE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_IMPORT_PORTABLE
+uint16_t uniffi_core_api_checksum_method_customchannelservice_import_portable(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_LIST
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_LIST
+uint16_t uniffi_core_api_checksum_method_customchannelservice_list(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_MOVE_AFTER
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_MOVE_AFTER
+uint16_t uniffi_core_api_checksum_method_customchannelservice_move_after(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_MOVE_BEFORE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_MOVE_BEFORE
+uint16_t uniffi_core_api_checksum_method_customchannelservice_move_before(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_MOVE_GROUP_AFTER
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_MOVE_GROUP_AFTER
+uint16_t uniffi_core_api_checksum_method_customchannelservice_move_group_after(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_MOVE_GROUP_BEFORE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_MOVE_GROUP_BEFORE
+uint16_t uniffi_core_api_checksum_method_customchannelservice_move_group_before(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_RENAME_GROUP
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_RENAME_GROUP
+uint16_t uniffi_core_api_checksum_method_customchannelservice_rename_group(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_RESOLVE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_RESOLVE
+uint16_t uniffi_core_api_checksum_method_customchannelservice_resolve(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_UPDATE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CUSTOMCHANNELSERVICE_UPDATE
+uint16_t uniffi_core_api_checksum_method_customchannelservice_update(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGSERVICE_CLEAR_XMLTV_FEED
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGSERVICE_CLEAR_XMLTV_FEED
+uint16_t uniffi_core_api_checksum_method_epgservice_clear_xmltv_feed(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGSERVICE_HAS_FEED
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGSERVICE_HAS_FEED
+uint16_t uniffi_core_api_checksum_method_epgservice_has_feed(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGSERVICE_NOW_NEXT
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGSERVICE_NOW_NEXT
+uint16_t uniffi_core_api_checksum_method_epgservice_now_next(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGSERVICE_REFRESH
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGSERVICE_REFRESH
+uint16_t uniffi_core_api_checksum_method_epgservice_refresh(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGSERVICE_SET_XMLTV_FEED
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGSERVICE_SET_XMLTV_FEED
+uint16_t uniffi_core_api_checksum_method_epgservice_set_xmltv_feed(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGSERVICE_WINDOW
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGSERVICE_WINDOW
+uint16_t uniffi_core_api_checksum_method_epgservice_window(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_FAVORITESSERVICE_ADD
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_FAVORITESSERVICE_ADD
 uint16_t uniffi_core_api_checksum_method_favoritesservice_add(void
@@ -1219,6 +1580,18 @@ uint16_t uniffi_core_api_checksum_method_favoritesservice_is_favorite(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_FAVORITESSERVICE_LIST
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_FAVORITESSERVICE_LIST
 uint16_t uniffi_core_api_checksum_method_favoritesservice_list(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_FAVORITESSERVICE_MOVE_AFTER
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_FAVORITESSERVICE_MOVE_AFTER
+uint16_t uniffi_core_api_checksum_method_favoritesservice_move_after(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_FAVORITESSERVICE_MOVE_BEFORE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_FAVORITESSERVICE_MOVE_BEFORE
+uint16_t uniffi_core_api_checksum_method_favoritesservice_move_before(void
     
 );
 #endif
@@ -1444,6 +1817,18 @@ uint16_t uniffi_core_api_checksum_constructor_core_new(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_CONSTRUCTOR_CUSTOMCHANNELDRAFT_NEW
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_CONSTRUCTOR_CUSTOMCHANNELDRAFT_NEW
+uint16_t uniffi_core_api_checksum_constructor_customchanneldraft_new(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_CONSTRUCTOR_RESOLVEDHEADER_FROM_PARTS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_CONSTRUCTOR_RESOLVEDHEADER_FROM_PARTS
+uint16_t uniffi_core_api_checksum_constructor_resolvedheader_from_parts(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_IMPORTLISTENER_ON_PROGRESS
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_IMPORTLISTENER_ON_PROGRESS
 uint16_t uniffi_core_api_checksum_method_importlistener_on_progress(void
@@ -1483,6 +1868,24 @@ uint16_t uniffi_core_api_checksum_method_secretstore_set(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SECRETSTORE_DELETE
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_SECRETSTORE_DELETE
 uint16_t uniffi_core_api_checksum_method_secretstore_delete(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGREFRESHLISTENER_ON_PROGRESS
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGREFRESHLISTENER_ON_PROGRESS
+uint16_t uniffi_core_api_checksum_method_epgrefreshlistener_on_progress(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGREFRESHLISTENER_ON_COMPLETE
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGREFRESHLISTENER_ON_COMPLETE
+uint16_t uniffi_core_api_checksum_method_epgrefreshlistener_on_complete(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGREFRESHLISTENER_ON_FAILED
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGREFRESHLISTENER_ON_FAILED
+uint16_t uniffi_core_api_checksum_method_epgrefreshlistener_on_failed(void
     
 );
 #endif
