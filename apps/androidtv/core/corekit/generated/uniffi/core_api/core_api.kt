@@ -1581,7 +1581,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_core_api_checksum_method_epgservice_now_next_batch() != 31908) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_core_api_checksum_method_epgservice_refresh() != 1227) {
+    if (lib.uniffi_core_api_checksum_method_epgservice_refresh() != 13871) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_epgservice_set_xmltv_feed() != 63099) {
@@ -4736,7 +4736,10 @@ public interface EpgServiceInterface {
     suspend fun `nowNextBatch`(`sourceId`: kotlin.Long, `channelIdentities`: List<kotlin.Long>, `nowUnix`: kotlin.Long): List<ChannelNowNext>
     
     /**
-     * Refreshes XMLTV in the background with cancellation at parser batch boundaries.
+     * Refreshes XMLTV in the background with cancellation at parser batch boundaries. Starting a
+     * refresh supersedes any in-flight refresh for the same source: the older one is cancelled and
+     * aborts at its next batch boundary, before its full-replacement commit, so a slow older
+     * response does not overwrite the newer guide.
      */
     fun `refresh`(`sourceId`: kotlin.Long, `nowUnix`: kotlin.Long, `listener`: EpgRefreshListener): TaskHandle
     
@@ -4983,7 +4986,10 @@ open class EpgService: Disposable, AutoCloseable, EpgServiceInterface
 
     
     /**
-     * Refreshes XMLTV in the background with cancellation at parser batch boundaries.
+     * Refreshes XMLTV in the background with cancellation at parser batch boundaries. Starting a
+     * refresh supersedes any in-flight refresh for the same source: the older one is cancelled and
+     * aborts at its next batch boundary, before its full-replacement commit, so a slow older
+     * response does not overwrite the newer guide.
      */override fun `refresh`(`sourceId`: kotlin.Long, `nowUnix`: kotlin.Long, `listener`: EpgRefreshListener): TaskHandle {
             return FfiConverterTypeTaskHandle.lift(
     callWithHandle {

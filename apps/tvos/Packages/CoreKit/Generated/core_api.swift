@@ -2212,7 +2212,10 @@ public protocol EpgServiceProtocol: AnyObject, Sendable {
     func nowNextBatch(sourceId: Int64, channelIdentities: [Int64], nowUnix: Int64) async throws  -> [ChannelNowNext]
     
     /**
-     * Refreshes XMLTV in the background with cancellation at parser batch boundaries.
+     * Refreshes XMLTV in the background with cancellation at parser batch boundaries. Starting a
+     * refresh supersedes any in-flight refresh for the same source: the older one is cancelled and
+     * aborts at its next batch boundary, before its full-replacement commit, so a slow older
+     * response does not overwrite the newer guide.
      */
     func refresh(sourceId: Int64, nowUnix: Int64, listener: EpgRefreshListener)  -> TaskHandle
     
@@ -2379,7 +2382,10 @@ open func nowNextBatch(sourceId: Int64, channelIdentities: [Int64], nowUnix: Int
 }
     
     /**
-     * Refreshes XMLTV in the background with cancellation at parser batch boundaries.
+     * Refreshes XMLTV in the background with cancellation at parser batch boundaries. Starting a
+     * refresh supersedes any in-flight refresh for the same source: the older one is cancelled and
+     * aborts at its next batch boundary, before its full-replacement commit, so a slow older
+     * response does not overwrite the newer guide.
      */
 open func refresh(sourceId: Int64, nowUnix: Int64, listener: EpgRefreshListener) -> TaskHandle  {
     return try!  FfiConverterTypeTaskHandle_lift(try! rustCall() {
@@ -10182,7 +10188,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_core_api_checksum_method_epgservice_now_next_batch() != 31908) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_core_api_checksum_method_epgservice_refresh() != 1227) {
+    if (uniffi_core_api_checksum_method_epgservice_refresh() != 13871) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_epgservice_set_xmltv_feed() != 63099) {
