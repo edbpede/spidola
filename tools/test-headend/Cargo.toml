@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+[package]
+name = "spidola-test-headend"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish = false
+
+[lints]
+workspace = true

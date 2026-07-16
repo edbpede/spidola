@@ -342,6 +342,8 @@ dependencies = [
  "core-xtream",
  "rand 0.9.5",
  "ring",
+ "serde",
+ "serde_json",
  "tempfile",
  "thiserror",
  "tokio",
@@ -1765,6 +1767,10 @@ dependencies = [
  "libc",
  "windows-sys 0.61.2",
 ]
+
+[[package]]
+name = "spidola-test-headend"
+version = "0.1.0"
 
 [[package]]
 name = "stable_deref_trait"

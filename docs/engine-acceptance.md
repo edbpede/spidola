@@ -27,6 +27,27 @@ induce each EngineError class on demand, which no third-party playlist can be re
 
 It is not part of the app, ships with nothing, and is never referenced from shipped code.
 
+The deterministic implementation is `tools/test-headend/`. It generates every success stream
+from FFmpeg's `testsrc2` and `sine` sources and writes all binary media beneath the ignored
+`target/test-headend-assets/` directory. It downloads no content and commits no generated media.
+
+From the repository root, prepare and start it with:
+
+```sh
+tools/test-headend/headend.sh generate
+tools/test-headend/headend.sh start
+```
+
+The route manifest is `http://127.0.0.1:8090/manifest.json`. The Apple simulator can use that
+address directly. For Android Emulator, restart with
+`SPIDOLA_HEADEND_PUBLIC_BASE=http://10.0.2.2:8090`; physical devices use the development Mac's
+reachable LAN address. See `tools/test-headend/README.md` for timing, encoder, binding, and
+firewall overrides. Always clean up the repository-owned process after the run:
+
+```sh
+tools/test-headend/headend.sh stop
+```
+
 ### 1.1 Streams that must play
 
 One per row, each ≥ 60 s, generated with an LGPL FFmpeg build (matching our own configuration —
@@ -49,12 +70,18 @@ an error class you cannot induce is an error class you have never tested.
 
 | Route | Induces | How |
 |---|---|---|
-| `/unreachable` | `SourceUnreachable` | DNS name that does not resolve, or a port with nothing listening. |
-| `/unauthorized` | `Unauthorized` | Returns `401` with `WWW-Authenticate`. A second route returns `403`. |
-| `/unsupported-format` | `UnsupportedFormat` | A container no engine demuxes (e.g. a renamed archive served as `video/mp2t`). |
-| `/decoder-failed` | `DecoderFailed` | A valid container whose video track is deliberately corrupted after the first keyframe. |
-| `/timeout` | `Timeout` | Accepts the connection, sends headers, then never sends a body (slow-loris). |
-| `/mid-stream-drop` | engine-specific | Serves 20 s then closes the connection — checks the engine does not report `Ended` for a live drop. |
+| `/unreachable` | `SourceUnreachable` | Redirects to `spidola.invalid`, a reserved DNS name that cannot resolve. |
+| `/unauthorized` | `Unauthorized` | Returns `401` with `WWW-Authenticate`. `/forbidden` returns `403`. |
+| `/unsupported-format` | `UnsupportedFormat` | Serves ZIP signature bytes as `video/mp2t`. |
+| `/decoder-failed` | `DecoderFailed` | Preserves the leading third of a valid TS, then corrupts later packet payloads. |
+| `/timeout` | `Timeout` | Sends complete `200` headers, then no body for 300 s. |
+| `/unknown` | `Unknown` | Returns deliberately unclassified status `520`; validates the diagnostic catch-all rather than a recognized mapping. |
+| `/mid-stream-drop` | engine-specific | Declares the full TS length, serves one third over 20 s, then closes — checks the engine does not report `Ended` for a live drop. |
+
+The exact headend behavior above is host-tested. Real-engine classification remains part of this
+manual matrix because platform networking layers may normalize errors before an adapter sees
+them. `/unknown` is the intentional exception to the normal "not Unknown" assertion below: it
+proves the catch-all remains available and diagnostic.
 
 ## 2. Per-release checklist
 
@@ -80,8 +107,9 @@ is precisely the case the loud fallback exists for. Record it as such rather tha
 
 For each engine × each failure route:
 
-- [ ] The engine reports **the class in the table**, not `Unknown`. An `Unknown` here is a mapping
-      bug: fix the mapping, do not amend the table.
+- [ ] The engine reports **the class in the table**. For recognized routes, an unexpected
+      `Unknown` is a mapping bug: fix the mapping, do not amend the table. `/unknown` must report
+      `Unknown`, with retained diagnostic detail.
 - [ ] The screen shows the plain-language failure class and at least one action (PRD §6.3). An
       error with no action is a design bug.
 - [ ] No system jargon reaches the screen — no codec names, no HTTP codes, no engine names
