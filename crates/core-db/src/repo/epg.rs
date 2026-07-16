@@ -99,12 +99,13 @@ impl EpgStaging {
 
     /// Atomically swaps the staged schedule into the live database.
     ///
-    /// `is_cancelled` is polled once **under the live writer lock**, inside the `BEGIN IMMEDIATE`
-    /// transaction that serializes this swap against every other commit. A refresh superseded (or
-    /// cancelled) after it staged — even in the instant after it passed an earlier boundary check
-    /// but before it won the writer lock — therefore observes the cancellation here and abandons
-    /// the swap, so a slow older refresh can never overwrite the newer guide a superseding refresh
-    /// already committed.
+    /// `is_cancelled` is polled **under the live writer lock**, inside the `BEGIN IMMEDIATE`
+    /// transaction that serializes this swap against every other commit — once on entry (a refresh
+    /// already superseded before it won the writer lock abandons the swap, so it can never overwrite
+    /// the newer guide a superseding refresh already committed) and once more immediately before the
+    /// commit (a supersession that lands while the swap is being built still abandons it). Only a
+    /// cancellation arriving within the `COMMIT` itself is not honoured — cancellation never
+    /// hard-aborts a task mid-DB-write.
     ///
     /// # Errors
     /// Returns [`DbError`] if the staging transaction or live swap fails.
@@ -128,10 +129,10 @@ impl EpgStaging {
         is_cancelled: &dyn Fn() -> bool,
     ) -> DbResult<EpgCommit> {
         conn.execute_batch("BEGIN IMMEDIATE")?;
-        // Re-check cancellation now that the writer lock serializes this swap against every other
-        // commit. A supersession cancels the older refresh before the newer one commits, so any
-        // older task that reaches this locked section after being superseded sees the cancellation
-        // and abandons the swap rather than clobbering the newer guide.
+        // First cancellation check, now that the writer lock serializes this swap against every
+        // other commit: a supersession cancels the older refresh before the newer one commits, so
+        // an older task that reaches this locked section already superseded abandons the swap
+        // rather than clobbering the newer guide.
         if is_cancelled() {
             conn.execute_batch("ROLLBACK")?;
             return Ok(EpgCommit::Superseded);
@@ -152,6 +153,15 @@ impl EpgStaging {
             params![self.source.value()],
         )?;
         let inserted = conn.changes();
+        // Second cancellation check, immediately before the commit: registration takes the registry
+        // lock, not this writer lock, so a supersession can land *during* the DELETE/INSERT above.
+        // Re-checking here abandons the just-built swap so a refresh cancelled mid-swap does not
+        // install its now-superseded schedule. (A cancellation landing within the COMMIT itself is
+        // not honoured — cancellation never hard-aborts a task mid-DB-write, per the events module.)
+        if is_cancelled() {
+            conn.execute_batch("ROLLBACK")?;
+            return Ok(EpgCommit::Superseded);
+        }
         conn.execute_batch("COMMIT")?;
         Ok(EpgCommit::Committed { inserted })
     }
@@ -617,5 +627,61 @@ mod tests {
             assert_eq!(live.len(), 1);
             assert_eq!(live[0].title, "fresh");
         }
+    }
+
+    #[test]
+    fn a_commit_cancelled_mid_swap_never_replaces_the_live_guide() {
+        let db = Db::open_in_memory().unwrap();
+        {
+            let conn = db.writer();
+            conn.execute(
+                "INSERT INTO sources(id, kind, name) VALUES (1, 'm3u-url', 'Source')",
+                [],
+            )
+            .unwrap();
+        }
+        {
+            let mut conn = db.writer();
+            replace_window(
+                &mut conn,
+                SourceId::new(1),
+                0,
+                200,
+                &[entry(10, 20, "newer")],
+            )
+            .unwrap();
+        }
+
+        // The refresh is not yet superseded when the swap begins (first poll passes), but a newer
+        // refresh cancels it while the DELETE/INSERT is being built — modelled by a predicate that
+        // reports cancelled only from its second poll, which is the pre-commit re-check. The swap
+        // must roll back to Superseded and leave the newer guide live.
+        let polls = std::cell::Cell::new(0u32);
+        let is_cancelled = || {
+            polls.set(polls.get() + 1);
+            polls.get() > 1
+        };
+
+        let mut superseded = db.begin_epg_staging(SourceId::new(1)).unwrap();
+        superseded.stage(&[entry(30, 40, "stale")]).unwrap();
+        assert_eq!(
+            superseded.commit(&db, &is_cancelled).unwrap(),
+            EpgCommit::Superseded
+        );
+        assert_eq!(polls.get(), 2, "the pre-commit re-check must have run");
+
+        let conn = db.reader().unwrap();
+        let live = list_window(
+            &conn,
+            SourceId::new(1),
+            ChannelIdentity::from_raw(7),
+            0,
+            200,
+            0,
+            10,
+        )
+        .unwrap();
+        assert_eq!(live.len(), 1);
+        assert_eq!(live[0].title, "newer");
     }
 }
