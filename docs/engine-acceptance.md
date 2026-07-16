@@ -8,16 +8,15 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 | | |
 |---|---|
 | **Applies to** | All four engines: MPVKit (tvOS default), AVPlayer (tvOS alternate), ExoPlayer (Android default), libmpv (Android fallback) |
-| **Cadence** | Every release, before tagging (TECH_SPEC §10) |
+| **Cadence** | Virtual contract on every software-complete change; hardware matrix before tagging (TECH_SPEC §10) |
 | **Companion documents** | `TECH_SPEC.md` §8 (engine contract), §10 (testing strategy), §11 (performance) · `PRD.md` §6.3 (actionable errors), §9 (budgets) |
 
-Everything below the engine contract is unit-tested and runs in CI: the selection policy, the
-EngineError taxonomy, every engine's error mapping, and the playback view models against the
-contract's fake engine. **This document covers the part that cannot be**: whether a real decoder,
-on real hardware, against a real stream, produces the state machine the contract promises.
-
-TECH_SPEC §10 names this honestly as "manual-with-checklist per release, the least automatable
-layer". The checklist exists so that honesty does not become an excuse.
+The selection policy, EngineError taxonomy, adapter mappings, and playback view models are covered
+by host tests. The repository headend now also drives the actual linked decoder stacks through a
+debug-only app harness on the tvOS Simulator and a Compose surface host on the Android TV emulator.
+That virtual contract is automated and belongs to Phase 7. The codec matrix, timing, lifecycle,
+audio/video observation, and repeated-zap checks still require reference and low-end physical
+hardware; those remain the per-release Phase 8 checklist below.
 
 ## 1. The test headend
 
@@ -73,7 +72,7 @@ an error class you cannot induce is an error class you have never tested.
 | `/unreachable` | `SourceUnreachable` | Redirects to `spidola.invalid`, a reserved DNS name that cannot resolve. |
 | `/unauthorized` | `Unauthorized` | Returns `401` with `WWW-Authenticate`. `/forbidden` returns `403`. |
 | `/unsupported-format` | `UnsupportedFormat` | Serves ZIP signature bytes as `video/mp2t`. |
-| `/decoder-failed` | `DecoderFailed` | Preserves the leading third of a valid TS, then corrupts later packet payloads. |
+| `/decoder-failed` | `DecoderFailed` | Removes audio, preserves TS/PAT/PMT/PES framing, and corrupts H.264 slice payloads so no frame decodes. |
 | `/timeout` | `Timeout` | Sends complete `200` headers, then no body for 300 s. |
 | `/unknown` | `Unknown` | Returns deliberately unclassified status `520`; validates the diagnostic catch-all rather than a recognized mapping. |
 | `/mid-stream-drop` | engine-specific | Declares the full TS length, serves one third over 20 s, then closes — checks the engine does not report `Ended` for a live drop. |
@@ -83,13 +82,52 @@ manual matrix because platform networking layers may normalize errors before an 
 them. `/unknown` is the intentional exception to the normal "not Unknown" assertion below: it
 proves the catch-all remains available and diagnostic.
 
-## 2. Per-release checklist
+## 2. Automated virtual-device contract
+
+Both suites are opt-in so ordinary unit/UI runs do not depend on a local server. With the headend
+running, Android mounts each real engine's Compose surface and checks the success stream plus all
+six error classes:
+
+```sh
+cd apps/androidtv
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
+adb install -r -t app/build/outputs/apk/debug/app-debug.apk
+adb install -r -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb shell am instrument -w -r \
+  -e spidolaHeadendBase http://10.0.2.2:8090 \
+  -e class dev.spidola.tv.RealEngineHeadendTest \
+  dev.spidola.tv.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+The libmpv emulator case disables MediaCodec explicitly and exercises libmpv's real software
+decoder plus Android/EGL output. Android TV emulators can stall inside their MediaCodec surface
+implementation independently of libmpv. Production still defaults to MediaCodec-copy decoding
+with software fallback; Phase 8 verifies that default path on physical Android TV hardware.
+
+For tvOS, regenerate the project with a headend URL reachable from the simulator, then run the two
+real-engine UI tests. `SPIDOLA_HEADEND_BASE` is copied into the UI-test bundle's Info.plist:
+
+```sh
+cd apps/tvos
+xcodegen generate
+xcodebuild -project Spidola.xcodeproj -scheme Spidola \
+  -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation)' \
+  CODE_SIGNING_ALLOWED=NO SPIDOLA_HEADEND_BASE=http://HOST:8090 \
+  test -only-testing:SpidolaUITests/RealEngineHeadendTests
+```
+
+Success is `Playing`; each recognized route must report its exact class, and `/unknown` must remain
+`Unknown`. The harnesses are excluded from release behavior (`#if DEBUG` on tvOS and androidTest on
+Android). They prove adapter classification and real decoder linkage, not picture, sound, timing,
+remote focus, or hardware resource behavior.
+
+## 3. Per-release hardware checklist
 
 Run the full matrix on **reference hardware** and the **low-end Chromecast-class Android
 baseline** (PRD §9 — the Shield is not the baseline and never was). Record the build, the device,
 and the date. A row is only green with a real observation behind it.
 
-### 2.1 Playback matrix — each engine × each stream
+### 3.1 Playback matrix — each engine × each stream
 
 For each engine (MPVKit, AVPlayer, ExoPlayer, libmpv) × each §1.1 stream:
 
@@ -103,7 +141,7 @@ For each engine (MPVKit, AVPlayer, ExoPlayer, libmpv) × each §1.1 stream:
 AVPlayer is expected to fail `mkv-vp9-opus` with `UnsupportedFormat` — **that is a pass**, and it
 is precisely the case the loud fallback exists for. Record it as such rather than as a defect.
 
-### 2.2 Error matrix — each engine × each §1.2 route
+### 3.2 Error matrix — each engine × each §1.2 route
 
 For each engine × each failure route:
 
@@ -119,7 +157,7 @@ For each engine × each failure route:
       bearing URL (TECH_SPEC §12). Grep the captured log for the account password before signing
       off.
 
-### 2.3 Loud fallback
+### 3.3 Loud fallback
 
 On each platform, with the default engine:
 
@@ -135,7 +173,7 @@ On each platform, with the default engine:
 - [ ] Nothing ever switches engine without the viewer pressing the button. A silent swap is a
       release blocker, not a nicety (TECH_SPEC §8).
 
-### 2.4 Budgets (PRD §9)
+### 3.4 Budgets (PRD §9)
 
 Measured on `hls-h264-aac`, default engine, release build, warm app:
 
@@ -149,7 +187,7 @@ Measured on `hls-h264-aac`, default engine, release build, warm app:
 - [ ] The channel strip appears in one frame and never stalls video (PRD §8.5).
 - [ ] Reduce-motion on: the strip still appears and dismisses, with no slide (PRD §8.6).
 
-### 2.5 Lifecycle
+### 3.5 Lifecycle
 
 - [ ] Suspend mid-playback and resume: playback rebuilds or fails legibly — never a black screen
       that claims to be playing.
@@ -160,7 +198,7 @@ Measured on `hls-h264-aac`, default engine, release build, warm app:
 - [ ] Leaving the screen mid-load cancels the load — the departed screen's engine is released and
       its core task cancelled end-to-end.
 
-## 3. Recording the run
+## 4. Recording the run
 
 Commit the completed checklist to the release PR, naming build, devices, and date. A failed row
 blocks the release or is filed with an issue number written next to it. An empty checklist and an

@@ -34,6 +34,9 @@ tools/test-headend/headend.sh stop
 `start` writes its PID and log to `target/test-headend-runtime/`, waits until
 `/manifest.json` responds, and fails cleanly if startup does not complete. `stop` sends `SIGTERM`,
 waits for exit, and removes the PID file. Use `run` instead of `start` for a foreground server.
+The listener remains nonblocking so shutdown stays responsive; each accepted client socket is
+returned to blocking mode before request handling so large generated segments cannot fail with a
+transient `EAGAIN`.
 
 The default listener is `0.0.0.0:8090`, while generated manifest URLs use
 `http://127.0.0.1:8090`. Override `SPIDOLA_HEADEND_PUBLIC_BASE` for the client being tested:
@@ -65,10 +68,14 @@ success stream and failure route.
 | `/unauthorized` | Returns `401` with `WWW-Authenticate`. | `Unauthorized` |
 | `/forbidden` | Returns `403`. | `Unauthorized` |
 | `/unsupported-format` | Serves ZIP signature bytes as `video/mp2t`. | `UnsupportedFormat` |
-| `/decoder-failed` | Preserves the first third of the H.264 TS, then corrupts later packet payloads. | `DecoderFailed` |
+| `/decoder-failed` | Removes audio, keeps valid TS/PAT/PMT/PES framing, and corrupts H.264 slice payloads so no frame can decode. | `DecoderFailed` |
 | `/timeout` | Sends a complete `200` response header and no body for the configured stall period. | `Timeout` |
 | `/unknown` | Returns the deliberately unclassified status `520` with an expectation header. | `Unknown` fallback |
 | `/mid-stream-drop` | Declares the full TS length, throttles one third of it, then closes the socket. | Engine-specific failure, never `Ended` |
+
+The same deterministic failures are available with an `.m3u8` suffix for AVPlayer. The decoder
+route returns a one-segment HLS playlist whose segment is `/decoder-failed.ts`; the other aliases
+preserve the same status or stall behavior while identifying as HLS.
 
 `Unknown` is intentionally tested separately from recognized mappings: it proves that an
 unclassified engine failure remains diagnostic rather than being mislabeled as a recognized

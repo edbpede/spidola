@@ -106,6 +106,15 @@ fn authorization_and_unreachable_routes_have_deterministic_http_semantics() {
 
     assert_status(&server.get("/forbidden"), 403);
     assert_status(&server.get("/unknown"), 520);
+
+    let hls_unreachable = server.get("/unreachable.m3u8");
+    assert_status(&hls_unreachable, 302);
+    assert!(
+        headers(&hls_unreachable).contains("Location: http://127.0.0.1:1/unreachable.m3u8\r\n")
+    );
+    assert_status(&server.get("/unauthorized.m3u8"), 401);
+    assert_status(&server.get("/forbidden.m3u8"), 403);
+    assert_status(&server.get("/unknown.m3u8"), 520);
 }
 
 #[test]
@@ -115,18 +124,39 @@ fn unsupported_format_is_an_archive_disguised_as_transport_stream() {
     assert_status(&response, 200);
     assert!(headers(&response).contains("Content-Type: video/mp2t"));
     assert!(response_body(&response).starts_with(b"PK\x03\x04"));
+
+    let hls = server.get("/unsupported-format.m3u8");
+    assert_status(&hls, 200);
+    assert!(headers(&hls).contains("Content-Type: application/vnd.apple.mpegurl"));
+    assert!(response_body(&hls).starts_with(b"PK\x03\x04"));
 }
 
 #[test]
-fn decoder_failure_preserves_the_lead_then_corrupts_transport_packets() {
+fn decoder_failure_preserves_transport_framing_while_corrupting_video() {
     let server = RunningHeadend::start();
     let original = fs::read(server.assets_dir.join("ts-h264-aac.ts")).expect("read source fixture");
     let response = server.get("/decoder-failed");
     assert_status(&response, 200);
     let body = response_body(&response);
-    assert_eq!(body.len(), original.len());
-    assert_eq!(&body[..300], &original[..300]);
-    assert_ne!(&body[500..], &original[500..]);
+    assert!(body.len() < original.len());
+    assert_ne!(body, original);
+    assert!(
+        body.chunks_exact(188)
+            .all(|transport_packet| transport_packet[0] == 0x47)
+    );
+    assert!(body.chunks_exact(188).all(|packet| {
+        let pid = (u16::from(packet[1] & 0x1f) << 8) | u16::from(packet[2]);
+        pid != 0x101
+    }));
+
+    let playlist = server.get("/decoder-failed.m3u8");
+    assert_status(&playlist, 200);
+    assert!(
+        response_body(&playlist)
+            .windows(18)
+            .any(|value| value == b"/decoder-failed.ts")
+    );
+    assert_status(&server.get("/decoder-failed.ts"), 200);
 }
 
 #[test]
@@ -136,6 +166,11 @@ fn timeout_sends_complete_headers_without_a_body() {
     assert_status(&response, 200);
     assert_eq!(response_body(&response), b"");
     assert!(headers(&response).contains("Content-Length: 16777216"));
+
+    let hls = request(server.address, "/timeout.m3u8", Duration::from_millis(50));
+    assert_status(&hls, 200);
+    assert!(headers(&hls).contains("Content-Type: application/vnd.apple.mpegurl"));
+    assert_eq!(response_body(&hls), b"");
 }
 
 #[test]
@@ -211,8 +246,14 @@ fn synthetic_transport_stream() -> Vec<u8> {
         let mut packet = vec![packet_index; 188];
         packet[0] = 0x47;
         packet[1] = 0x01;
-        packet[2] = 0x00;
+        packet[2] = u8::from(packet_index == 2);
         packet[3] = 0x10;
+        if packet_index == 0 {
+            let annex_b = [
+                0, 0, 1, 0x67, 1, 2, 3, 0, 0, 1, 0x68, 4, 5, 0, 0, 1, 0x65, 6, 7, 8,
+            ];
+            packet[4..(4 + annex_b.len())].copy_from_slice(&annex_b);
+        }
         stream.extend(packet);
     }
     stream

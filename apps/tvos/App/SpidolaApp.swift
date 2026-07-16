@@ -14,22 +14,38 @@ struct SpidolaApp: App {
 
   var body: some Scene {
     WindowGroup {
-      Group {
-        if isReady {
-          RootView(core: container.core, registry: container.registry)
-        } else {
-          ProgressView("Preparing fixture catalog…")
+      root
+        .onChange(of: scenePhase) { _, phase in
+          guard phase == .background else { return }
+          Task { await TopShelfSnapshotWriter.refresh(from: container.core) }
         }
+    }
+  }
+
+  @ViewBuilder private var root: some View {
+    #if DEBUG
+      if let configuration = EngineAcceptanceConfiguration.current {
+        EngineAcceptanceView(configuration: configuration)
+      } else {
+        normalRoot
       }
-      .task {
-        await container.seedFixtureIfNeeded()
-        await TopShelfSnapshotWriter.refresh(from: container.core)
-        isReady = true
+    #else
+      normalRoot
+    #endif
+  }
+
+  private var normalRoot: some View {
+    Group {
+      if isReady {
+        RootView(core: container.core, registry: container.registry)
+      } else {
+        ProgressView("Preparing fixture catalog…")
       }
-      .onChange(of: scenePhase) { _, phase in
-        guard phase == .background else { return }
-        Task { await TopShelfSnapshotWriter.refresh(from: container.core) }
-      }
+    }
+    .task {
+      await container.seedFixtureIfNeeded()
+      await TopShelfSnapshotWriter.refresh(from: container.core)
+      isReady = true
     }
   }
 }

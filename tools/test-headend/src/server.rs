@@ -12,6 +12,7 @@ use std::time::Duration;
 const MAX_REQUEST_BYTES: usize = 8 * 1024;
 const TS_PACKET_BYTES: usize = 188;
 const FIXTURE_VIDEO_PID: u16 = 0x100;
+const FIXTURE_AUDIO_PID: u16 = 0x101;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct StreamFixture {
@@ -175,19 +176,33 @@ fn handle_connection(mut stream: TcpStream, config: &Config) -> io::Result<()> {
             "redirecting to an intentionally unresolvable host\n",
             &[("Location", "http://spidola.invalid/unreachable")],
         ),
-        "/unauthorized" => write_text(
+        "/unreachable.m3u8" => write_text(
+            &mut stream,
+            302,
+            "Found",
+            "redirecting to an intentionally unresolvable host\n",
+            &[("Location", "http://127.0.0.1:1/unreachable.m3u8")],
+        ),
+        "/unauthorized" | "/unauthorized.m3u8" => write_text(
             &mut stream,
             401,
             "Unauthorized",
             "credentials required\n",
             &[("WWW-Authenticate", "Basic realm=\"spidola-test\"")],
         ),
-        "/forbidden" => write_text(&mut stream, 403, "Forbidden", "access denied\n", &[]),
-        "/unsupported-format" => serve_unsupported(&mut stream),
-        "/decoder-failed" => serve_decoder_failure(&mut stream, config),
-        "/timeout" => serve_timeout(&mut stream, config),
+        "/forbidden" | "/forbidden.m3u8" => {
+            write_text(&mut stream, 403, "Forbidden", "access denied\n", &[])
+        }
+        "/unsupported-format" => serve_unsupported(&mut stream, "video/mp2t"),
+        "/unsupported-format.m3u8" => {
+            serve_unsupported(&mut stream, "application/vnd.apple.mpegurl")
+        }
+        "/decoder-failed" | "/decoder-failed.ts" => serve_decoder_failure(&mut stream, config),
+        "/decoder-failed.m3u8" => serve_decoder_failure_playlist(&mut stream),
+        "/timeout" => serve_timeout(&mut stream, config, "video/mp2t"),
+        "/timeout.m3u8" => serve_timeout(&mut stream, config, "application/vnd.apple.mpegurl"),
         "/mid-stream-drop" => serve_mid_stream_drop(&mut stream, config),
-        "/unknown" => write_text(
+        "/unknown" | "/unknown.m3u8" => write_text(
             &mut stream,
             520,
             "Unknown Error",
@@ -407,22 +422,40 @@ fn content_type(path: &Path) -> &'static str {
     }
 }
 
-fn serve_unsupported(stream: &mut TcpStream) -> io::Result<()> {
+fn serve_unsupported(stream: &mut TcpStream, content_type: &str) -> io::Result<()> {
     const RENAMED_ARCHIVE: &[u8] = b"PK\x03\x04not-a-media-container\x00\x01\x02\x03";
     write_response(
         stream,
         200,
         "OK",
-        "video/mp2t",
+        content_type,
         RENAMED_ARCHIVE,
         &[("X-Spidola-Expected-Error", "UnsupportedFormat")],
     )
 }
 
+fn serve_decoder_failure_playlist(stream: &mut TcpStream) -> io::Result<()> {
+    const PLAYLIST: &[u8] = b"#EXTM3U\n\
+#EXT-X-VERSION:3\n\
+#EXT-X-TARGETDURATION:5\n\
+#EXT-X-MEDIA-SEQUENCE:0\n\
+#EXTINF:5,\n\
+/decoder-failed.ts\n\
+#EXT-X-ENDLIST\n";
+    write_response(
+        stream,
+        200,
+        "OK",
+        "application/vnd.apple.mpegurl",
+        PLAYLIST,
+        &[("X-Spidola-Expected-Error", "DecoderFailed")],
+    )
+}
+
 fn serve_decoder_failure(stream: &mut TcpStream, config: &Config) -> io::Result<()> {
     let path = config.assets_dir.join("ts-h264-aac.ts");
-    let mut body = fs::read(&path)?;
-    if body.len() < TS_PACKET_BYTES * 3 {
+    let source = fs::read(&path)?;
+    if source.len() < TS_PACKET_BYTES * 3 {
         return write_text(
             stream,
             503,
@@ -431,24 +464,24 @@ fn serve_decoder_failure(stream: &mut TcpStream, config: &Config) -> io::Result<
             &[],
         );
     }
-    let approximate_third = body.len() / 3;
-    let corrupt_from = approximate_third - (approximate_third % TS_PACKET_BYTES);
-    let corrupted_packets = body[corrupt_from..]
-        .chunks_exact_mut(TS_PACKET_BYTES)
-        .filter(|packet| transport_stream_pid(packet) == Some(FIXTURE_VIDEO_PID))
-        .filter_map(transport_stream_payload_mut)
-        .map(|payload| {
-            for byte in payload {
-                *byte ^= 0xa5;
-            }
-        })
-        .count();
-    if corrupted_packets == 0 {
+    // Remove audio so it cannot carry the player to a normal EOF, then leave PAT/PMT and PES
+    // framing intact while damaging every video sample. The result is a valid transport stream
+    // whose only media payload cannot produce playback.
+    let mut body = Vec::with_capacity(source.len());
+    for packet in source.chunks_exact(TS_PACKET_BYTES) {
+        if transport_stream_pid(packet) != Some(FIXTURE_AUDIO_PID) {
+            body.extend_from_slice(packet);
+        }
+    }
+    let shortened = (body.len() / 12).max(TS_PACKET_BYTES * 3);
+    body.truncate(shortened - (shortened % TS_PACKET_BYTES));
+    let corrupted_slices = corrupt_h264_slices(&mut body);
+    if corrupted_slices == 0 {
         return write_text(
             stream,
             503,
             "Service Unavailable",
-            "ts-h264-aac fixture does not contain the expected video PID; regenerate the assets\n",
+            "ts-h264-aac fixture does not contain H.264 slices; regenerate the assets\n",
             &[],
         );
     }
@@ -469,22 +502,74 @@ fn transport_stream_pid(packet: &[u8]) -> Option<u16> {
     Some((u16::from(packet[1] & 0x1f) << 8) | u16::from(packet[2]))
 }
 
-fn transport_stream_payload_mut(packet: &mut [u8]) -> Option<&mut [u8]> {
+fn transport_stream_payload_start(packet: &[u8]) -> Option<usize> {
     let adaptation_control = (packet[3] >> 4) & 0x03;
     let payload_start = match adaptation_control {
         1 => 4,
         3 => 5 + usize::from(packet[4]),
         _ => return None,
     };
-    (payload_start < packet.len()).then(|| &mut packet[payload_start..])
+    (payload_start < packet.len()).then_some(payload_start)
 }
 
-fn serve_timeout(stream: &mut TcpStream, config: &Config) -> io::Result<()> {
+fn corrupt_h264_slices(body: &mut [u8]) -> usize {
+    let mut payload_positions = Vec::new();
+    for packet_start in (0..body.len()).step_by(TS_PACKET_BYTES) {
+        let packet_end = packet_start + TS_PACKET_BYTES;
+        let Some(packet) = body.get(packet_start..packet_end) else {
+            break;
+        };
+        if transport_stream_pid(packet) != Some(FIXTURE_VIDEO_PID) {
+            continue;
+        }
+        let Some(payload_start) = transport_stream_payload_start(packet) else {
+            continue;
+        };
+        payload_positions.extend((packet_start + payload_start)..packet_end);
+    }
+
+    let elementary: Vec<u8> = payload_positions
+        .iter()
+        .map(|&position| body[position])
+        .collect();
+    let mut units = Vec::new();
+    let mut cursor = 0;
+    while cursor + 4 < elementary.len() {
+        let prefix = if elementary[cursor..].starts_with(&[0, 0, 0, 1]) {
+            4
+        } else if elementary[cursor..].starts_with(&[0, 0, 1]) {
+            3
+        } else {
+            cursor += 1;
+            continue;
+        };
+        units.push((cursor, cursor + prefix));
+        cursor += prefix;
+    }
+
+    let mut corrupted = 0;
+    for (index, &(_unit_start, header)) in units.iter().enumerate() {
+        let nal_type = elementary[header] & 0x1f;
+        if !matches!(nal_type, 1 | 5) {
+            continue;
+        }
+        let unit_end = units
+            .get(index + 1)
+            .map_or(elementary.len(), |&(next_start, _)| next_start);
+        for &position in &payload_positions[(header + 1)..unit_end] {
+            body[position] ^= 0xa5;
+        }
+        corrupted += 1;
+    }
+    corrupted
+}
+
+fn serve_timeout(stream: &mut TcpStream, config: &Config, content_type: &str) -> io::Result<()> {
     write_headers(
         stream,
         200,
         "OK",
-        "video/mp2t",
+        content_type,
         16 * 1024 * 1024,
         &[("X-Spidola-Expected-Error", "Timeout")],
     )?;

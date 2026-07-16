@@ -106,7 +106,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.spidola.tv.uitests
-        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: UITests/Info.plist
 schemes:
   Spidola:
     build:
