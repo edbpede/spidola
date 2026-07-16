@@ -174,7 +174,7 @@ pub fn get_by_identity(
 pub fn epg_identity_map(
     conn: &Connection,
     source: SourceId,
-) -> DbResult<std::collections::HashMap<String, ChannelIdentity>> {
+) -> DbResult<std::collections::HashMap<String, Vec<ChannelIdentity>>> {
     let mut statement = conn.prepare(
         "SELECT epg_key, identity FROM channels \
          WHERE source_id = ?1 AND epg_key IS NOT NULL",
@@ -185,7 +185,12 @@ pub fn epg_identity_map(
             ChannelIdentity::from_storage(row.get::<_, i64>(1)?),
         ))
     })?;
-    rows.collect::<Result<_, _>>().map_err(Into::into)
+    let mut identities = std::collections::HashMap::<String, Vec<ChannelIdentity>>::new();
+    for row in rows {
+        let (key, identity) = row?;
+        identities.entry(key).or_default().push(identity);
+    }
+    Ok(identities)
 }
 
 /// Lists a page of a source's channels in playlist order (paged by contract, §4.6).
@@ -526,5 +531,20 @@ mod tests {
         let src = seed_source(&conn);
         insert(&conn, src, &[channel("A", None), channel("B", Some("X"))]);
         assert_eq!(kinds_for_source(&conn, src).unwrap(), vec![MediaKind::Live]);
+    }
+
+    #[test]
+    fn one_epg_key_can_feed_multiple_quality_variants() {
+        let db = Db::open_in_memory().unwrap();
+        let conn = db.writer();
+        let src = seed_source(&conn);
+        let mut sd = channel("News SD", None);
+        sd.epg_key = Some("news.example".to_owned());
+        let mut hd = channel("News HD", None);
+        hd.epg_key = Some("news.example".to_owned());
+        insert(&conn, src, &[sd, hd]);
+
+        let identities = epg_identity_map(&conn, src).unwrap();
+        assert_eq!(identities["news.example"].len(), 2);
     }
 }

@@ -26,6 +26,8 @@ use crate::secrets::SecretStore;
 use crate::settings::{AppSettings, count_from, keys};
 
 const CHUNK_CHANNEL_DEPTH: usize = 8;
+const STAGING_BATCH_SIZE: usize = 256;
+type IdentityMap = HashMap<String, Vec<ChannelIdentity>>;
 
 /// Stage of a running guide refresh.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -289,7 +291,7 @@ enum Feed {
 
 struct PreparedRefresh {
     feed: Feed,
-    identities: HashMap<String, ChannelIdentity>,
+    identities: IdentityMap,
     window: EpgWindow,
 }
 
@@ -467,7 +469,7 @@ async fn stream_and_stage(
     source: SourceId,
     now_unix: i64,
     window: EpgWindow,
-    identities: HashMap<String, ChannelIdentity>,
+    identities: IdentityMap,
     mut response: core_fetch::Response,
     token: CancelToken,
     listener: Arc<dyn EpgRefreshListener>,
@@ -511,7 +513,7 @@ fn parse_and_stage(
     source: SourceId,
     now_unix: i64,
     window: EpgWindow,
-    identities: &HashMap<String, ChannelIdentity>,
+    identities: &IdentityMap,
     mut receiver: mpsc::Receiver<Vec<u8>>,
     token: &CancelToken,
     listener: &Arc<dyn EpgRefreshListener>,
@@ -569,7 +571,7 @@ fn parse_and_stage(
 struct StagingSink<'a> {
     staging: &'a mut EpgStaging,
     source: SourceId,
-    identities: &'a HashMap<String, ChannelIdentity>,
+    identities: &'a IdentityMap,
     token: &'a CancelToken,
     listener: &'a Arc<dyn EpgRefreshListener>,
     programmes_seen: u64,
@@ -587,26 +589,37 @@ impl ProgrammeSink for StagingSink<'_> {
             return Ok(());
         }
         let batch_len = u64::try_from(batch.len()).unwrap_or(u64::MAX);
-        let mut entries = Vec::with_capacity(batch.len());
+        let mut entries = Vec::with_capacity(STAGING_BATCH_SIZE);
         for programme in batch {
-            let Some(identity) = self.identities.get(&programme.channel).copied() else {
+            let Some(identities) = self.identities.get(&programme.channel) else {
                 self.unmapped = self.unmapped.saturating_add(1);
                 continue;
             };
-            entries.push(EpgEntry {
-                id: EpgEntryId::new(0),
-                source_id: self.source,
-                channel: identity,
-                title: programme.title,
-                description: programme.description,
-                start_unix: programme.start_unix,
-                end_unix: programme.end_unix,
-            });
+            for identity in identities {
+                entries.push(EpgEntry {
+                    id: EpgEntryId::new(0),
+                    source_id: self.source,
+                    channel: *identity,
+                    title: programme.title.clone(),
+                    description: programme.description.clone(),
+                    start_unix: programme.start_unix,
+                    end_unix: programme.end_unix,
+                });
+                if entries.len() == STAGING_BATCH_SIZE {
+                    self.staging.stage(&entries)?;
+                    self.mapped = self
+                        .mapped
+                        .saturating_add(u64::try_from(entries.len()).unwrap_or(u64::MAX));
+                    entries.clear();
+                }
+            }
         }
-        self.staging.stage(&entries)?;
-        self.mapped = self
-            .mapped
-            .saturating_add(u64::try_from(entries.len()).unwrap_or(u64::MAX));
+        if !entries.is_empty() {
+            self.staging.stage(&entries)?;
+            self.mapped = self
+                .mapped
+                .saturating_add(u64::try_from(entries.len()).unwrap_or(u64::MAX));
+        }
         self.programmes_seen = self.programmes_seen.saturating_add(batch_len);
         self.listener.on_progress(EpgRefreshProgress {
             stage: EpgRefreshStage::Downloading,

@@ -3,10 +3,9 @@
 
 //! The [`EpgEntry`] type — one programme in the guide (TECH_SPEC §4.1).
 //!
-//! The type is defined now (Phase 1) so the domain surface is complete; EPG ingestion and
-//! the rolling-window store land in Phase 8 (`core-parse/xmltv`, `core-db/repo/epg`).
-//! Times are Unix seconds so the domain carries no clock; parsers take an injected "now"
-//! for the rolling window (§4.2).
+//! Times are Unix seconds so the domain carries no clock; the streaming XMLTV parser takes an
+//! injected "now" for the rolling window (§4.2), and persistence keys entries to the same stable
+//! source-scoped identity used by favorites.
 
 use serde::{Deserialize, Serialize};
 
