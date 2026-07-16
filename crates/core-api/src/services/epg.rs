@@ -4,7 +4,8 @@
 //! Bounded EPG ingest and query service (PRD §6.6).
 
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use core_db::{Db, EpgCommit, EpgStaging, repo};
 use core_fetch::{FetchConfig, HttpClient, RequestSpec};
@@ -29,6 +30,14 @@ const CHUNK_CHANNEL_DEPTH: usize = 8;
 const STAGING_BATCH_SIZE: usize = 256;
 const MAX_NOW_NEXT_BATCH: usize = 100;
 type IdentityMap = HashMap<String, Vec<ChannelIdentity>>;
+
+/// The in-flight guide refresh for each source, as its cancellation token tagged with a unique
+/// per-operation sequence. Starting a refresh supersedes the source's earlier in-flight refresh —
+/// cancelling it so it aborts at its next batch boundary, before its full-replacement commit — so
+/// the newest guide wins and a slow older response does not overwrite it. Each refresh deregisters
+/// only its own token, and only while it is still the registered one, so a superseding refresh is
+/// never evicted.
+type RefreshRegistry = Mutex<HashMap<i64, (u64, CancelToken)>>;
 
 /// Stage of a running guide refresh.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -71,6 +80,10 @@ pub struct EpgService {
     rt: Arc<CoreRuntime>,
     db: Arc<Db>,
     secrets: Arc<dyn SecretStore>,
+    /// The in-flight refresh per source, so a new refresh supersedes an older one (newest wins).
+    refreshes: Arc<RefreshRegistry>,
+    /// Monotonic source of the unique per-operation keys used within [`Self::refreshes`].
+    next_refresh_seq: AtomicU64,
 }
 
 impl EpgService {
@@ -79,7 +92,41 @@ impl EpgService {
         db: Arc<Db>,
         secrets: Arc<dyn SecretStore>,
     ) -> Arc<Self> {
-        Arc::new(Self { rt, db, secrets })
+        Arc::new(Self {
+            rt,
+            db,
+            secrets,
+            refreshes: Arc::new(Mutex::new(HashMap::new())),
+            next_refresh_seq: AtomicU64::new(0),
+        })
+    }
+
+    /// Registers `token` as source `source_id`'s in-flight refresh, cancelling and dropping any
+    /// earlier in-flight refresh for that source so the newest refresh's guide wins. Returns the
+    /// new operation's unique key for [`Self::deregister`].
+    fn register_superseding(&self, source_id: i64, token: CancelToken) -> u64 {
+        let seq = self.next_refresh_seq.fetch_add(1, Ordering::Relaxed);
+        let superseded = self
+            .refreshes
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .insert(source_id, (seq, token));
+        if let Some((_, previous)) = superseded {
+            previous.cancel();
+        }
+        seq
+    }
+
+    /// Deregisters a completed refresh, but only while it is still the source's registered one, so
+    /// a refresh that has already been superseded never evicts the newer one that replaced it.
+    fn deregister(refreshes: &RefreshRegistry, source_id: i64, seq: u64) {
+        let mut guard = refreshes.lock().unwrap_or_else(PoisonError::into_inner);
+        if guard
+            .get(&source_id)
+            .is_some_and(|(active, _)| *active == seq)
+        {
+            guard.remove(&source_id);
+        }
     }
 }
 
@@ -186,7 +233,10 @@ impl EpgService {
             .await
     }
 
-    /// Refreshes XMLTV in the background with cancellation at parser batch boundaries.
+    /// Refreshes XMLTV in the background with cancellation at parser batch boundaries. Starting a
+    /// refresh supersedes any in-flight refresh for the same source: the older one is cancelled and
+    /// aborts at its next batch boundary, before its full-replacement commit, so a slow older
+    /// response does not overwrite the newer guide.
     #[must_use]
     pub fn refresh(
         &self,
@@ -199,6 +249,8 @@ impl EpgService {
         let db = Arc::clone(&self.db);
         let secrets = Arc::clone(&self.secrets);
         let listener: Arc<dyn EpgRefreshListener> = Arc::from(listener);
+        let seq = self.register_superseding(source_id, token.clone());
+        let refreshes = Arc::clone(&self.refreshes);
         self.rt.spawn(async move {
             run_refresh(
                 db,
@@ -209,6 +261,7 @@ impl EpgService {
                 listener,
             )
             .await;
+            Self::deregister(&refreshes, source_id, seq);
         });
         Arc::new(TaskHandle::new(token))
     }
@@ -640,6 +693,12 @@ fn parse_and_stage(
             skipped: diagnostics.skipped().saturating_add(unmapped),
         });
     }
+    // Final cancellation gate before the full-replacement commit: a refresh superseded (or
+    // otherwise cancelled) after parsing finished must not install its now-stale schedule over the
+    // newer guide that replaced it.
+    if sink.cancelled || token.is_cancelled() {
+        return Ok(StageResult::Cancelled);
+    }
     listener.on_progress(EpgRefreshProgress {
         stage: EpgRefreshStage::Finalizing,
         programmes_seen: sink.programmes_seen,
@@ -747,6 +806,23 @@ mod tests {
         fn on_failed(&self, _error: ApiError) {}
     }
 
+    /// Cancels its token the first time a progress update is delivered. Because the staging sink
+    /// emits progress from inside the final `parser.finish` flush, this lands cancellation *after*
+    /// the parse loop's boundary checks but *before* the commit — exercising the pre-commit gate.
+    struct CancelOnProgress {
+        token: CancelToken,
+    }
+
+    impl EpgRefreshListener for CancelOnProgress {
+        fn on_progress(&self, _progress: EpgRefreshProgress) {
+            self.token.cancel();
+        }
+
+        fn on_complete(&self, _outcome: EpgRefreshOutcome) {}
+
+        fn on_failed(&self, _error: ApiError) {}
+    }
+
     #[test]
     fn feed_references_are_opaque_and_unique() {
         let first = mint_feed_ref();
@@ -815,5 +891,73 @@ mod tests {
         let entries = repo::epg::list_window(&conn, source, channel, 0, 7_200, 0, 10).unwrap();
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].title, "Existing guide");
+    }
+
+    #[test]
+    fn a_refresh_superseded_before_commit_never_overwrites_the_newer_guide() {
+        let db = Db::open_in_memory().unwrap();
+        let source = SourceId::new(1);
+        let channel = ChannelIdentity::from_raw(7);
+        {
+            let mut conn = db.writer();
+            conn.execute(
+                "INSERT INTO sources(id, kind, name) VALUES (1, 'm3u-url', 'Source')",
+                [],
+            )
+            .unwrap();
+            // A newer refresh has already committed the live guide.
+            repo::epg::replace_window(
+                &mut conn,
+                source,
+                0,
+                7_200,
+                &[EpgEntry {
+                    id: EpgEntryId::new(0),
+                    source_id: source,
+                    channel,
+                    title: "Newer guide".to_owned(),
+                    description: None,
+                    start_unix: 0,
+                    end_unix: 3_600,
+                }],
+            )
+            .unwrap();
+        }
+
+        // A single-programme feed stays buffered until `parser.finish` (below the 256 batch size),
+        // so the sink's only progress update — and thus the supersede cancellation it triggers —
+        // arrives after the parse loop's boundary checks pass but before the commit. This is the
+        // exact window the pre-commit gate guards: without it, this stale replacement would commit.
+        let (sender, receiver) = mpsc::channel(CHUNK_CHANNEL_DEPTH);
+        sender
+            .blocking_send(FeedMessage::Chunk(
+                br#"<tv><programme channel="id0" start="19700101000000 +0000" stop="19700101010000 +0000"><title>Stale replacement</title></programme></tv>"#
+                    .to_vec(),
+            ))
+            .unwrap();
+        sender.blocking_send(FeedMessage::Complete).unwrap();
+        drop(sender);
+
+        let token = CancelToken::default();
+        let listener: Arc<dyn EpgRefreshListener> = Arc::new(CancelOnProgress {
+            token: token.clone(),
+        });
+        let identities = HashMap::from([("id0".to_owned(), vec![channel])]);
+        let result = parse_and_stage(
+            &db,
+            source,
+            1,
+            EpgWindow::default(),
+            &identities,
+            receiver,
+            &token,
+            &listener,
+        );
+
+        assert!(matches!(result, Ok(StageResult::Cancelled)));
+        let conn = db.reader().unwrap();
+        let entries = repo::epg::list_window(&conn, source, channel, 0, 7_200, 0, 10).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].title, "Newer guide");
     }
 }
