@@ -13,6 +13,7 @@ final class SpidolaUITests: XCTestCase {
   /// channels, asserting D-pad focus lands and moves with the Test-Card Amber treatment.
   func testFixtureDrillDownAndDpadFocus() {
     let app = XCUIApplication()
+    app.launchEnvironment["SPIDOLA_FIXTURE_UI_TEST"] = "1"
     app.launch()
 
     // Home: the fixture source is the first focusable element.

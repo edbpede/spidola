@@ -37,14 +37,39 @@ final class AppContainer {
 
   init() {
     self.registry = Self.makeRegistry()
-    let dbPath = URL.documentsDirectory.appending(path: "spidola.sqlite").path()
+    #if DEBUG
+      let isFixtureUITest =
+        ProcessInfo.processInfo.environment["SPIDOLA_FIXTURE_UI_TEST"] == "1"
+      let dbPath =
+        isFixtureUITest
+        ? URL.temporaryDirectory.appending(path: "spidola-ui-\(UUID().uuidString).sqlite").path()
+        : URL.documentsDirectory.appending(path: "spidola.sqlite").path()
+    #else
+      let dbPath = URL.documentsDirectory.appending(path: "spidola.sqlite").path()
+    #endif
     do {
-      let core = try SpidolaCore(
-        dbPath: dbPath,
-        logDirectives: "info,spidola=debug",
-        secrets: KeychainSecretStore(),
-        logSink: OSLogSink()
-      )
+      #if DEBUG
+        let core =
+          if isFixtureUITest {
+            try SpidolaCore(
+              dbPath: dbPath,
+              logDirectives: "info,spidola=debug",
+              secrets: EphemeralSecretStore(),
+              logSink: OSLogSink())
+          } else {
+            try SpidolaCore(
+              dbPath: dbPath,
+              logDirectives: "info,spidola=debug",
+              secrets: KeychainSecretStore(),
+              logSink: OSLogSink())
+          }
+      #else
+        let core = try SpidolaCore(
+          dbPath: dbPath,
+          logDirectives: "info,spidola=debug",
+          secrets: KeychainSecretStore(),
+          logSink: OSLogSink())
+      #endif
       let handshake = core.handshake()
       let coreVersion = handshake.coreVersion
       let schemaVersion = handshake.schemaVersion
