@@ -106,12 +106,18 @@ impl EpgService {
     /// new operation's unique key for [`Self::deregister`].
     fn register_superseding(&self, source_id: i64, token: CancelToken) -> u64 {
         let seq = self.next_refresh_seq.fetch_add(1, Ordering::Relaxed);
-        let superseded = self
+        let mut guard = self
             .refreshes
             .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .insert(source_id, (seq, token));
-        if let Some((_, previous)) = superseded {
+            .unwrap_or_else(PoisonError::into_inner);
+        if let Some((_, previous)) = guard.insert(source_id, (seq, token)) {
+            // Cancel the superseded refresh *while still holding the registry lock*. This keeps the
+            // cancel inside this critical section, so it happens-before the next superseder's
+            // registration (registry-mutex handoff) and therefore before whichever refresh
+            // ultimately commits under the writer lock — even a chain of supersessions where the
+            // intermediate one never commits. That is the edge the commit-boundary re-check relies
+            // on to abandon a stale swap, so the guarantee holds for any number of concurrent
+            // refreshes, not just two.
             previous.cancel();
         }
         seq
@@ -693,9 +699,10 @@ fn parse_and_stage(
             skipped: diagnostics.skipped().saturating_add(unmapped),
         });
     }
-    // Final cancellation gate before the full-replacement commit: a refresh superseded (or
-    // otherwise cancelled) after parsing finished must not install its now-stale schedule over the
-    // newer guide that replaced it.
+    // Fast-path cancellation check before the full-replacement commit: a refresh already superseded
+    // or cancelled by now abandons the swap without contending for the writer lock. The authoritative
+    // guard runs inside `EpgStaging::commit` under that lock, closing the instant between this check
+    // and the serialized swap so a superseded older refresh can never overwrite the newer guide.
     if sink.cancelled || token.is_cancelled() {
         return Ok(StageResult::Cancelled);
     }
@@ -703,14 +710,14 @@ fn parse_and_stage(
         stage: EpgRefreshStage::Finalizing,
         programmes_seen: sink.programmes_seen,
     });
-    match staging.commit(db)? {
+    match staging.commit(db, &|| token.is_cancelled())? {
         EpgCommit::Committed { inserted } => Ok(StageResult::Completed(EpgRefreshOutcome {
             inserted,
             emitted: diagnostics.emitted(),
             skipped: diagnostics.skipped(),
             unmapped,
         })),
-        EpgCommit::SourceRemoved => Ok(StageResult::Cancelled),
+        EpgCommit::SourceRemoved | EpgCommit::Superseded => Ok(StageResult::Cancelled),
     }
 }
 

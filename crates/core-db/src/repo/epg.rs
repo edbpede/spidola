@@ -18,6 +18,9 @@ pub enum EpgCommit {
     Committed { inserted: u64 },
     /// The source was removed while the schedule staged off-lock.
     SourceRemoved,
+    /// A newer refresh superseded this one (or it was cancelled) before the swap; the live
+    /// schedule was left untouched so a slow older refresh cannot overwrite a newer guide.
+    Superseded,
 }
 
 /// One channel's current and next guide entries from a batched lookup.
@@ -96,15 +99,22 @@ impl EpgStaging {
 
     /// Atomically swaps the staged schedule into the live database.
     ///
+    /// `is_cancelled` is polled once **under the live writer lock**, inside the `BEGIN IMMEDIATE`
+    /// transaction that serializes this swap against every other commit. A refresh superseded (or
+    /// cancelled) after it staged — even in the instant after it passed an earlier boundary check
+    /// but before it won the writer lock — therefore observes the cancellation here and abandons
+    /// the swap, so a slow older refresh can never overwrite the newer guide a superseding refresh
+    /// already committed.
+    ///
     /// # Errors
     /// Returns [`DbError`] if the staging transaction or live swap fails.
-    pub fn commit(self, db: &Db) -> DbResult<EpgCommit> {
+    pub fn commit(self, db: &Db, is_cancelled: &dyn Fn() -> bool) -> DbResult<EpgCommit> {
         self.conn.execute_batch("COMMIT")?;
         let guard = db.writer();
         let path = self.dir.path().join("epg-staging.sqlite");
         let path = path.to_string_lossy();
         guard.execute("ATTACH DATABASE ?1 AS epg_stg", params![path.as_ref()])?;
-        let result = self.swap_under_writer(&guard);
+        let result = self.swap_under_writer(&guard, is_cancelled);
         if result.is_err() {
             let _ = guard.execute_batch("ROLLBACK");
         }
@@ -112,8 +122,20 @@ impl EpgStaging {
         result
     }
 
-    fn swap_under_writer(&self, conn: &Connection) -> DbResult<EpgCommit> {
+    fn swap_under_writer(
+        &self,
+        conn: &Connection,
+        is_cancelled: &dyn Fn() -> bool,
+    ) -> DbResult<EpgCommit> {
         conn.execute_batch("BEGIN IMMEDIATE")?;
+        // Re-check cancellation now that the writer lock serializes this swap against every other
+        // commit. A supersession cancels the older refresh before the newer one commits, so any
+        // older task that reaches this locked section after being superseded sees the cancellation
+        // and abandons the swap rather than clobbering the newer guide.
+        if is_cancelled() {
+            conn.execute_batch("ROLLBACK")?;
+            return Ok(EpgCommit::Superseded);
+        }
         if !sources::exists(conn, self.source)? {
             conn.execute_batch("ROLLBACK")?;
             return Ok(EpgCommit::SourceRemoved);
@@ -520,6 +542,80 @@ mod tests {
         db.writer()
             .execute("DELETE FROM sources WHERE id = 1", [])
             .unwrap();
-        assert_eq!(orphaned.commit(&db).unwrap(), EpgCommit::SourceRemoved);
+        assert_eq!(
+            orphaned.commit(&db, &|| false).unwrap(),
+            EpgCommit::SourceRemoved
+        );
+    }
+
+    #[test]
+    fn a_commit_cancelled_at_the_writer_boundary_never_replaces_the_live_guide() {
+        let db = Db::open_in_memory().unwrap();
+        {
+            let conn = db.writer();
+            conn.execute(
+                "INSERT INTO sources(id, kind, name) VALUES (1, 'm3u-url', 'Source')",
+                [],
+            )
+            .unwrap();
+        }
+        {
+            let mut conn = db.writer();
+            replace_window(
+                &mut conn,
+                SourceId::new(1),
+                0,
+                200,
+                &[entry(10, 20, "newer")],
+            )
+            .unwrap();
+        }
+
+        // A refresh superseded after it staged observes the cancellation under the writer lock, so
+        // the swap is abandoned and the newer guide survives — this is the commit-boundary window.
+        let mut superseded = db.begin_epg_staging(SourceId::new(1)).unwrap();
+        superseded.stage(&[entry(30, 40, "stale")]).unwrap();
+        assert_eq!(
+            superseded.commit(&db, &|| true).unwrap(),
+            EpgCommit::Superseded
+        );
+        {
+            let conn = db.reader().unwrap();
+            let live = list_window(
+                &conn,
+                SourceId::new(1),
+                ChannelIdentity::from_raw(7),
+                0,
+                200,
+                0,
+                10,
+            )
+            .unwrap();
+            assert_eq!(live.len(), 1);
+            assert_eq!(live[0].title, "newer");
+        }
+
+        // An uncancelled commit still swaps the staged schedule in.
+        let mut live_refresh = db.begin_epg_staging(SourceId::new(1)).unwrap();
+        live_refresh.stage(&[entry(30, 40, "fresh")]).unwrap();
+        assert_eq!(
+            live_refresh.commit(&db, &|| false).unwrap(),
+            EpgCommit::Committed { inserted: 1 }
+        );
+        {
+            let conn = db.reader().unwrap();
+            let live = list_window(
+                &conn,
+                SourceId::new(1),
+                ChannelIdentity::from_raw(7),
+                0,
+                200,
+                0,
+                10,
+            )
+            .unwrap();
+            assert_eq!(live.len(), 1);
+            assert_eq!(live[0].title, "fresh");
+        }
     }
 }
