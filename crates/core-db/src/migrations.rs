@@ -16,7 +16,7 @@ use rusqlite_migration::{M, Migrations};
 use crate::error::DbResult;
 
 /// The current schema version — the boundary handshake reports this (TECH_SPEC §13).
-pub const SCHEMA_VERSION: usize = 2;
+pub const SCHEMA_VERSION: usize = 3;
 
 /// Migration 001: the full Phase-1 schema.
 ///
@@ -143,9 +143,62 @@ INSERT INTO settings(key, value) VALUES ('security.m3u_scrub.v2', 'pending')
 ON CONFLICT(key) DO UPDATE SET value = 'pending';
 ";
 
+/// Migration 003: Phase 7 EPG, custom channels, and ordered favorites.
+const M003_P1: &str = "\
+ALTER TABLE favorites ADD COLUMN position INTEGER NOT NULL DEFAULT 0;
+UPDATE favorites SET position = -created_at_unix;
+
+ALTER TABLE channels ADD COLUMN epg_key TEXT;
+CREATE INDEX idx_channels_epg_key ON channels(source_id, epg_key);
+
+CREATE TABLE epg_feeds (
+    source_id  INTEGER PRIMARY KEY REFERENCES sources(id) ON DELETE CASCADE,
+    secret_ref TEXT    NOT NULL
+) STRICT;
+
+CREATE TABLE epg_entries (
+    id               INTEGER PRIMARY KEY,
+    source_id        INTEGER NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+    channel_identity INTEGER NOT NULL,
+    title            TEXT    NOT NULL,
+    description      TEXT,
+    start_unix       INTEGER NOT NULL,
+    end_unix         INTEGER NOT NULL,
+    CHECK(end_unix > start_unix),
+    UNIQUE(source_id, channel_identity, start_unix, end_unix)
+) STRICT;
+CREATE INDEX idx_epg_now_next
+ON epg_entries(source_id, channel_identity, start_unix, end_unix);
+CREATE INDEX idx_epg_prune ON epg_entries(end_unix, start_unix);
+
+CREATE TABLE custom_groups (
+    id       INTEGER PRIMARY KEY,
+    name     TEXT    NOT NULL,
+    position INTEGER NOT NULL,
+    UNIQUE(name)
+) STRICT;
+
+CREATE TABLE custom_channels (
+    id         INTEGER PRIMARY KEY,
+    group_id   INTEGER REFERENCES custom_groups(id) ON DELETE SET NULL,
+    name       TEXT    NOT NULL,
+    logo       TEXT,
+    locator    TEXT    NOT NULL,
+    user_agent TEXT,
+    headers    TEXT,
+    position   INTEGER NOT NULL
+) STRICT;
+CREATE INDEX idx_custom_channels_group ON custom_channels(group_id, position, id);
+";
+
 /// The ordered migration set. Append the next `M::up(...)` to grow the schema.
-static MIGRATIONS: LazyLock<Migrations<'static>> =
-    LazyLock::new(|| Migrations::new(vec![M::up(M001_INIT), M::up(M002_SEALED_M3U)]));
+static MIGRATIONS: LazyLock<Migrations<'static>> = LazyLock::new(|| {
+    Migrations::new(vec![
+        M::up(M001_INIT),
+        M::up(M002_SEALED_M3U),
+        M::up(M003_P1),
+    ])
+});
 
 /// Applies all pending migrations, bringing `conn` to [`SCHEMA_VERSION`].
 ///

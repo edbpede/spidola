@@ -70,6 +70,14 @@ rowid_newtype!(
     /// Rowid of a playback-history record.
     HistoryId
 );
+rowid_newtype!(
+    /// Rowid of a user-created channel group.
+    CustomGroupId
+);
+rowid_newtype!(
+    /// Rowid of a user-created channel.
+    CustomChannelId
+);
 
 /// A **stable** per-source channel identity.
 ///

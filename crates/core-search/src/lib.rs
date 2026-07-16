@@ -244,6 +244,7 @@ mod tests {
         let url = format!("http://host/live/{}", name.replace(' ', "_"));
         NewChannel {
             identity: channel_identity(None, &url, name),
+            epg_key: None,
             name: name.to_owned(),
             group_title: Some(group.to_owned()),
             logo: None,

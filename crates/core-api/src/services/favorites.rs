@@ -130,6 +130,72 @@ impl FavoritesService {
             })
             .await
     }
+
+    /// Moves one favorite immediately before another without transferring the whole lineup.
+    ///
+    /// # Errors
+    /// Returns `NotFound` when either favorite is absent, or a storage error.
+    pub async fn move_before(
+        &self,
+        source_id: i64,
+        identity: i64,
+        anchor_source_id: i64,
+        anchor_identity: i64,
+    ) -> Result<(), ApiError> {
+        self.move_relative(
+            (source_id, identity),
+            (anchor_source_id, anchor_identity),
+            false,
+        )
+        .await
+    }
+
+    /// Moves one favorite immediately after another without transferring the whole lineup.
+    ///
+    /// # Errors
+    /// Returns `NotFound` when either favorite is absent, or a storage error.
+    pub async fn move_after(
+        &self,
+        source_id: i64,
+        identity: i64,
+        anchor_source_id: i64,
+        anchor_identity: i64,
+    ) -> Result<(), ApiError> {
+        self.move_relative(
+            (source_id, identity),
+            (anchor_source_id, anchor_identity),
+            true,
+        )
+        .await
+    }
+}
+
+impl FavoritesService {
+    async fn move_relative(
+        &self,
+        target: (i64, i64),
+        anchor: (i64, i64),
+        after: bool,
+    ) -> Result<(), ApiError> {
+        let db = Arc::clone(&self.db);
+        self.rt
+            .run_blocking(move || {
+                let mut conn = db.writer();
+                let target = (SourceId::new(target.0), identity_from_storage(target.1));
+                let anchor = (SourceId::new(anchor.0), identity_from_storage(anchor.1));
+                let moved = if after {
+                    repo::favorites::move_after(&mut conn, target, anchor)?
+                } else {
+                    repo::favorites::move_before(&mut conn, target, anchor)?
+                };
+                if moved {
+                    Ok(())
+                } else {
+                    Err(ApiError::NotFound)
+                }
+            })
+            .await
+    }
 }
 
 /// The current time in Unix seconds, saturating rather than panicking on an out-of-range clock.

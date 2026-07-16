@@ -342,6 +342,7 @@ impl ChannelSink for ProgressSink<'_, '_> {
 pub fn map_parsed(parsed: ParsedChannel) -> Option<NewChannel> {
     let locator = StreamLocator::parse(&parsed.url).ok()?;
     let identity = channel_identity(parsed.tvg_id(), &parsed.url, &parsed.name);
+    let epg_key = parsed.tvg_id().map(str::to_owned);
     let group_title = parsed.group().map(str::to_owned);
     let logo = parsed.logo().map(str::to_owned);
     let ParsedChannel {
@@ -352,6 +353,7 @@ pub fn map_parsed(parsed: ParsedChannel) -> Option<NewChannel> {
     } = parsed;
     Some(NewChannel {
         identity,
+        epg_key,
         name,
         group_title,
         logo,

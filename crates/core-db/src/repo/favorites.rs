@@ -25,8 +25,8 @@ pub fn add(
     created_at_unix: i64,
 ) -> DbResult<()> {
     conn.execute(
-        "INSERT INTO favorites(source_id, identity, created_at_unix) VALUES (?1, ?2, ?3) \
-         ON CONFLICT(source_id, identity) DO NOTHING",
+        "INSERT OR IGNORE INTO favorites(source_id, identity, created_at_unix, position) \
+         SELECT ?1, ?2, ?3, coalesce(max(position) + 1, 0) FROM favorites",
         params![source.value(), identity.to_storage(), created_at_unix],
     )?;
     Ok(())
@@ -67,8 +67,8 @@ pub fn is_favorite(
 /// Returns [`DbError`](crate::error::DbError) on a query failure.
 pub fn list_for_source(conn: &Connection, source: SourceId) -> DbResult<Vec<Favorite>> {
     let mut stmt = conn.prepare(
-        "SELECT source_id, identity, created_at_unix FROM favorites \
-         WHERE source_id = ?1 ORDER BY created_at_unix DESC",
+        "SELECT source_id, identity, created_at_unix, position FROM favorites \
+         WHERE source_id = ?1 ORDER BY position, created_at_unix DESC",
     )?;
     let mut rows = stmt.query(params![source.value()])?;
     let mut out = Vec::new();
@@ -77,6 +77,7 @@ pub fn list_for_source(conn: &Connection, source: SourceId) -> DbResult<Vec<Favo
             source_id: SourceId::new(row.get("source_id")?),
             identity: ChannelIdentity::from_storage(row.get("identity")?),
             created_at_unix: row.get("created_at_unix")?,
+            position: row.get("position")?,
         });
     }
     Ok(out)
@@ -114,7 +115,7 @@ pub fn list_channels(conn: &Connection, offset: u32, limit: u32) -> DbResult<Vec
          JOIN channels c ON c.source_id = f.source_id AND c.identity = f.identity \
          JOIN sources s ON s.id = f.source_id \
          WHERE s.enabled = 1 \
-         ORDER BY f.created_at_unix DESC, c.id DESC \
+         ORDER BY f.position, f.created_at_unix DESC, c.id DESC \
          LIMIT ?1 OFFSET ?2"
     );
     let mut stmt = conn.prepare(&sql)?;
@@ -124,6 +125,75 @@ pub fn list_channels(conn: &Connection, offset: u32, limit: u32) -> DbResult<Vec
         out.push(map_channel(row)?);
     }
     Ok(out)
+}
+
+/// Moves one favorite immediately before another in the global favorite lineup.
+/// Returns `false` when either key is absent.
+///
+/// # Errors
+/// Returns [`DbError`](crate::error::DbError) on a query or write failure.
+pub fn move_before(
+    conn: &mut Connection,
+    target: (SourceId, ChannelIdentity),
+    anchor: (SourceId, ChannelIdentity),
+) -> DbResult<bool> {
+    reorder(conn, target, anchor, false)
+}
+
+/// Moves one favorite immediately after another in the global favorite lineup.
+/// Returns `false` when either key is absent.
+///
+/// # Errors
+/// Returns [`DbError`](crate::error::DbError) on a query or write failure.
+pub fn move_after(
+    conn: &mut Connection,
+    target: (SourceId, ChannelIdentity),
+    anchor: (SourceId, ChannelIdentity),
+) -> DbResult<bool> {
+    reorder(conn, target, anchor, true)
+}
+
+fn reorder(
+    conn: &mut Connection,
+    target: (SourceId, ChannelIdentity),
+    anchor: (SourceId, ChannelIdentity),
+    after: bool,
+) -> DbResult<bool> {
+    if target == anchor {
+        return Ok(true);
+    }
+    let transaction = conn.transaction()?;
+    let mut ordered = {
+        let mut statement = transaction.prepare(
+            "SELECT source_id, identity FROM favorites ORDER BY position, created_at_unix DESC",
+        )?;
+        let rows = statement.query_map([], |row| {
+            Ok((
+                SourceId::new(row.get(0)?),
+                ChannelIdentity::from_storage(row.get(1)?),
+            ))
+        })?;
+        rows.collect::<Result<Vec<_>, _>>()?
+    };
+    let Some(target_index) = ordered.iter().position(|key| *key == target) else {
+        return Ok(false);
+    };
+    let moved = ordered.remove(target_index);
+    let Some(anchor_index) = ordered.iter().position(|key| *key == anchor) else {
+        return Ok(false);
+    };
+    let insert_at = anchor_index + usize::from(after);
+    ordered.insert(insert_at, moved);
+
+    let mut update = transaction
+        .prepare("UPDATE favorites SET position = ?1 WHERE source_id = ?2 AND identity = ?3")?;
+    for (position, (source, identity)) in ordered.into_iter().enumerate() {
+        let position = i64::try_from(position).unwrap_or(i64::MAX);
+        update.execute(params![position, source.value(), identity.to_storage()])?;
+    }
+    drop(update);
+    transaction.commit()?;
+    Ok(true)
 }
 
 #[cfg(test)]
@@ -149,6 +219,7 @@ mod tests {
         let url = format!("http://host/live/{name}");
         let ch = NewChannel {
             identity: channel_identity(None, &url, name),
+            epg_key: None,
             name: name.to_owned(),
             group_title: None,
             logo: None,
@@ -158,7 +229,7 @@ mod tests {
             overrides: ChannelOverrides::default(),
         };
         let sql = format!(
-            "INSERT INTO channels({IMPORT_COLUMNS}) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)"
+            "INSERT INTO channels({IMPORT_COLUMNS}) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)"
         );
         let mut stmt = conn.prepare(&sql).unwrap();
         insert_into(&mut stmt, source, &ch, 0).unwrap();

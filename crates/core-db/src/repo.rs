@@ -8,6 +8,7 @@
 #![forbid(unsafe_code)]
 
 pub mod channels;
+pub mod custom;
 pub mod epg;
 pub mod favorites;
 pub mod history;

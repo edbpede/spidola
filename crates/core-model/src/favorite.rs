@@ -19,4 +19,6 @@ pub struct Favorite {
     pub identity: ChannelIdentity,
     /// When it was favorited, Unix seconds.
     pub created_at_unix: i64,
+    /// Explicit user-defined lineup position. Lower values appear first.
+    pub position: i64,
 }

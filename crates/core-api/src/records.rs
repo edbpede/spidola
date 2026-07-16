@@ -26,6 +26,10 @@ use core_model::ids::{CategoryId, ChannelIdentity};
 use core_model::source::{
     Source as DomainSource, SourceCommon as DomainCommon, SourceKind as DomainSourceKind,
 };
+use core_model::{
+    CustomChannel as DomainCustomChannel, CustomGroup as DomainCustomGroup,
+    EpgEntry as DomainEpgEntry,
+};
 use zeroize::Zeroize;
 
 /// What a channel plays. The shell reserves an "unknown future variant" arm (TECH_SPEC §5).
@@ -218,6 +222,10 @@ impl ResolvedHeader {
     pub(crate) fn new(name: String, value: String) -> Arc<Self> {
         Arc::new(Self { name, value })
     }
+
+    pub(crate) fn pair(&self) -> (&str, &str) {
+        (&self.name, &self.value)
+    }
 }
 
 impl std::fmt::Debug for ResolvedHeader {
@@ -239,6 +247,13 @@ impl Drop for ResolvedHeader {
 
 #[uniffi::export]
 impl ResolvedHeader {
+    /// Constructs an opaque header for a create/edit request.
+    #[uniffi::constructor]
+    #[must_use]
+    pub fn from_parts(name: String, value: String) -> Arc<Self> {
+        Self::new(name, value)
+    }
+
     /// Header name. Returned only when the shell constructs the engine request.
     #[must_use]
     pub fn name(&self) -> String {
@@ -385,6 +400,8 @@ pub struct Favorite {
     pub identity: i64,
     /// When it was favorited, Unix seconds.
     pub created_at_unix: i64,
+    /// Explicit user-defined lineup position.
+    pub position: i64,
 }
 
 impl From<DomainFavorite> for Favorite {
@@ -393,7 +410,194 @@ impl From<DomainFavorite> for Favorite {
             source_id: favorite.source_id.value(),
             identity: favorite.identity.to_storage(),
             created_at_unix: favorite.created_at_unix,
+            position: favorite.position,
         }
+    }
+}
+
+/// One programme in the rolling EPG window.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct EpgProgramme {
+    pub id: i64,
+    pub source_id: i64,
+    pub channel_identity: i64,
+    pub title: String,
+    pub description: Option<String>,
+    pub start_unix: i64,
+    pub end_unix: i64,
+}
+
+impl From<DomainEpgEntry> for EpgProgramme {
+    fn from(entry: DomainEpgEntry) -> Self {
+        Self {
+            id: entry.id.value(),
+            source_id: entry.source_id.value(),
+            channel_identity: entry.channel.to_storage(),
+            title: entry.title,
+            description: entry.description,
+            start_unix: entry.start_unix,
+            end_unix: entry.end_unix,
+        }
+    }
+}
+
+/// Current and next programme for one channel.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct NowNext {
+    pub current: Option<EpgProgramme>,
+    pub next: Option<EpgProgramme>,
+}
+
+/// A bounded EPG page.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct EpgPage {
+    pub programmes: Vec<EpgProgramme>,
+    pub offset: u32,
+}
+
+/// A user-created channel group.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CustomGroup {
+    pub id: i64,
+    pub name: String,
+    pub position: i64,
+}
+
+impl From<DomainCustomGroup> for CustomGroup {
+    fn from(group: DomainCustomGroup) -> Self {
+        Self {
+            id: group.id.value(),
+            name: group.name,
+            position: group.position,
+        }
+    }
+}
+
+/// Secret-safe summary of a user-created channel.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CustomChannelSummary {
+    pub id: i64,
+    pub group_id: Option<i64>,
+    pub name: String,
+    pub logo: Option<String>,
+    pub has_user_agent: bool,
+    pub header_count: u32,
+    pub position: i64,
+}
+
+impl From<DomainCustomChannel> for CustomChannelSummary {
+    fn from(channel: DomainCustomChannel) -> Self {
+        Self {
+            id: channel.id.value(),
+            group_id: channel.group_id.map(core_model::CustomGroupId::value),
+            name: channel.name,
+            logo: channel.logo,
+            has_user_agent: channel.user_agent.is_some(),
+            header_count: u32::try_from(channel.headers.len()).unwrap_or(u32::MAX),
+            position: channel.position,
+        }
+    }
+}
+
+/// Opaque create/edit payload so locator and request details cannot appear in generated
+/// record diagnostics.
+#[derive(uniffi::Object)]
+pub struct CustomChannelDraft {
+    pub(crate) group_id: Option<i64>,
+    pub(crate) name: String,
+    pub(crate) logo: Option<String>,
+    pub(crate) locator: String,
+    pub(crate) user_agent: Option<String>,
+    pub(crate) headers: Vec<Arc<ResolvedHeader>>,
+}
+
+impl Drop for CustomChannelDraft {
+    fn drop(&mut self) {
+        self.locator.zeroize();
+        self.user_agent.zeroize();
+    }
+}
+
+impl std::fmt::Debug for CustomChannelDraft {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("CustomChannelDraft")
+            .field("group_id", &self.group_id)
+            .field("name", &self.name)
+            .field("logo", &self.logo)
+            .field("locator", &"[REDACTED]")
+            .field(
+                "user_agent",
+                &self.user_agent.as_ref().map(|_| "[REDACTED]"),
+            )
+            .field("headers", &self.headers)
+            .finish()
+    }
+}
+
+#[uniffi::export]
+impl CustomChannelDraft {
+    #[uniffi::constructor]
+    #[must_use]
+    pub fn new(
+        group_id: Option<i64>,
+        name: String,
+        logo: Option<String>,
+        locator: String,
+        user_agent: Option<String>,
+        headers: Vec<Arc<ResolvedHeader>>,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            group_id,
+            name,
+            logo,
+            locator,
+            user_agent,
+            headers,
+        })
+    }
+}
+
+/// Conflict behavior for portable custom-channel imports.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum CustomImportMode {
+    /// Keep existing channels and add imported rows after them.
+    Merge,
+    /// Replace the complete custom-channel catalog atomically.
+    Replace,
+}
+
+/// Opaque portable export. The contents may include user-supplied credentials and are exposed
+/// only through the explicit getter used by the platform document exporter.
+#[derive(uniffi::Object)]
+pub struct CustomChannelExport {
+    contents: String,
+}
+
+impl CustomChannelExport {
+    pub(crate) fn new(contents: String) -> Arc<Self> {
+        Arc::new(Self { contents })
+    }
+}
+
+impl std::fmt::Debug for CustomChannelExport {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("CustomChannelExport([REDACTED])")
+    }
+}
+
+impl Drop for CustomChannelExport {
+    fn drop(&mut self) {
+        self.contents.zeroize();
+    }
+}
+
+#[uniffi::export]
+impl CustomChannelExport {
+    /// Returns the versioned JSON for immediate writing to a user-chosen file. Never log it.
+    #[must_use]
+    pub fn contents(&self) -> String {
+        self.contents.clone()
     }
 }
 

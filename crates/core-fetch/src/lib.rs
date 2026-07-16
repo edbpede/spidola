@@ -20,3 +20,5 @@ pub use body::{ByteSink, StreamError, stream_to_sink};
 pub use client::{FetchConfig, HttpClient};
 pub use error::{FetchError, FetchResult, classify};
 pub use headers::RequestSpec;
+/// Streaming HTTP response handle returned by [`HttpClient`].
+pub use reqwest::Response;

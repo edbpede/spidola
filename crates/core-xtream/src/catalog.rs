@@ -53,6 +53,8 @@ pub struct CatalogCategory {
 pub struct CatalogChannel {
     /// Stable per-source identity (see [`identity_key`]).
     pub identity: ChannelIdentity,
+    /// Source-scoped XMLTV channel key supplied by the panel, when present.
+    pub epg_key: Option<String>,
     /// Display name.
     pub name: String,
     /// Group label — the channel's category name, when its category is known.
@@ -259,6 +261,7 @@ fn map_stream(
     diagnostics.record_emitted();
     Some(CatalogChannel {
         identity: identity_key(kind, stream_id, &locator, &name),
+        epg_key: dto.epg_channel_id,
         name,
         group_title,
         logo: dto.stream_icon,

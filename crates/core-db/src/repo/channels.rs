@@ -19,6 +19,8 @@ use crate::error::{DbError, DbResult};
 pub struct NewChannel {
     /// Stable per-source identity.
     pub identity: ChannelIdentity,
+    /// Source-scoped XMLTV/Xtream EPG key, when the catalog provided one.
+    pub epg_key: Option<String>,
     /// Display name.
     pub name: String,
     /// Group / category label, if any.
@@ -36,7 +38,7 @@ pub struct NewChannel {
 }
 
 /// Columns shared by the live `channels` table and the refresh staging table, in order.
-pub(crate) const IMPORT_COLUMNS: &str = "source_id, identity, name, group_title, logo, locator, kind, \
+pub(crate) const IMPORT_COLUMNS: &str = "source_id, identity, epg_key, name, group_title, logo, locator, kind, \
      category_id, user_agent, headers, preferred_engine, sort_index";
 
 /// The stored string for a [`MediaKind`] (matches the `is_live` generated-column check).
@@ -81,6 +83,7 @@ pub(crate) fn insert_into(
     stmt.execute(params![
         source.value(),
         channel.identity.to_storage(),
+        channel.epg_key,
         channel.name,
         channel.group_title,
         channel.logo,
@@ -90,7 +93,7 @@ pub(crate) fn insert_into(
         channel.overrides.user_agent,
         headers_to_json(&channel.overrides)?,
         channel.overrides.preferred_engine,
-        sort_index,
+        sort_index
     ])?;
     Ok(())
 }
@@ -162,6 +165,27 @@ pub fn get_by_identity(
     let mut statement = conn.prepare(&sql)?;
     let mut rows = statement.query(params![source.value(), identity.to_storage()])?;
     rows.next()?.map(map_channel).transpose()
+}
+
+/// Resolves every source-scoped EPG key to the stable channel identity used by favorites.
+///
+/// # Errors
+/// Returns [`DbError`] on a query failure.
+pub fn epg_identity_map(
+    conn: &Connection,
+    source: SourceId,
+) -> DbResult<std::collections::HashMap<String, ChannelIdentity>> {
+    let mut statement = conn.prepare(
+        "SELECT epg_key, identity FROM channels \
+         WHERE source_id = ?1 AND epg_key IS NOT NULL",
+    )?;
+    let rows = statement.query_map(params![source.value()], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            ChannelIdentity::from_storage(row.get::<_, i64>(1)?),
+        ))
+    })?;
+    rows.collect::<Result<_, _>>().map_err(Into::into)
 }
 
 /// Lists a page of a source's channels in playlist order (paged by contract, §4.6).
@@ -402,6 +426,7 @@ mod tests {
         let url = format!("http://host/live/{name}");
         NewChannel {
             identity: channel_identity(None, &url, name),
+            epg_key: None,
             name: name.to_owned(),
             group_title: group.map(str::to_owned),
             logo: None,
@@ -414,7 +439,7 @@ mod tests {
 
     fn insert(conn: &Connection, source: SourceId, channels: &[NewChannel]) {
         let sql = format!(
-            "INSERT INTO channels({IMPORT_COLUMNS}) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)"
+            "INSERT INTO channels({IMPORT_COLUMNS}) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)"
         );
         let mut stmt = conn.prepare(&sql).unwrap();
         for (i, ch) in channels.iter().enumerate() {

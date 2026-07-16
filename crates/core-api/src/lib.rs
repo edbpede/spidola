@@ -32,19 +32,22 @@ use std::sync::Arc;
 
 use core_db::Db;
 
-pub use error::{ApiError, ErrorUx, UserAction};
+pub use error::{ApiError, InputField, InputIssue};
 pub use events::{ImportListener, ImportOutcome, ImportProgress, ImportStage, TaskHandle};
 pub use logging::{LogConfig, LogHandle, LogLevel, LogRecord, LogSink, RingBuffer, RingLayer};
 pub use records::{
-    BrowseGroup, BrowseGroupPage, Channel, ChannelOverrides, ChannelPage, Favorite, HeaderField,
-    MediaKind, Recent, ResolvedHeader, ResolvedStream, SearchPage, Source, SourceCommon,
-    SourceKind,
+    BrowseGroup, BrowseGroupPage, Channel, ChannelOverrides, ChannelPage, CustomChannelDraft,
+    CustomChannelExport, CustomChannelSummary, CustomGroup, CustomImportMode, EpgPage,
+    EpgProgramme, Favorite, HeaderField, MediaKind, NowNext, Recent, ResolvedHeader,
+    ResolvedStream, SearchPage, Source, SourceCommon, SourceKind,
 };
 pub use runtime::CoreRuntime;
 pub use secrets::SecretStore;
 pub use services::{
-    CatalogService, FavoritesService, PairingListener, PairingService, PairingSession,
-    PairingSubmission, RecentsService, SearchService, SettingsService, SourceService,
+    CatalogService, CustomChannelService, EpgRefreshListener, EpgRefreshOutcome,
+    EpgRefreshProgress, EpgRefreshStage, EpgService, FavoritesService, PairingListener,
+    PairingService, PairingSession, PairingSubmission, RecentsService, SearchService,
+    SettingsService, SourceService,
 };
 pub use settings::{
     AppSettings, BufferingProfile, InterfaceDensity, SubtitleBackground, SubtitleSize,
@@ -59,9 +62,8 @@ uniffi::setup_scaffolding!();
 /// [`Handshake`] lets an older shell refuse a newer core legibly rather than crash (TECH_SPEC
 /// §5, §13).
 ///
-/// `4` — resolved stream locators and request overrides became opaque play-time objects so
-/// generated shell diagnostics cannot reflect plaintext credentials.
-pub const BOUNDARY_VERSION: u32 = 4;
+/// `5` — Phase 7 adds structured error codes, EPG, custom channels, and favorite ordering.
+pub const BOUNDARY_VERSION: u32 = 5;
 
 /// The core's build-time git revision, for the diagnostics screen (PRD §6.9). Resolved by
 /// `build.rs`; `"unknown"` in a source tree without git metadata (a release tarball build),
@@ -100,6 +102,7 @@ pub struct Core {
     rt: Arc<CoreRuntime>,
     db: Arc<Db>,
     cipher: Arc<CatalogCipher>,
+    secrets: Arc<dyn SecretStore>,
     log: LogHandle,
     // One shared `SourceService` for the process, so its in-flight-refresh registry is the same
     // instance every `sources()` call hands out. A best-effort `delete` can then find and cancel a
@@ -170,6 +173,7 @@ impl Core {
             rt,
             db,
             cipher,
+            secrets,
             log,
             source_service,
             pairing_service,
@@ -214,6 +218,26 @@ impl Core {
         FavoritesService::new(Arc::clone(&self.rt), Arc::clone(&self.db))
     }
 
+    /// The rolling EPG query service.
+    #[must_use]
+    pub fn epg(&self) -> Arc<EpgService> {
+        EpgService::new(
+            Arc::clone(&self.rt),
+            Arc::clone(&self.db),
+            Arc::clone(&self.secrets),
+        )
+    }
+
+    /// User-created channels and portable sharing.
+    #[must_use]
+    pub fn custom_channels(&self) -> Arc<CustomChannelService> {
+        CustomChannelService::new(
+            Arc::clone(&self.rt),
+            Arc::clone(&self.db),
+            Arc::clone(&self.cipher),
+        )
+    }
+
     /// The recently-watched service (list, purge, off-switch).
     #[must_use]
     pub fn recents(&self) -> Arc<RecentsService> {
@@ -249,7 +273,8 @@ impl Core {
         self.log
             .set_directives(&directives)
             .map_err(|_| ApiError::InvalidInput {
-                reason: "that log level isn't valid".to_owned(),
+                field: InputField::LogLevel,
+                issue: InputIssue::Invalid,
             })
     }
 

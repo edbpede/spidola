@@ -10,7 +10,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::ids::{ChannelIdentity, EpgEntryId};
+use crate::ids::{ChannelIdentity, EpgEntryId, SourceId};
 
 /// A single programme entry, keyed to a channel by its stable identity so entries survive
 /// a catalog refresh.
@@ -18,6 +18,8 @@ use crate::ids::{ChannelIdentity, EpgEntryId};
 pub struct EpgEntry {
     /// Persisted identity.
     pub id: EpgEntryId,
+    /// Owning source; channel identities are stable only within a source.
+    pub source_id: SourceId,
     /// The channel this programme belongs to (stable identity, not rowid).
     pub channel: ChannelIdentity,
     /// Programme title.
@@ -48,6 +50,7 @@ mod tests {
     fn is_current_uses_injected_now() {
         let entry = EpgEntry {
             id: EpgEntryId::new(1),
+            source_id: SourceId::new(2),
             channel: ChannelIdentity::from_raw(9),
             title: "News".to_owned(),
             description: None,

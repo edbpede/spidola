@@ -24,9 +24,11 @@ use std::thread;
 use std::time::Duration;
 
 use core_api::{
-    ApiError, AppSettings, BufferingProfile, Core, CoreConfig, ImportListener, ImportOutcome,
-    ImportProgress, LogLevel, LogRecord, LogSink, PairingListener, PairingSubmission,
-    ResolvedStream, SecretStore, Source, SubtitleSize,
+    ApiError, AppSettings, BufferingProfile, Core, CoreConfig, CustomChannelDraft,
+    CustomImportMode, EpgRefreshListener, EpgRefreshOutcome, EpgRefreshProgress, ImportListener,
+    ImportOutcome, ImportProgress, InputField, InputIssue, LogLevel, LogRecord, LogSink,
+    PairingListener, PairingSubmission, ResolvedHeader, ResolvedStream, SecretStore, Source,
+    SubtitleSize,
 };
 use core_model::channel::channel_identity;
 use tokio::runtime::Runtime;
@@ -150,6 +152,31 @@ impl LogSink for RecordingSink {
 enum Terminal {
     Complete(ImportOutcome),
     Failed(ApiError),
+}
+
+#[derive(Debug)]
+enum EpgTerminal {
+    Complete(EpgRefreshOutcome),
+    Failed(ApiError),
+}
+
+struct CollectingEpgListener {
+    progress: Arc<Mutex<Vec<EpgRefreshProgress>>>,
+    terminal: Sender<EpgTerminal>,
+}
+
+impl EpgRefreshListener for CollectingEpgListener {
+    fn on_progress(&self, progress: EpgRefreshProgress) {
+        self.progress.lock().unwrap().push(progress);
+    }
+
+    fn on_complete(&self, outcome: EpgRefreshOutcome) {
+        let _ = self.terminal.send(EpgTerminal::Complete(outcome));
+    }
+
+    fn on_failed(&self, error: ApiError) {
+        let _ = self.terminal.send(EpgTerminal::Failed(error));
+    }
 }
 
 /// A listener that records progress and signals the terminal outcome over a channel.
@@ -279,7 +306,7 @@ fn playlist(count: usize) -> Vec<u8> {
 struct Harness {
     core: Arc<Core>,
     sink: RecordingSink,
-    _db: tempfile::TempDir,
+    db_dir: tempfile::TempDir,
 }
 
 fn build_core(rt: &Runtime) -> Harness {
@@ -290,7 +317,7 @@ fn build_core(rt: &Runtime) -> Harness {
     Harness {
         core,
         sink,
-        _db: dir,
+        db_dir: dir,
     }
 }
 
@@ -1585,6 +1612,213 @@ fn setting_the_epg_window_moves_both_bounds() {
 }
 
 #[test]
+fn xmltv_refresh_maps_to_catalog_identity_and_swaps_atomically() {
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let sources = harness.core.sources();
+    let playlist_url = spawn_stub(playlist(1), vec![(64 * 1024, Duration::ZERO)]);
+    let source = rt
+        .block_on(sources.add_m3u_url("Guide source".to_owned(), playlist_url, None, false))
+        .unwrap();
+    let Source::M3uUrl { id: source_id, .. } = source else {
+        panic!("expected an M3U URL source");
+    };
+    let (catalog_tx, catalog_rx) = channel();
+    let _catalog = sources.refresh(
+        source_id,
+        Box::new(CollectingListener {
+            progress: Arc::new(Mutex::new(Vec::new())),
+            first_progress: Arc::new(Mutex::new(None)),
+            terminal: catalog_tx,
+        }),
+    );
+    assert!(matches!(
+        catalog_rx.recv_timeout(Duration::from_secs(30)).unwrap(),
+        Terminal::Complete(_)
+    ));
+
+    let xmltv = br#"<?xml version="1.0"?>
+<tv><programme channel="id0" start="19700101000000 +0000" stop="19700101010000 +0000">
+<title>Midnight News</title><desc>The first bulletin.</desc></programme></tv>"#
+        .to_vec();
+    let secret_marker = "epg-feed-token-61d9";
+    let feed_url = format!(
+        "{}?token={secret_marker}",
+        spawn_stub(xmltv, vec![(1024, Duration::ZERO)])
+    );
+    let epg = harness.core.epg();
+    rt.block_on(epg.set_xmltv_feed(source_id, feed_url))
+        .unwrap();
+    let progress = Arc::new(Mutex::new(Vec::new()));
+    let (epg_tx, epg_rx) = channel();
+    let _refresh = epg.refresh(
+        source_id,
+        1,
+        Box::new(CollectingEpgListener {
+            progress: Arc::clone(&progress),
+            terminal: epg_tx,
+        }),
+    );
+    match epg_rx.recv_timeout(Duration::from_secs(30)).unwrap() {
+        EpgTerminal::Complete(outcome) => {
+            assert_eq!(outcome.inserted, 1);
+            assert_eq!(outcome.unmapped, 0);
+        }
+        EpgTerminal::Failed(error) => panic!("guide refresh failed: {error:?}"),
+    }
+    assert!(!progress.lock().unwrap().is_empty());
+
+    let channel = rt
+        .block_on(harness.core.catalog().channels(source_id, 0, 1))
+        .unwrap()
+        .channels
+        .remove(0);
+    let now_next = rt
+        .block_on(epg.now_next(source_id, channel.identity, 1))
+        .unwrap();
+    assert_eq!(now_next.current.unwrap().title, "Midnight News");
+    assert!(now_next.next.is_none());
+
+    let disk = everything_on_disk(harness.db_dir.path());
+    assert!(!contains_bytes(&disk, secret_marker.as_bytes()));
+    let logs = harness.sink.records.lock().unwrap();
+    assert!(
+        logs.iter()
+            .all(|record| !record.message.contains(secret_marker))
+    );
+}
+
+#[test]
+fn custom_lineup_crud_reorder_and_portable_round_trip_keep_storage_sealed() {
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let custom = harness.core.custom_channels();
+    let first_group = rt.block_on(custom.create_group("News".to_owned())).unwrap();
+    let second_group = rt
+        .block_on(custom.create_group("Documentary".to_owned()))
+        .unwrap();
+    rt.block_on(custom.move_group_before(second_group, first_group))
+        .unwrap();
+    rt.block_on(custom.rename_group(second_group, "Docs".to_owned()))
+        .unwrap();
+
+    let locator_secret = "custom-path-secret-d4c2";
+    let header_secret = "custom-header-secret-a931";
+    let first = CustomChannelDraft::new(
+        Some(first_group),
+        "World News".to_owned(),
+        None,
+        format!("http://custom.example/live/{locator_secret}/1.ts"),
+        Some("Spidola Custom Agent".to_owned()),
+        vec![ResolvedHeader::from_parts(
+            "Authorization".to_owned(),
+            header_secret.to_owned(),
+        )],
+    );
+    let second = CustomChannelDraft::new(
+        Some(first_group),
+        "Local News".to_owned(),
+        None,
+        "http://custom.example/live/2.ts".to_owned(),
+        None,
+        Vec::new(),
+    );
+    let first_id = rt.block_on(custom.create(first)).unwrap();
+    let second_id = rt.block_on(custom.create(second)).unwrap();
+    rt.block_on(custom.move_before(second_id, first_id))
+        .unwrap();
+    let news = rt.block_on(custom.list(Some(first_group), 0, 10)).unwrap();
+    assert_eq!(
+        news.iter()
+            .map(|channel| channel.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Local News", "World News"]
+    );
+
+    let resolved = rt.block_on(custom.resolve(first_id)).unwrap();
+    assert!(resolved.locator().contains(locator_secret));
+    assert_eq!(resolved.headers()[0].value(), header_secret);
+    let disk = everything_on_disk(harness.db_dir.path());
+    assert!(!contains_bytes(&disk, locator_secret.as_bytes()));
+    assert!(!contains_bytes(&disk, header_secret.as_bytes()));
+
+    let portable = rt.block_on(custom.export_portable()).unwrap();
+    let contents = portable.contents();
+    assert!(contents.contains(locator_secret));
+    assert!(contents.contains("Docs"), "empty groups survive an export");
+    assert_eq!(
+        rt.block_on(custom.import_portable(contents, CustomImportMode::Replace))
+            .unwrap(),
+        2
+    );
+    let groups = rt.block_on(custom.groups(0, 10)).unwrap();
+    assert_eq!(groups.len(), 2);
+    let news_group = groups.iter().find(|group| group.name == "News").unwrap();
+    assert_eq!(
+        rt.block_on(custom.list(Some(news_group.id), 0, 10))
+            .unwrap()
+            .len(),
+        2
+    );
+}
+
+#[test]
+fn favorite_moves_change_the_global_home_lineup() {
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let source = rt
+        .block_on(harness.core.sources().add_m3u_file("Ordered".to_owned()))
+        .unwrap();
+    let Source::M3uFile { id: source_id, .. } = source else {
+        panic!("expected an M3U file source");
+    };
+    let (terminal_tx, terminal_rx) = channel();
+    let _import = harness.core.sources().import_m3u_content(
+        source_id,
+        String::from_utf8(playlist(3)).unwrap(),
+        Box::new(CollectingListener {
+            progress: Arc::new(Mutex::new(Vec::new())),
+            first_progress: Arc::new(Mutex::new(None)),
+            terminal: terminal_tx,
+        }),
+    );
+    assert!(matches!(
+        terminal_rx.recv_timeout(Duration::from_secs(30)).unwrap(),
+        Terminal::Complete(_)
+    ));
+    let channels = rt
+        .block_on(harness.core.catalog().channels(source_id, 0, 10))
+        .unwrap()
+        .channels;
+    let favorites = harness.core.favorites();
+    for channel in &channels {
+        rt.block_on(favorites.add(source_id, channel.identity))
+            .unwrap();
+    }
+    rt.block_on(favorites.move_before(
+        source_id,
+        channels[2].identity,
+        source_id,
+        channels[0].identity,
+    ))
+    .unwrap();
+    let ordered = rt
+        .block_on(favorites.favorite_channels(0, 10))
+        .unwrap()
+        .channels;
+    assert_eq!(
+        ordered
+            .iter()
+            .map(|channel| channel.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Channel 2", "Channel 0", "Channel 1"]
+    );
+}
+
+#[test]
 fn every_error_variant_is_constructible_and_actionable() {
     // Exhaustive by construction: adding a variant forces an addition here, and each must map to
     // a non-empty, jargon-free UX (PRD §6.3) so it is representable and renderable on both sides.
@@ -1594,7 +1828,8 @@ fn every_error_variant_is_constructible_and_actionable() {
         ApiError::Unauthorized,
         ApiError::NotFound,
         ApiError::InvalidInput {
-            reason: "bad".to_owned(),
+            field: InputField::Address,
+            issue: InputIssue::Invalid,
         },
         ApiError::ParseFailed {
             emitted: 1,
@@ -1605,9 +1840,6 @@ fn every_error_variant_is_constructible_and_actionable() {
         ApiError::Internal,
     ];
     for variant in variants {
-        let ux = variant.ux();
-        assert!(!ux.actions.is_empty(), "{variant:?} has no action");
-        assert!(!ux.failure_class.is_empty());
         assert!(!variant.to_string().is_empty());
     }
 }

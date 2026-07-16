@@ -29,7 +29,7 @@ use core_pair::{PairError, PairServer, Submission, SubmissionSink};
 use tokio::sync::Mutex;
 use tracing::{info, warn};
 
-use crate::error::ApiError;
+use crate::error::{ApiError, InputField, InputIssue};
 use crate::logging::targets;
 use crate::runtime::CoreRuntime;
 
@@ -197,7 +197,8 @@ impl PairingService {
             Some(host) => Some(host.parse::<Ipv4Addr>().map_err(|_| {
                 warn!(target: targets::PAIR, "the supplied pairing address is not an IPv4 address");
                 ApiError::InvalidInput {
-                    reason: "that isn't a network address".to_owned(),
+                    field: InputField::Address,
+                    issue: InputIssue::Invalid,
                 }
             })?),
             None => None,
@@ -259,7 +260,8 @@ fn map_error(error: &PairError) -> ApiError {
     match error {
         PairError::NoLanAddress(_) | PairError::NotOnPrivateNetwork { .. } => {
             ApiError::InvalidInput {
-                reason: "we couldn't work out this TV's address on your network".to_owned(),
+                field: InputField::Address,
+                issue: InputIssue::Unavailable,
             }
         }
         PairError::Bind(_) => ApiError::Internal,

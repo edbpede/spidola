@@ -97,6 +97,7 @@ const STAGING_DDL: &str = "\
 CREATE TABLE _refresh_staging (
     source_id        INTEGER,
     identity         INTEGER,
+    epg_key          TEXT,
     name             TEXT,
     group_title      TEXT,
     logo             TEXT,
@@ -181,7 +182,7 @@ impl Staging {
     pub fn stage(&mut self, batch: &[NewChannel]) -> DbResult<()> {
         self.run_checkpoint(Checkpoint::DuringStage)?;
         let sql = format!(
-            "INSERT INTO _refresh_staging({IMPORT_COLUMNS}) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)"
+            "INSERT INTO _refresh_staging({IMPORT_COLUMNS}) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)"
         );
         let mut stmt = self.conn.prepare_cached(&sql)?;
         for channel in batch {
@@ -287,6 +288,7 @@ mod tests {
         let url = format!("http://host/live/{name}");
         NewChannel {
             identity: channel_identity(None, &url, name),
+            epg_key: None,
             name: name.to_owned(),
             group_title: Some("News".to_owned()),
             logo: None,
