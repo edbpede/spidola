@@ -3,4 +3,16 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <resources>
     <string name="app_name">Spidola</string>
+    <string name="share_channels">Share custom channels</string>
+    <string name="platform_search_hint">Search channels</string>
+    <string name="about_title">About Spidola</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_go_back">Go back</string>
+    <string name="about_notices_loading">Loading open-source notices…</string>
+    <string name="about_notices_unavailable">Open-source notices are unavailable in this build.</string>
+    <string name="about_notices">Open-source software (%1$d)</string>
+    <string name="about_dependency_notice">%1$s\n%2$s</string>
+    <string name="about_native_media_notice">libmpv and FFmpeg — LGPL-3.0-only</string>
+    <string name="home_channel_name">Favorite channels</string>
+    <string name="home_channel_description">Open favorite channels from the Android TV home screen.</string>
 </resources>

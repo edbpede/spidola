@@ -54,8 +54,9 @@ fun FallbackOfferView(
     onTry: (Boolean) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    canRemember: Boolean = true,
 ) {
-    var rememberChoice by rememberSaveable { mutableStateOf(true) }
+    var rememberChoice by rememberSaveable(canRemember) { mutableStateOf(canRemember) }
     val tryOther = remember { FocusRequester() }
     LaunchedEffect(Unit) { tryOther.requestFocus() }
 
@@ -97,27 +98,29 @@ fun FallbackOfferView(
                 // channel" cannot hear whether that is the setting or the offer, and guessing wrong
                 // switches remembering off on the way to choosing it, which the primary button then
                 // carries out (PRD §6.10).
-                val rememberState =
-                    stringResource(
-                        if (rememberChoice) {
-                            R.string.playback_fallback_remember_state
-                        } else {
-                            R.string.playback_fallback_once_state
-                        },
-                    )
-                OfferButton(
-                    title =
+                if (canRemember) {
+                    val rememberState =
                         stringResource(
                             if (rememberChoice) {
-                                R.string.playback_fallback_once
+                                R.string.playback_fallback_remember_state
                             } else {
-                                R.string.playback_fallback_remember
+                                R.string.playback_fallback_once_state
                             },
-                        ),
-                    isPrimary = false,
-                    onClick = { rememberChoice = !rememberChoice },
-                    modifier = Modifier.semantics { stateDescription = rememberState },
-                )
+                        )
+                    OfferButton(
+                        title =
+                            stringResource(
+                                if (rememberChoice) {
+                                    R.string.playback_fallback_once
+                                } else {
+                                    R.string.playback_fallback_remember
+                                },
+                            ),
+                        isPrimary = false,
+                        onClick = { rememberChoice = !rememberChoice },
+                        modifier = Modifier.semantics { stateDescription = rememberState },
+                    )
+                }
                 OfferButton(
                     title = stringResource(R.string.playback_fallback_back),
                     isPrimary = false,

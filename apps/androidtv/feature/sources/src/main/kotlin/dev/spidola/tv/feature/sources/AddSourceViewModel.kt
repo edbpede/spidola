@@ -90,6 +90,18 @@ sealed interface AddSourceState {
     ) : AddSourceState
 }
 
+/** Shell resource selected by validation; view models never emit presentation prose. */
+enum class AddSourceValidation(
+    @param:StringRes val message: Int,
+) {
+    NAME(R.string.add_source_validation_name),
+    PLAYLIST_ADDRESS(R.string.add_source_validation_playlist_address),
+    PLAYLIST_TEXT(R.string.add_source_validation_playlist_text),
+    SERVER(R.string.add_source_validation_server),
+    USERNAME(R.string.add_source_validation_username),
+    PASSWORD(R.string.add_source_validation_password),
+}
+
 /**
  * Drives adding a source and importing its catalog with live progress, cancellation, and a
  * diagnostics summary (PRD §6.1). Depends on the narrow [SourcesAccess]; unit-tested against a
@@ -102,8 +114,8 @@ class AddSourceViewModel(
     private val _state = MutableStateFlow<AddSourceState>(AddSourceState.Editing)
     val state: StateFlow<AddSourceState> = _state.asStateFlow()
 
-    private val _validation = MutableStateFlow<String?>(null)
-    val validation: StateFlow<String?> = _validation.asStateFlow()
+    private val _validation = MutableStateFlow<AddSourceValidation?>(null)
+    val validation: StateFlow<AddSourceValidation?> = _validation.asStateFlow()
 
     private var importJob: Job? = null
 
@@ -124,11 +136,11 @@ class AddSourceViewModel(
         importJob?.cancel()
     }
 
-    private fun validate(form: AddSourceForm): String? {
-        if (form.name.isBlank()) return "Give this source a name."
+    private fun validate(form: AddSourceForm): AddSourceValidation? {
+        if (form.name.isBlank()) return AddSourceValidation.NAME
         return when (form.mode) {
-            AddSourceMode.URL -> if (form.url.isBlank()) "Enter the playlist address." else null
-            AddSourceMode.FILE -> if (form.content.isBlank()) "Paste the playlist text." else null
+            AddSourceMode.URL -> if (form.url.isBlank()) AddSourceValidation.PLAYLIST_ADDRESS else null
+            AddSourceMode.FILE -> if (form.content.isBlank()) AddSourceValidation.PLAYLIST_TEXT else null
             AddSourceMode.XTREAM -> validateXtream(form)
         }
     }
@@ -136,11 +148,11 @@ class AddSourceViewModel(
     /** Only checks for blanks. Whether the account *works* is the core's answer, not a guess made
      * here: `addXtream` verifies against the headend before storing, so a wrong password comes back
      * as an actionable error rather than being waved through by a shell-side regex. */
-    private fun validateXtream(form: AddSourceForm): String? =
+    private fun validateXtream(form: AddSourceForm): AddSourceValidation? =
         when {
-            form.server.isBlank() -> "Enter the server address."
-            form.username.isBlank() -> "Enter your username."
-            form.password.isBlank() -> "Enter your password."
+            form.server.isBlank() -> AddSourceValidation.SERVER
+            form.username.isBlank() -> AddSourceValidation.USERNAME
+            form.password.isBlank() -> AddSourceValidation.PASSWORD
             else -> null
         }
 

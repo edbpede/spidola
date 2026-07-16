@@ -46,6 +46,19 @@ enum class AutoRefreshOption(
     }
 }
 
+sealed interface SourcesStatus {
+    data object FileCannotRefresh : SourcesStatus
+
+    data class Refreshed(
+        val sourceName: String,
+        val inserted: ULong,
+    ) : SourcesStatus
+
+    data class Failed(
+        val error: ActionableError,
+    ) : SourcesStatus
+}
+
 /**
  * Backs the manage-sources screen: the list plus rename / enable-disable / refresh / delete /
  * auto-refresh (PRD §6.1). Refresh preserves favorites and hidden flags via the core's stable
@@ -60,8 +73,8 @@ class SourcesViewModel(
     private val _refreshing = MutableStateFlow<Set<Long>>(emptySet())
     val refreshing: StateFlow<Set<Long>> = _refreshing.asStateFlow()
 
-    private val _status = MutableStateFlow<String?>(null)
-    val status: StateFlow<String?> = _status.asStateFlow()
+    private val _status = MutableStateFlow<SourcesStatus?>(null)
+    val status: StateFlow<SourcesStatus?> = _status.asStateFlow()
 
     init {
         load()
@@ -103,7 +116,7 @@ class SourcesViewModel(
 
     fun refresh(source: Source) {
         if (!source.isRefreshable) {
-            _status.value = "This source was added from a file — re-add it to update its channels."
+            _status.value = SourcesStatus.FileCannotRefresh
             return
         }
         viewModelScope.launch {
@@ -113,10 +126,10 @@ class SourcesViewModel(
                     when (event) {
                         is ImportEvent.Progress -> Unit
                         is ImportEvent.Complete ->
-                            _status.value = "Refreshed ${source.name}: ${event.outcome.inserted} channels"
+                            _status.value = SourcesStatus.Refreshed(source.name, event.outcome.inserted)
                         is ImportEvent.Failed ->
                             if (event.error !is ApiException.Cancelled) {
-                                _status.value = ActionableError.from(event.error).message
+                                _status.value = SourcesStatus.Failed(ActionableError.from(event.error))
                             }
                     }
                 }
@@ -138,7 +151,7 @@ class SourcesViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: ApiException) {
-                _status.value = ActionableError.from(e).message
+                _status.value = SourcesStatus.Failed(ActionableError.from(e))
             }
         }
     }

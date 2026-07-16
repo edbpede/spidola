@@ -10,20 +10,27 @@ import kotlin.test.assertFailsWith
 class SpidolaApplicationTest {
     @Test
     fun `current core contract is accepted`() {
-        requireCompatibleCore(handshake(schema = 2u, boundary = 4u))
+        requireCompatibleCore(handshake(schema = 3u, boundary = 7u))
     }
 
     @Test
     fun `stale schema is rejected before bootstrap`() {
         assertFailsWith<IllegalStateException> {
-            requireCompatibleCore(handshake(schema = 1u, boundary = 4u))
+            requireCompatibleCore(handshake(schema = 2u, boundary = 7u))
         }
     }
 
     @Test
     fun `stale boundary is rejected before bootstrap`() {
         assertFailsWith<IllegalStateException> {
-            requireCompatibleCore(handshake(schema = 2u, boundary = 3u))
+            requireCompatibleCore(handshake(schema = 3u, boundary = 6u))
+        }
+    }
+
+    @Test
+    fun `frozen schema two boundary four shell is rejected`() {
+        assertFailsWith<IllegalStateException> {
+            requireCompatibleCore(handshake(schema = 2u, boundary = 4u))
         }
     }
 

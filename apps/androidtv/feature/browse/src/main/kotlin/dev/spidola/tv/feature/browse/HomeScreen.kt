@@ -161,6 +161,20 @@ private fun HomeReady(
         }
         item {
             SpidolaRow(
+                title = stringResource(R.string.browse_home_order_favorites),
+                onClick = navigator.orderFavorites,
+                modifier = Modifier.padding(horizontal = SpidolaSpacing.safeHorizontal).testTag("home-order-favorites"),
+            )
+        }
+        item {
+            SpidolaRow(
+                title = stringResource(R.string.browse_home_custom_channels),
+                onClick = navigator.manageCustomChannels,
+                modifier = Modifier.padding(horizontal = SpidolaSpacing.safeHorizontal).testTag("home-custom-channels"),
+            )
+        }
+        item {
+            SpidolaRow(
                 title = stringResource(R.string.browse_home_search),
                 onClick = navigator.openSearch,
                 modifier =

@@ -148,7 +148,7 @@ private fun Form(
     onUsernameChange: (String) -> Unit,
     password: String,
     onPasswordChange: (String) -> Unit,
-    validation: String?,
+    validation: AddSourceValidation?,
     onSubmit: () -> Unit,
 ) {
     Column(
@@ -223,7 +223,11 @@ private fun Form(
             }
         }
         if (validation != null) {
-            Text(text = validation, style = MaterialTheme.typography.labelMedium, color = SpidolaPalette.StreamRed)
+            Text(
+                text = stringResource(validation.message),
+                style = MaterialTheme.typography.labelMedium,
+                color = SpidolaPalette.StreamRed,
+            )
         }
         SpidolaRow(
             title = stringResource(R.string.add_source_submit),

@@ -9,6 +9,9 @@ preserve_hierarchy: true
 # Xcode String Catalogs are multilingual files: Crowdin writes translated localizations back
 # into the same catalog. Android translations are exported to the platform's values-* layout.
 files:
+  - source: /apps/tvos/Packages/CoreKit/Sources/CoreKit/Resources/Localizable.xcstrings
+    translation: /apps/tvos/Packages/CoreKit/Sources/CoreKit/Resources/Localizable.xcstrings
+    update_option: update_as_unapproved
   - source: /apps/tvos/Packages/DesignSystem/Sources/DesignSystem/Resources/Localizable.xcstrings
     translation: /apps/tvos/Packages/DesignSystem/Sources/DesignSystem/Resources/Localizable.xcstrings
     update_option: update_as_unapproved
@@ -29,6 +32,8 @@ files:
     update_option: update_as_unapproved
   - source: /apps/androidtv/app/src/main/res/values/strings.xml
     translation: /apps/androidtv/app/src/main/res/values-%android_code%/strings.xml
+  - source: /apps/androidtv/core/corekit/src/main/res/values/strings.xml
+    translation: /apps/androidtv/core/corekit/src/main/res/values-%android_code%/strings.xml
   - source: /apps/androidtv/feature/browse/src/main/res/values/strings.xml
     translation: /apps/androidtv/feature/browse/src/main/res/values-%android_code%/strings.xml
   - source: /apps/androidtv/feature/playback/src/main/res/values/strings.xml

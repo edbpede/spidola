@@ -23,6 +23,8 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import uniffi.core_api.ApiException
+import uniffi.core_api.InputField
+import uniffi.core_api.InputIssue
 import uniffi.core_api.PairingSession
 import uniffi.core_api.PairingSubmission
 
@@ -72,7 +74,10 @@ class PairingViewModelTest {
     @Test
     fun `a TV with no LAN address asks the core to infer, which fails loudly`() =
         runTest(dispatcher) {
-            val access = FakePairingAccess(failure = ApiException.InvalidInput("no usable LAN address"))
+            val access =
+                FakePairingAccess(
+                    failure = ApiException.InvalidInput(InputField.ADDRESS, InputIssue.INVALID),
+                )
             val viewModel = PairingViewModel(access, PairingHandoff(), host = { null })
 
             viewModel.start()

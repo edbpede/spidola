@@ -3,6 +3,7 @@
 
 package dev.spidola.tv.feature.playback
 
+import dev.spidola.tv.core.corekit.CustomPlayableChannel
 import dev.spidola.tv.core.corekit.PlayableChannel
 import dev.spidola.tv.core.corekit.PlaybackAccess
 import dev.spidola.tv.core.corekit.ResolvedPlaybackHeader
@@ -27,7 +28,9 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import uniffi.core_api.ApiException
+import uniffi.core_api.EpgProgramme
 import uniffi.core_api.MediaKind
+import uniffi.core_api.NowNext
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -101,7 +104,8 @@ class PlaybackViewModelTest {
             val viewModel = harness.viewModel()
             viewModel.start()
             advanceUntilIdle()
-            assertTrue(harness.engines.isEmpty(), "no engine may receive an opaque envelope")
+            assertTrue(harness.engines.single().loaded.isEmpty(), "no engine may receive an opaque envelope")
+            assertTrue(harness.engines.single().isReleased, "a resolver failure must release the unused engine")
             assertNotNull(viewModel.state.value.playback.failure)
         }
 
@@ -117,6 +121,33 @@ class PlaybackViewModelTest {
 
         assertTrue(secret !in resolved.toString())
     }
+
+    @Test
+    fun `custom playback resolves the opaque id only when constructing the engine request`() =
+        runTest(dispatcher) {
+            val harness = Harness()
+            harness.customViewModel().start()
+            advanceUntilIdle()
+
+            assertEquals(listOf(77L), harness.access.customResolvedCalls)
+            assertTrue(harness.access.resolvedCalls.isEmpty())
+            assertEquals("resolved-custom://77", harness.engines.single().loaded.single().locator)
+            assertEquals("Custom-Agent", harness.engines.single().loaded.single().userAgent)
+            assertTrue(harness.access.recorded.isEmpty(), "custom request material must not enter recents")
+        }
+
+    @Test
+    fun `playback strip loads one bounded now-next lookup for the current channel`() =
+        runTest(dispatcher) {
+            val harness = Harness()
+            val viewModel = harness.viewModel()
+            viewModel.start()
+            advanceUntilIdle()
+
+            assertEquals(listOf(1L to 10L), harness.access.nowNextCalls)
+            assertEquals("Evening News", viewModel.state.value.schedule?.current?.title)
+            assertTrue(viewModel.state.value.scheduleLoaded)
+        }
 
     // endregion
 
@@ -396,6 +427,13 @@ private class Harness(
             registry = registry(),
         )
 
+    fun customViewModel(): PlaybackViewModel =
+        PlaybackViewModel(
+            customChannel = CustomPlayableChannel(id = 77L, name = "Community TV", logo = null),
+            access = access,
+            registry = registry(),
+        )
+
     private fun registry(): EngineRegistry {
         val factories: Map<EngineId, () -> PlaybackEngine> = registered.associateWith { id -> { build(id) } }
         return EngineRegistry(platformDefault = EngineId.EXOPLAYER, factories = factories)
@@ -434,6 +472,8 @@ private class FakePlaybackAccess : PlaybackAccess {
 
     /** Locators the view model asked to have resolved, in order. */
     val resolvedCalls = mutableListOf<String>()
+    val customResolvedCalls = mutableListOf<Long>()
+    val nowNextCalls = mutableListOf<Pair<Long, Long>>()
 
     /** Makes resolution fail, standing in for a source deleted or a secret gone from the keystore. */
     var resolveFailure: ApiException? = null
@@ -453,6 +493,36 @@ private class FakePlaybackAccess : PlaybackAccess {
             locator = "resolved://${channel.locator}",
             userAgent = "Resolved-Agent",
             headers = listOf(ResolvedPlaybackHeader("Referer", "https://portal.example/session")),
+        )
+    }
+
+    override suspend fun resolveCustomPlayback(id: Long): ResolvedPlaybackStream {
+        customResolvedCalls += id
+        return ResolvedPlaybackStream(
+            locator = "resolved-custom://$id",
+            userAgent = "Custom-Agent",
+            headers = listOf(ResolvedPlaybackHeader("Authorization", "custom-secret")),
+        )
+    }
+
+    override suspend fun nowNext(
+        sourceId: Long,
+        channelIdentity: Long,
+        nowUnix: Long,
+    ): NowNext {
+        nowNextCalls += sourceId to channelIdentity
+        return NowNext(
+            current =
+                EpgProgramme(
+                    id = 1L,
+                    sourceId = sourceId,
+                    channelIdentity = channelIdentity,
+                    title = "Evening News",
+                    description = null,
+                    startUnix = nowUnix - 60L,
+                    endUnix = nowUnix + 60L,
+                ),
+            next = null,
         )
     }
 

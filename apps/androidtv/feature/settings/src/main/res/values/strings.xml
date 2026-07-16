@@ -75,6 +75,26 @@
 
     <!-- Storage section -->
     <string name="settings_section_storage">Storage</string>
+    <string name="settings_guide">Programme guide</string>
+    <string name="settings_guide_explainer">Choose guide addresses and refresh schedules for your sources.</string>
+    <string name="guide_title">Programme guide</string>
+    <string name="guide_loading">Loading guide sources…</string>
+    <string name="guide_empty">Add a source before configuring its guide.</string>
+    <string name="guide_feed_ready">Guide ready</string>
+    <string name="guide_feed_missing">No guide configured</string>
+    <string name="guide_address">Guide address</string>
+    <string name="guide_save">Save guide address</string>
+    <string name="guide_clear">Remove guide address</string>
+    <string name="guide_refresh">Refresh guide now</string>
+    <string name="guide_cancel">Go back</string>
+    <string name="guide_refresh_connecting">Connecting…</string>
+    <string name="guide_refresh_downloading">Reading schedule… %1$d programmes</string>
+    <string name="guide_refresh_finalizing">Updating guide…</string>
+    <string name="guide_refresh_done">Guide updated with %1$d programmes.</string>
+    <string name="guide_window_ahead">Keep upcoming guide for</string>
+    <string name="guide_window_behind">Keep past guide for</string>
+    <string name="guide_window_save">Save guide window</string>
+    <string name="guide_hours">%1$d hours</string>
     <string name="settings_image_cache">Image cache</string>
     <string name="settings_image_cache_explainer">How much space channel logos may use.</string>
     <string name="settings_image_cache_megabytes">%1$d MB</string>
@@ -83,6 +103,8 @@
     <string name="settings_section_diagnostics">Diagnostics</string>
     <string name="settings_diagnostics">Diagnostics</string>
     <string name="settings_diagnostics_explainer">Recent activity and version details for support.</string>
+    <string name="settings_about">About Spidola</string>
+    <string name="settings_about_explainer">Version and open-source software notices.</string>
     <string name="diagnostics_title">Diagnostics</string>
     <string name="diagnostics_loading">Loading diagnostics…</string>
     <string name="diagnostics_log_level">Detail recorded</string>

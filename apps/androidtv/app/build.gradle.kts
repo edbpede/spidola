@@ -49,6 +49,13 @@ val configuredVersionCode =
     providers.gradleProperty("spidolaVersionCode").orNull?.toIntOrNull() ?: 1
 require(configuredVersionCode > 0) { "spidolaVersionCode must be a positive integer." }
 val configuredVersionName = providers.gradleProperty("spidolaVersionName").orNull ?: "0.0.0"
+val nativeLicenseAssets = layout.buildDirectory.dir("generated/assets/nativeLicenses")
+val copyNativeLicenseToAssets by
+    tasks.registering(Copy::class) {
+        from(rootProject.file("../../LICENSES/LGPL-3.0-only.txt"))
+        into(nativeLicenseAssets.map { it.dir("licenses") })
+        rename { "native-media-lgpl-3.0.txt" }
+    }
 
 android {
     namespace = "dev.spidola.tv"
@@ -103,7 +110,11 @@ android {
     testOptions {
         execution = "ANDROIDX_TEST_ORCHESTRATOR"
     }
+
+    sourceSets["main"].assets.srcDir(nativeLicenseAssets)
 }
+
+tasks.named("preBuild").configure { dependsOn(copyNativeLicenseToAssets) }
 
 kotlin {
     jvmToolchain(21)

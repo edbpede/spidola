@@ -7,6 +7,7 @@ package dev.spidola.tv.feature.browse
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import dev.spidola.tv.core.corekit.ActionableError
 import dev.spidola.tv.core.corekit.ErrorAction
 import dev.spidola.tv.core.corekit.PlayableChannel
@@ -31,6 +32,8 @@ data class BrowseNavigator(
     val openChannel: (channel: PlayableChannel, context: ZapContext, offset: UInt) -> Unit,
     val openSearch: () -> Unit,
     val manageSources: () -> Unit,
+    val manageCustomChannels: () -> Unit,
+    val orderFavorites: () -> Unit,
     val openSettings: () -> Unit,
 )
 
@@ -48,9 +51,11 @@ fun ActionableErrorContent(
     modifier: Modifier = Modifier,
     onFixInput: (() -> Unit)? = null,
 ) {
+    val context = LocalContext.current
+
     fun button(action: ErrorAction): SpidolaErrorButton =
         SpidolaErrorButton(
-            title = action.label,
+            title = context.getString(action.label),
             onClick =
                 when (action) {
                     ErrorAction.RETRY -> onRetry
@@ -59,8 +64,8 @@ fun ActionableErrorContent(
                 },
         )
     ActionableErrorView(
-        failureClass = error.failureClass,
-        message = error.message,
+        failureClass = error.failureClass.resolve(context),
+        message = error.message.resolve(context),
         primary = button(error.primaryAction),
         others = error.otherActions.map(::button),
         modifier = modifier,

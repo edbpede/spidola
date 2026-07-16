@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import dev.spidola.tv.core.corekit.CustomPlayableChannel
 import dev.spidola.tv.core.corekit.PlayableChannel
 import dev.spidola.tv.core.corekit.PlaybackAccess
 import dev.spidola.tv.core.corekit.ZapContext
@@ -40,6 +41,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import uniffi.core_api.ApiException
+import uniffi.core_api.MediaKind
+import uniffi.core_api.NowNext
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
 
@@ -86,6 +89,10 @@ data class PlaybackUiState(
     val isSeekable: Boolean = false,
     val aspect: AspectMode = AspectMode.FIT,
     val fallbackOffer: FallbackOffer? = null,
+    val schedule: NowNext? = null,
+    val scheduleLoaded: Boolean = false,
+    val showSchedule: Boolean = true,
+    val canRememberEngine: Boolean = true,
     /**
      * Set when the resolved engine could not be built — a composition bug, surfaced honestly rather
      * than as a blank screen.
@@ -101,14 +108,43 @@ data class PlaybackUiState(
  * rebuilds, because engines are single-use by contract and that is the path the channel-zapper
  * persona lives in (PRD §8.5) — so it is kept free of anything that could stall a rebuild.
  */
-class PlaybackViewModel(
+class PlaybackViewModel private constructor(
     channel: PlayableChannel,
+    private val customChannelId: Long?,
     private val context: ZapContext,
     offset: UInt,
     private val access: PlaybackAccess,
     private val registry: EngineRegistry,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(PlaybackUiState(channel = channel))
+    constructor(
+        channel: PlayableChannel,
+        context: ZapContext,
+        offset: UInt,
+        access: PlaybackAccess,
+        registry: EngineRegistry,
+    ) : this(channel, null, context, offset, access, registry)
+
+    constructor(
+        customChannel: CustomPlayableChannel,
+        access: PlaybackAccess,
+        registry: EngineRegistry,
+    ) : this(
+        customChannel.asDisplayChannel(),
+        customChannel.id,
+        ZapContext.Single,
+        0u,
+        access,
+        registry,
+    )
+
+    private val _state =
+        MutableStateFlow(
+            PlaybackUiState(
+                channel = channel,
+                showSchedule = customChannelId == null,
+                canRememberEngine = customChannelId == null,
+            ),
+        )
     val state: StateFlow<PlaybackUiState> = _state.asStateFlow()
 
     /** The live engine. The screen hosts its surface; nothing else reaches through it. */
@@ -128,6 +164,7 @@ class PlaybackViewModel(
         viewModelScope.launch {
             play(_state.value.channel, engineOverride = null)
             launch { loadWindow() }
+            launch { loadSchedule(_state.value.channel) }
             launch { recordRecent() }
         }
     }
@@ -139,12 +176,13 @@ class PlaybackViewModel(
     fun zap(direction: ZapDirection) {
         val target = direction.channel(_state.value.window) ?: return
         offset = direction.offset(offset)
-        _state.update { it.copy(channel = target) }
+        _state.update { it.copy(channel = target, schedule = null, scheduleLoaded = false) }
         viewModelScope.launch {
             // The window is refreshed after the stream is loading, not before: the peek is cosmetic
             // and must never sit between a D-pad press and video.
             play(target, engineOverride = null)
             launch { loadWindow() }
+            launch { loadSchedule(target) }
             launch { recordRecent() }
         }
     }
@@ -154,7 +192,7 @@ class PlaybackViewModel(
         val offer = _state.value.fallbackOffer ?: return
         _state.update { it.copy(fallbackOffer = null) }
         viewModelScope.launch {
-            if (remember) {
+            if (remember && customChannelId == null) {
                 rememberEngine(offer.alternate)
             }
             play(_state.value.channel, engineOverride = offer.alternate)
@@ -225,18 +263,6 @@ class PlaybackViewModel(
         }
 
         val resolved = resolveEngine(target, engineOverride)
-        val streamRequest =
-            try {
-                request(target)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: ApiException) {
-                Log.e(LOG_TAG, "stream address resolution failed", e)
-                _state.update {
-                    it.copy(playback = PlaybackState.Failed(EngineError.Unknown("stream address unavailable")))
-                }
-                return
-            }
         val built = registry.make(resolved)
         if (built == null) {
             // Only reachable when the platform default itself is not registered — a wiring bug.
@@ -252,6 +278,22 @@ class PlaybackViewModel(
             return
         }
 
+        // Open sealed request material only after the engine exists, immediately before `load`.
+        val streamRequest =
+            try {
+                request(target)
+            } catch (e: CancellationException) {
+                built.release()
+                throw e
+            } catch (e: ApiException) {
+                built.release()
+                Log.e(LOG_TAG, "stream address resolution failed", e)
+                _state.update {
+                    it.copy(playback = PlaybackState.Failed(EngineError.Unknown("stream address unavailable")))
+                }
+                return
+            }
+
         _engine.value = built
         built.setAspect(_state.value.aspect)
         observe(built, resolved)
@@ -266,6 +308,14 @@ class PlaybackViewModel(
         override: EngineId?,
     ): EngineId {
         if (override != null) return override
+        if (customChannelId != null) {
+            return EngineSelection.resolve(
+                channelOverride = null,
+                sourceOverride = null,
+                platformDefault = registry.platformDefault,
+                registered = registry.registered,
+            )
+        }
         // Overrides are opaque strings in the core (engine identity is a shell concept,
         // TECH_SPEC §8); the mapping to `EngineId` happens here, where both layers are in scope.
         val channelKey = setting { access.channelEngine(target.sourceId, target.identity) }
@@ -290,7 +340,9 @@ class PlaybackViewModel(
         //
         // Resolution is mandatory: the stored value may be an encrypted M3U envelope or an Xtream
         // reference, neither of which is a playable fallback. Let the API error stop the load.
-        val resolved = access.resolvePlayback(target)
+        val resolved =
+            customChannelId?.let { access.resolveCustomPlayback(it) }
+                ?: access.resolvePlayback(target)
         return StreamRequest(
             locator = resolved.locator,
             headers = resolved.headers.map { StreamHeader(it.name, it.value) }.toPersistentList(),
@@ -368,6 +420,7 @@ class PlaybackViewModel(
     }
 
     private suspend fun rememberEngine(id: EngineId) {
+        if (customChannelId != null) return
         val channel = _state.value.channel
         try {
             access.setChannelEngine(channel.sourceId, channel.identity, id.value)
@@ -379,6 +432,7 @@ class PlaybackViewModel(
     }
 
     private suspend fun loadWindow() {
+        if (customChannelId != null) return
         val loaded =
             try {
                 access.zapWindow(context, offset)
@@ -396,12 +450,34 @@ class PlaybackViewModel(
     }
 
     private suspend fun recordRecent() {
+        if (customChannelId != null) return
         try {
             access.recordRecent(_state.value.channel)
         } catch (e: CancellationException) {
             throw e
         } catch (e: ApiException) {
             Log.w(LOG_TAG, "recording recent failed", e)
+        }
+    }
+
+    /** Loads one bounded current-channel EPG lookup without delaying engine construction. */
+    private suspend fun loadSchedule(channel: PlayableChannel) {
+        if (customChannelId != null) return
+        val schedule =
+            try {
+                access.nowNext(
+                    channel.sourceId,
+                    channel.identity,
+                    System.currentTimeMillis() / UNIX_MILLIS_PER_SECOND,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ApiException) {
+                Log.w(LOG_TAG, "playback schedule load failed", e)
+                null
+            }
+        if (_state.value.channel.sourceId == channel.sourceId && _state.value.channel.identity == channel.identity) {
+            _state.update { it.copy(schedule = schedule, scheduleLoaded = true) }
         }
     }
 
@@ -441,9 +517,33 @@ class PlaybackViewModel(
                 initializer { PlaybackViewModel(channel, context, offset, access, registry) }
             }
 
+        fun factory(
+            customChannel: CustomPlayableChannel,
+            access: PlaybackAccess,
+            registry: EngineRegistry,
+        ): ViewModelProvider.Factory =
+            viewModelFactory {
+                initializer { PlaybackViewModel(customChannel, access, registry) }
+            }
+
         private const val LOG_TAG = "spidola::playback"
+        private const val UNIX_MILLIS_PER_SECOND = 1_000L
 
         /** The click-to-first-frame bar from PRD §9. */
         private val FIRST_FRAME_BUDGET = 2000.milliseconds
     }
 }
+
+/** Presentation-only shell value for the existing playback UI; it contains no request material. */
+private fun CustomPlayableChannel.asDisplayChannel(): PlayableChannel =
+    PlayableChannel(
+        sourceId = CUSTOM_CHANNEL_SOURCE,
+        identity = id,
+        name = name,
+        group = null,
+        logo = logo,
+        locator = "",
+        kind = MediaKind.LIVE,
+    )
+
+private const val CUSTOM_CHANNEL_SOURCE = Long.MIN_VALUE

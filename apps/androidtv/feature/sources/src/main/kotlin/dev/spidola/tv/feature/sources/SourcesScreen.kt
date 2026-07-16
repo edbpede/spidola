@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -120,7 +121,7 @@ fun SourcesScreen(
 private fun SourceList(
     sources: ImmutableList<Source>,
     refreshing: Set<Long>,
-    status: String?,
+    status: SourcesStatus?,
     onAddSource: () -> Unit,
     onPairPhone: () -> Unit,
     expandedId: Long?,
@@ -145,7 +146,11 @@ private fun SourceList(
     ) {
         status?.let {
             item {
-                Text(text = it, style = MaterialTheme.typography.labelMedium, color = SpidolaPalette.TestCardAmber)
+                Text(
+                    text = it.message(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = SpidolaPalette.TestCardAmber,
+                )
             }
         }
         item {
@@ -178,6 +183,17 @@ private fun SourceList(
                 viewModel = viewModel,
             )
         }
+    }
+}
+
+@Composable
+private fun SourcesStatus.message(): String {
+    val context = LocalContext.current
+    return when (this) {
+        SourcesStatus.FileCannotRefresh -> stringResource(R.string.sources_file_cannot_refresh)
+        is SourcesStatus.Refreshed ->
+            stringResource(R.string.sources_refreshed, sourceName, inserted.toString())
+        is SourcesStatus.Failed -> error.message.resolve(context)
     }
 }
 
@@ -289,7 +305,7 @@ private fun RenameField(
 
 @Composable
 private fun EmptySources(
-    status: String?,
+    status: SourcesStatus?,
     onAddSource: () -> Unit,
     onPairPhone: () -> Unit,
 ) {
@@ -304,7 +320,11 @@ private fun EmptySources(
     ) {
         status?.let {
             item {
-                Text(text = it, style = MaterialTheme.typography.labelMedium, color = SpidolaPalette.TestCardAmber)
+                Text(
+                    text = it.message(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = SpidolaPalette.TestCardAmber,
+                )
             }
         }
         item {

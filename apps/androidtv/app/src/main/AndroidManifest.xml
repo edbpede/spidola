@@ -6,6 +6,14 @@
     <!-- Fetching the user's own sources (and the M0 loopback fixture) needs network access. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Android TV's provider requires this namespaced permission before an app can publish its
+         preview channel, programmes, or Watch Next entries. -->
+    <uses-permission android:name="com.android.providers.tv.permission.WRITE_EPG_DATA" />
+
+    <permission
+        android:name="dev.spidola.tv.permission.READ_SEARCH_SUGGESTIONS"
+        android:protectionLevel="signature" />
+
     <!-- Living-room only: leanback required, touchscreen not. -->
     <uses-feature
         android:name="android.software.leanback"
@@ -26,11 +34,46 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboard|keyboardHidden|navigation"
             android:theme="@style/Theme.Spidola">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEARCH" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="spidola" android:host="home" />
+                <data android:scheme="spidola" android:host="search" />
+                <data android:scheme="spidola" android:host="channel" />
+            </intent-filter>
+            <meta-data
+                android:name="android.app.searchable"
+                android:resource="@xml/searchable" />
         </activity>
+        <provider
+            android:name=".SearchSuggestionProvider"
+            android:authorities="dev.spidola.tv.search"
+            android:exported="true"
+            android:readPermission="dev.spidola.tv.permission.READ_SEARCH_SUGGESTIONS">
+            <path-permission
+                android:pathPrefix="/search_suggest_query"
+                android:readPermission="android.permission.GLOBAL_SEARCH" />
+        </provider>
+        <receiver
+            android:name=".TvContentReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.media.tv.action.INITIALIZE_PROGRAMS" />
+                <action android:name="android.media.tv.action.PREVIEW_PROGRAM_BROWSABLE_DISABLED" />
+                <action android:name="android.media.tv.action.WATCH_NEXT_PROGRAM_BROWSABLE_DISABLED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

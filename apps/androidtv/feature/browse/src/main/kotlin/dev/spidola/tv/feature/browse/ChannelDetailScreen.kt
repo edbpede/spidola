@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -29,11 +30,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.spidola.tv.core.corekit.BrowseAccess
+import dev.spidola.tv.core.corekit.EpgAccess
 import dev.spidola.tv.core.corekit.PlayableChannel
 import dev.spidola.tv.core.designsystem.LogoImage
+import dev.spidola.tv.core.designsystem.ScheduleTape
 import dev.spidola.tv.core.designsystem.SpidolaPalette
 import dev.spidola.tv.core.designsystem.SpidolaRow
 import dev.spidola.tv.core.designsystem.SpidolaSpacing
+import java.text.DateFormat
+import java.util.Date
 
 /**
  * The channel detail screen: artwork, name, group, and the actions a household member reaches for —
@@ -47,10 +52,11 @@ import dev.spidola.tv.core.designsystem.SpidolaSpacing
 fun ChannelDetailScreen(
     channel: PlayableChannel,
     access: BrowseAccess,
+    epgAccess: EpgAccess,
     onPlay: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ChannelDetailViewModel =
-        viewModel(factory = ChannelDetailViewModel.factory(channel, access)),
+        viewModel(factory = ChannelDetailViewModel.factory(channel, access, epgAccess)),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val playFocus = remember { FocusRequester() }
@@ -81,6 +87,17 @@ fun ChannelDetailScreen(
                 text = Uri.parse(channel.locator).host ?: channel.locator,
                 style = MaterialTheme.typography.labelMedium,
                 color = SpidolaPalette.Static,
+            )
+            val schedule = state.schedule
+            ScheduleTape(
+                currentLabel = stringResource(R.string.browse_schedule_now),
+                nextLabel = stringResource(R.string.browse_schedule_next),
+                currentTime = schedule?.current?.startUnix?.asTime(),
+                currentTitle = schedule?.current?.title,
+                nextTime = schedule?.next?.startUnix?.asTime(),
+                nextTitle = schedule?.next?.title,
+                unavailable = stringResource(R.string.browse_schedule_unavailable),
+                modifier = Modifier.width(620.dp).testTag("detail-schedule"),
             )
             SpidolaRow(
                 title = stringResource(R.string.browse_detail_play),
@@ -129,10 +146,19 @@ fun ChannelDetailScreen(
                         .testTag("detail-hide"),
             )
             state.notice?.let {
-                Text(text = it, style = MaterialTheme.typography.labelMedium, color = SpidolaPalette.TestCardAmber)
+                Text(
+                    text = it.message.resolve(LocalContext.current),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = SpidolaPalette.TestCardAmber,
+                )
             }
         }
     }
 }
 
 private const val DETAIL_LOGO_ASPECT = 16f / 9f
+private const val UNIX_MILLIS_PER_SECOND = 1_000L
+
+private fun Long.asTime(): String {
+    return DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(this * UNIX_MILLIS_PER_SECOND))
+}
