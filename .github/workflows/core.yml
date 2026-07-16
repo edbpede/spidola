@@ -54,6 +54,9 @@ jobs:
       - name: bindings drift check
         run: cargo run --quiet -p xtask -- check-bindings
 
+      - name: translation contribution path
+        run: python3 tools/community/validate-translations.py
+
   reuse:
     runs-on: ubuntu-latest
     steps:

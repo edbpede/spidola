@@ -1,0 +1,41 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+project_id_env: CROWDIN_PROJECT_ID
+api_token_env: CROWDIN_PERSONAL_TOKEN
+base_path: .
+preserve_hierarchy: true
+
+# Xcode String Catalogs are multilingual files: Crowdin writes translated localizations back
+# into the same catalog. Android translations are exported to the platform's values-* layout.
+files:
+  - source: /apps/tvos/Packages/DesignSystem/Sources/DesignSystem/Resources/Localizable.xcstrings
+    translation: /apps/tvos/Packages/DesignSystem/Sources/DesignSystem/Resources/Localizable.xcstrings
+    update_option: update_as_unapproved
+  - source: /apps/tvos/Packages/FeatureBrowse/Sources/FeatureBrowse/Resources/Localizable.xcstrings
+    translation: /apps/tvos/Packages/FeatureBrowse/Sources/FeatureBrowse/Resources/Localizable.xcstrings
+    update_option: update_as_unapproved
+  - source: /apps/tvos/Packages/FeaturePlayback/Sources/FeaturePlayback/Resources/Localizable.xcstrings
+    translation: /apps/tvos/Packages/FeaturePlayback/Sources/FeaturePlayback/Resources/Localizable.xcstrings
+    update_option: update_as_unapproved
+  - source: /apps/tvos/Packages/FeatureSearch/Sources/FeatureSearch/Resources/Localizable.xcstrings
+    translation: /apps/tvos/Packages/FeatureSearch/Sources/FeatureSearch/Resources/Localizable.xcstrings
+    update_option: update_as_unapproved
+  - source: /apps/tvos/Packages/FeatureSettings/Sources/FeatureSettings/Resources/Localizable.xcstrings
+    translation: /apps/tvos/Packages/FeatureSettings/Sources/FeatureSettings/Resources/Localizable.xcstrings
+    update_option: update_as_unapproved
+  - source: /apps/tvos/Packages/FeatureSources/Sources/FeatureSources/Resources/Localizable.xcstrings
+    translation: /apps/tvos/Packages/FeatureSources/Sources/FeatureSources/Resources/Localizable.xcstrings
+    update_option: update_as_unapproved
+  - source: /apps/androidtv/app/src/main/res/values/strings.xml
+    translation: /apps/androidtv/app/src/main/res/values-%android_code%/strings.xml
+  - source: /apps/androidtv/feature/browse/src/main/res/values/strings.xml
+    translation: /apps/androidtv/feature/browse/src/main/res/values-%android_code%/strings.xml
+  - source: /apps/androidtv/feature/playback/src/main/res/values/strings.xml
+    translation: /apps/androidtv/feature/playback/src/main/res/values-%android_code%/strings.xml
+  - source: /apps/androidtv/feature/search/src/main/res/values/strings.xml
+    translation: /apps/androidtv/feature/search/src/main/res/values-%android_code%/strings.xml
+  - source: /apps/androidtv/feature/settings/src/main/res/values/strings.xml
+    translation: /apps/androidtv/feature/settings/src/main/res/values-%android_code%/strings.xml
+  - source: /apps/androidtv/feature/sources/src/main/res/values/strings.xml
+    translation: /apps/androidtv/feature/sources/src/main/res/values-%android_code%/strings.xml

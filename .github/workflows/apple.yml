@@ -38,6 +38,13 @@ jobs:
       - name: Verify MPVKit pin (LGPL)
         run: tools/build-mpvkit/verify-mpvkit-pin.sh
 
+      - name: SwiftPM dependency license gate + notice drift
+        run: |
+          swift package --package-path apps/tvos/Packages/PlayerMPV resolve
+          python3 tools/licenses/check-swiftpm-licenses.py \
+            --notice-output apps/tvos/App/Resources/ThirdPartyNotices.txt \
+            --check-notice
+
       - name: swift-format lint (strict)
         run: |
           find apps/tvos -name '*.swift' \

@@ -67,6 +67,7 @@ hooks = [
   { id = "cargo-clippy", name = "cargo clippy", entry = "cargo clippy --workspace --all-targets --all-features -- -D warnings", language = "system", types = ["rust"], files = "^crates/", pass_filenames = false },
   # Secret-logging guard — no log macro may format an exposed secret value (TECH_SPEC §4.8, §12).
   { id = "check-secret-logging", name = "secret-logging guard", entry = "tools/ci/check-secret-logging.sh", language = "system", types = ["rust"], files = "^crates/", pass_filenames = false },
+  { id = "translations", name = "translation catalogs", entry = "python3 tools/community/validate-translations.py", language = "system", files = "(^crowdin\\.yml$|^apps/(tvos/.+\\.xcstrings|androidtv/.+/res/(values|values-[^/]+)/strings\\.xml)$)", pass_filenames = false },
   # cargo-deny — advisory feed + license allow-list (§12); runs on manifest/lock/deny changes.
   { id = "cargo-deny", name = "cargo deny", entry = "cargo deny check", language = "system", files = "(^|/)(Cargo\\.(toml|lock)|deny\\.toml)$", pass_filenames = false },
   # tvOS shell — apps/tvos/ (toolchain-bundled swift-format + SwiftLint; §9 apple lane).

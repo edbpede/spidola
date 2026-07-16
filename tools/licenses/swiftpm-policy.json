@@ -1,0 +1,32 @@
+{
+  "allowedSpdx": [
+    "AGPL-3.0-or-later",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "MPL-2.0",
+    "CC0-1.0",
+    "CDLA-Permissive-2.0",
+    "LGPL-2.1-only",
+    "LGPL-2.1-or-later",
+    "LGPL-3.0-only",
+    "LGPL-3.0-or-later"
+  ],
+  "packages": [
+    {
+      "identity": "mpvkit",
+      "name": "MPVKit",
+      "location": "https://github.com/mpvkit/MPVKit.git",
+      "version": "0.41.0",
+      "revision": "613c0ccc3acf70e136aaff880a9b5fe8fdfaf5b8",
+      "license": "LGPL-3.0-only",
+      "licenseFile": "LICENSE",
+      "licenseSha256": "ea8af5e789cb2d4e9b10bce3874982ade163b749b6bfbdb32e2df21c4d106de1"
+    }
+  ]
+}
