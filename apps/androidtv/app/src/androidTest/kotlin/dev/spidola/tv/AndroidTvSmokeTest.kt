@@ -90,11 +90,7 @@ class AndroidTvSmokeTest {
         composeRule.waitUntil(timeoutMillis = STARTUP_TIMEOUT_MS) {
             composeRule.onAllNodes(hasTestTag(SOURCE_TAG)).fetchSemanticsNodes().size == 1
         }
-        pressRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
-        composeRule.waitForFocus("Search channels")
-        pressRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
-        composeRule.waitForFocus("Add or manage sources")
-        pressRemoteKey(KeyEvent.KEYCODE_ENTER)
+        openManageSourcesFromHome()
         composeRule.waitUntil(timeoutMillis = NAV_TIMEOUT_MS) {
             composeRule.onAllNodes(hasTestTag(SOURCES_ADD_TAG)).fetchSemanticsNodes().size == 1
         }
@@ -129,11 +125,7 @@ class AndroidTvSmokeTest {
         composeRule.waitUntil(timeoutMillis = STARTUP_TIMEOUT_MS) {
             composeRule.onAllNodes(hasTestTag(SOURCE_TAG)).fetchSemanticsNodes().size == 1
         }
-        pressRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
-        composeRule.waitForFocus("Search channels")
-        pressRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
-        composeRule.waitForFocus("Add or manage sources")
-        pressRemoteKey(KeyEvent.KEYCODE_ENTER)
+        openManageSourcesFromHome()
         composeRule.waitUntil(timeoutMillis = NAV_TIMEOUT_MS) {
             composeRule.onAllNodes(hasTestTag(SOURCES_ADD_TAG)).fetchSemanticsNodes().size == 1
         }
@@ -182,11 +174,7 @@ class AndroidTvSmokeTest {
         composeRule.waitUntil(timeoutMillis = STARTUP_TIMEOUT_MS) {
             composeRule.onAllNodes(hasTestTag(SOURCE_TAG)).fetchSemanticsNodes().size == 1
         }
-        pressRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
-        composeRule.waitForFocus("Search channels")
-        pressRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
-        composeRule.waitForFocus("Add or manage sources")
-        pressRemoteKey(KeyEvent.KEYCODE_ENTER)
+        openManageSourcesFromHome()
         composeRule.waitUntil(timeoutMillis = NAV_TIMEOUT_MS) {
             composeRule.onAllNodes(hasTestTag(SOURCES_ADD_TAG)).fetchSemanticsNodes().size == 1
         }
@@ -238,6 +226,22 @@ class AndroidTvSmokeTest {
         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(keyCode)
     }
 
+    /**
+     * From the fixture source focused on Home, walk the D-pad down to the "Add or manage sources"
+     * row and open it. Home grows rows between the sources and management as features land (Phase 7
+     * added "Order favorite lineup" and "Custom channels"; PRD §8.3), so the tests step through each
+     * waypoint by label rather than a fixed press count — that both exercises a remote user's real
+     * path and fails with a named row when the column changes. Add a waypoint here when a new row
+     * lands above management.
+     */
+    private fun openManageSourcesFromHome() {
+        for (waypoint in HOME_WAYPOINTS_TO_MANAGE) {
+            pressRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
+            composeRule.waitForFocus(waypoint)
+        }
+        pressRemoteKey(KeyEvent.KEYCODE_ENTER)
+    }
+
     private fun androidx.compose.ui.test.junit4.AndroidComposeTestRule<*, *>.waitForFocus(text: String) {
         waitUntil(timeoutMillis = FOCUS_TIMEOUT_MS) {
             onAllNodes(hasText(text) and isFocused()).fetchSemanticsNodes().size == 1
@@ -246,6 +250,17 @@ class AndroidTvSmokeTest {
 
     private companion object {
         const val SOURCE_TAG = "source-Fixture Catalog"
+
+        // The Home rows, in D-pad order, from the row below the fixture source down to source
+        // management. Mirrors HomeScreen's column (browse strings.xml) so the smoke path steps
+        // through each one; keep it in sync when Home gains or reorders rows above management.
+        val HOME_WAYPOINTS_TO_MANAGE =
+            listOf(
+                "Order favorite lineup",
+                "Custom channels",
+                "Search channels",
+                "Add or manage sources",
+            )
         const val GROUP_TAG = "group-Fixture"
         const val CHANNEL_ONE_TAG = "channel-Channel 1"
         const val CHANNEL_TWO_TAG = "channel-Channel 2"
