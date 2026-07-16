@@ -165,6 +165,7 @@ final class SettingsModelTests: XCTestCase {
     }
     XCTAssertEqual(Set(fields).count, fields.count, "a setting is offered on two rows")
     XCTAssertTrue(SettingsModel.sections.flatMap(\.rows).contains(.diagnostics))
+    XCTAssertTrue(SettingsModel.sections.flatMap(\.rows).contains(.about))
     XCTAssertTrue(SettingsModel.sections.flatMap(\.rows).contains(.recentsSwitch))
     XCTAssertTrue(SettingsModel.sections.flatMap(\.rows).contains(.clearRecents))
   }

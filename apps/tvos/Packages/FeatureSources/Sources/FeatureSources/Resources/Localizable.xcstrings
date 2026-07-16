@@ -1,6 +1,9 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "%lld configured": {
+      "comment": "Number of configured custom-channel request details."
+    },
     "%lld entries were skipped as unreadable.": {
       "localizations": {
         "en": {
@@ -23,6 +26,12 @@
         }
       }
     },
+    "%u request details": {
+      "comment": "Custom channel metadata count."
+    },
+    "Add a guide address before refreshing.": {
+
+    },
     "Add a source": {
       "localizations": {
         "en": {
@@ -33,6 +42,18 @@
         }
       }
     },
+    "Add channel": {
+
+    },
+    "Add custom channel": {
+
+    },
+    "Add group": {
+
+    },
+    "Add request detail": {
+
+    },
     "Add source": {
       "localizations": {
         "en": {
@@ -42,6 +63,9 @@
           }
         }
       }
+    },
+    "Add the guide address supplied with this playlist.": {
+
     },
     "Added %lld channels": {
       "localizations": {
@@ -105,6 +129,9 @@
         }
       }
     },
+    "Build and arrange a private channel lineup.": {
+
+    },
     "Can't draw the code — type the address instead.": {
       "localizations": {
         "en": {
@@ -125,6 +152,15 @@
         }
       }
     },
+    "Channel group": {
+
+    },
+    "Channel name": {
+
+    },
+    "Checking guide…": {
+
+    },
     "Code": {
       "localizations": {
         "en": {
@@ -135,6 +171,9 @@
         }
       }
     },
+    "Complete both parts of each request detail.": {
+
+    },
     "Connecting…": {
       "localizations": {
         "en": {
@@ -144,6 +183,9 @@
           }
         }
       }
+    },
+    "Custom channels": {
+
     },
     "Delete": {
       "localizations": {
@@ -165,6 +207,18 @@
         }
       }
     },
+    "Delete channel": {
+
+    },
+    "Delete channel?": {
+
+    },
+    "Delete group": {
+
+    },
+    "Delete group?": {
+
+    },
     "Delete source?": {
       "localizations": {
         "en": {
@@ -174,6 +228,12 @@
           }
         }
       }
+    },
+    "Detail name": {
+
+    },
+    "Detail value": {
+
     },
     "Disable": {
       "localizations": {
@@ -205,6 +265,12 @@
         }
       }
     },
+    "Edit": {
+
+    },
+    "Edit custom channel": {
+
+    },
     "Enable": {
       "localizations": {
         "en": {
@@ -214,6 +280,24 @@
           }
         }
       }
+    },
+    "Enter a channel name.": {
+
+    },
+    "Enter the password.": {
+
+    },
+    "Enter the playlist address.": {
+
+    },
+    "Enter the server address.": {
+
+    },
+    "Enter the stream address.": {
+
+    },
+    "Enter the username.": {
+
     },
     "Every 6 hours": {
       "localizations": {
@@ -245,6 +329,15 @@
         }
       }
     },
+    "Export": {
+
+    },
+    "Export contents": {
+
+    },
+    "Export ready.": {
+
+    },
     "Finishing up…": {
       "localizations": {
         "en": {
@@ -255,6 +348,12 @@
         }
       }
     },
+    "For privacy, saved stream and request details are not shown. Enter them again to save changes.": {
+
+    },
+    "Give this source a name.": {
+
+    },
     "Got it…": {
       "localizations": {
         "en": {
@@ -264,6 +363,27 @@
           }
         }
       }
+    },
+    "Group": {
+
+    },
+    "Guide address": {
+
+    },
+    "Guide ready to refresh.": {
+
+    },
+    "Guide updated: %llu programmes": {
+      "comment": "Guide refresh result. The number is a programme count."
+    },
+    "Import": {
+
+    },
+    "Import contents": {
+
+    },
+    "Imported %llu channels.": {
+      "comment": "Portable custom-channel import result."
     },
     "Importing…": {
       "localizations": {
@@ -297,6 +417,9 @@
         }
       }
     },
+    "Its channels stay in the ungrouped lineup.": {
+
+    },
     "Its channels, favorites, and history are removed. This can't be undone.": {
       "localizations": {
         "en": {
@@ -306,6 +429,9 @@
           }
         }
       }
+    },
+    "Loading custom channels…": {
+
     },
     "Loading sources…": {
       "localizations": {
@@ -317,6 +443,9 @@
         }
       }
     },
+    "Logo address (optional)": {
+
+    },
     "Manual only": {
       "localizations": {
         "en": {
@@ -327,6 +456,18 @@
         }
       }
     },
+    "Merge with current": {
+
+    },
+    "Move down": {
+
+    },
+    "Move to group": {
+
+    },
+    "Move up": {
+
+    },
     "Name": {
       "localizations": {
         "en": {
@@ -336,6 +477,9 @@
           }
         }
       }
+    },
+    "No channels in this group.": {
+
     },
     "No sources yet — add one to start watching.": {
       "localizations": {
@@ -387,6 +531,15 @@
         }
       }
     },
+    "Paste the playlist text.": {
+
+    },
+    "Paste shared channel data": {
+
+    },
+    "Player identification (optional)": {
+
+    },
     "Playlist": {
       "localizations": {
         "en": {
@@ -417,6 +570,30 @@
         }
       }
     },
+    "Position %lld": {
+
+    },
+    "Prepare export": {
+
+    },
+    "Preview": {
+
+    },
+    "Programme guide": {
+
+    },
+    "Programme guide…": {
+
+    },
+    "Reading guide: %llu programmes": {
+      "comment": "Guide refresh progress. The number is a programme count."
+    },
+    "Refresh guide": {
+
+    },
+    "Refreshed %@: %llu channels": {
+
+    },
     "Refresh now": {
       "localizations": {
         "en": {
@@ -436,6 +613,12 @@
           }
         }
       }
+    },
+    "Remove": {
+
+    },
+    "Remove guide": {
+
     },
     "Rename": {
       "localizations": {
@@ -457,6 +640,18 @@
         }
       }
     },
+    "Replace all": {
+
+    },
+    "Replace current": {
+
+    },
+    "Replace every custom channel?": {
+
+    },
+    "Request details": {
+
+    },
     "Save": {
       "localizations": {
         "en": {
@@ -466,6 +661,12 @@
           }
         }
       }
+    },
+    "Save channel": {
+
+    },
+    "Save guide": {
+
     },
     "Send a playlist or account from your phone instead of typing it here.": {
       "localizations": {
@@ -486,6 +687,12 @@
           }
         }
       }
+    },
+    "Share custom channels": {
+
+    },
+    "Share or import": {
+
     },
     "Source": {
       "localizations": {
@@ -527,6 +734,12 @@
         }
       }
     },
+    "Stream address": {
+
+    },
+    "The export can include private stream details. Share it only with people you trust.": {
+
+    },
     "Then type this code:": {
       "localizations": {
         "en": {
@@ -536,6 +749,18 @@
           }
         }
       }
+    },
+    "This account supplies its programme guide directly.": {
+
+    },
+    "This removes the current custom lineup before importing.": {
+
+    },
+    "This source was added from a file — re-add it to update its channels.": {
+
+    },
+    "Ungrouped": {
+
     },
     "Use my phone": {
       "localizations": {
@@ -586,6 +811,9 @@
           }
         }
       }
+    },
+    "https://…": {
+
     }
   },
   "version": "1.0"

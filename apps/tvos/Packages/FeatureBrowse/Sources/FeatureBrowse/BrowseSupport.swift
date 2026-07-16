@@ -24,6 +24,7 @@ public struct BrowseNavigator {
     (_ channel: PlayableChannel, _ context: ZapContext, _ offset: UInt32) -> Void
   public var openSearch: () -> Void
   public var manageSources: () -> Void
+  public var manageFavorites: () -> Void
   public var openSettings: () -> Void
 
   public init(
@@ -32,6 +33,7 @@ public struct BrowseNavigator {
     openChannel: @escaping (PlayableChannel, ZapContext, UInt32) -> Void,
     openSearch: @escaping () -> Void,
     manageSources: @escaping () -> Void,
+    manageFavorites: @escaping () -> Void,
     openSettings: @escaping () -> Void
   ) {
     self.openSource = openSource
@@ -39,6 +41,7 @@ public struct BrowseNavigator {
     self.openChannel = openChannel
     self.openSearch = openSearch
     self.manageSources = manageSources
+    self.manageFavorites = manageFavorites
     self.openSettings = openSettings
   }
 }

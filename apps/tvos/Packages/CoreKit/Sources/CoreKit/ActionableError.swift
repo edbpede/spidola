@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Spidola contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import Foundation
 import core_api
 
 /// A prescribed user action for an error (PRD §6.3). The set is deliberately small; the shell
@@ -16,9 +17,9 @@ public enum ErrorAction: Sendable, Hashable {
   /// The couch-legible button label (PRD §8.6 voice).
   public var label: String {
     switch self {
-    case .retry: "Try again"
-    case .goBack: "Go back"
-    case .fixInput: "Edit"
+    case .retry: String(localized: "Try again", bundle: .module)
+    case .goBack: String(localized: "Go back", bundle: .module)
+    case .fixInput: String(localized: "Edit", bundle: .module)
     }
   }
 }
@@ -63,54 +64,90 @@ public struct ActionableError: Sendable, Equatable {
     switch error {
     case .NetworkUnreachable:
       self.init(
-        "Can't reach the source",
-        "Spidola couldn't connect. Check the address and your network, then try again.",
+        String(localized: "Can't reach the source", bundle: .module),
+        String(
+          localized:
+            "Spidola couldn't connect. Check the address and your network, then try again.",
+          bundle: .module),
         primary: .retry, other: [.goBack])
     case .Timeout:
       self.init(
-        "The source is slow to respond",
-        "The source didn't answer in time. It may be busy — try again in a moment.",
+        String(localized: "The source is slow to respond", bundle: .module),
+        String(
+          localized: "The source didn't answer in time. It may be busy — try again in a moment.",
+          bundle: .module),
         primary: .retry, other: [.goBack])
     case .Unauthorized:
       self.init(
-        "Login was rejected",
-        "The source didn't accept these sign-in details. Edit them and try again.",
+        String(localized: "Login was rejected", bundle: .module),
+        String(
+          localized: "The source didn't accept these sign-in details. Edit them and try again.",
+          bundle: .module),
         primary: .fixInput, other: [.goBack])
     case .NotFound:
       self.init(
-        "Not available anymore",
-        "This isn't at the source any longer.",
+        String(localized: "Not available anymore", bundle: .module),
+        String(localized: "This isn't at the source any longer.", bundle: .module),
         primary: .goBack, other: [])
-    case .InvalidInput(let reason):
+    case .InvalidInput(let field, let issue):
       self.init(
-        "That entry isn't valid",
-        reason,
+        String(localized: "That entry isn't valid", bundle: .module),
+        Self.invalidInputMessage(field: field, issue: issue),
         primary: .fixInput, other: [.goBack])
     case .ParseFailed:
       self.init(
-        "No channels found",
-        "Spidola reached the source but found no channels to add. Check the playlist and try again.",
+        String(localized: "No channels found", bundle: .module),
+        String(
+          localized:
+            "Spidola reached the source but found no channels to add. Check the playlist and try again.",
+          bundle: .module),
         primary: .retry, other: [.goBack])
     case .StorageCorrupt:
       self.init(
-        "Local storage problem",
-        "Something went wrong saving to this device. Try again.",
+        String(localized: "Local storage problem", bundle: .module),
+        String(
+          localized: "Something went wrong saving to this device. Try again.", bundle: .module),
         primary: .retry, other: [.goBack])
     case .Cancelled:
       self.init(
-        "Cancelled",
-        "That was cancelled.",
+        String(localized: "Cancelled", bundle: .module),
+        String(localized: "That was cancelled.", bundle: .module),
         primary: .goBack, other: [])
     case .Internal:
       self.init(
-        "Something went wrong",
-        "An unexpected problem came up. Try again.",
+        String(localized: "Something went wrong", bundle: .module),
+        String(localized: "An unexpected problem came up. Try again.", bundle: .module),
         primary: .retry, other: [.goBack])
     @unknown default:
       self.init(
-        "Something went wrong",
-        "An unexpected problem came up. Try again.",
+        String(localized: "Something went wrong", bundle: .module),
+        String(localized: "An unexpected problem came up. Try again.", bundle: .module),
         primary: .retry, other: [.goBack])
     }
+  }
+
+  /// Platform copy for the structured validation boundary. No core-authored prose crosses into UI.
+  private static func invalidInputMessage(field: InputField, issue: InputIssue) -> String {
+    let fieldName: String =
+      switch field {
+      case .address: String(localized: "address", bundle: .module)
+      case .server: String(localized: "server address", bundle: .module)
+      case .name: String(localized: "name", bundle: .module)
+      case .header: String(localized: "request detail", bundle: .module)
+      case .logLevel: String(localized: "log level", bundle: .module)
+      case .file: String(localized: "file", bundle: .module)
+      case .source: String(localized: "source", bundle: .module)
+      @unknown default: String(localized: "entry", bundle: .module)
+      }
+
+    let format: String =
+      switch issue {
+      case .empty: String(localized: "Enter a value for the %@.", bundle: .module)
+      case .invalid: String(localized: "Check the %@ and try again.", bundle: .module)
+      case .unsupported: String(localized: "That %@ isn't supported.", bundle: .module)
+      case .unavailable: String(localized: "That %@ isn't available right now.", bundle: .module)
+      @unknown default: String(localized: "Check the %@ and try again.", bundle: .module)
+      }
+    return String(format: format, locale: .current, fieldName)
   }
 }

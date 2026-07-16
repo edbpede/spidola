@@ -2,14 +2,26 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import CoreKit
+import Foundation
+import OSLog
 import Observation
 import core_api
+
+/// Schedule state for a browse row. Pending and unavailable deliberately render at the same fixed
+/// height; the distinction lets tests and accessibility tell an unanswered lookup from an empty
+/// guide without putting a spinner in a focusable list.
+public enum ChannelSchedule: Sendable, Equatable {
+  case pending
+  case unavailable
+  case ready(NowNext)
+}
 
 /// One channel row plus its favorite flag, so the list marks favorites without an `isFavorite`
 /// call per row. `id` is the stable identity, so it survives a refresh as the list/focus key.
 public struct ChannelRow: Identifiable, Sendable, Equatable {
   public let channel: Channel
   public var isFavorite: Bool
+  public var schedule: ChannelSchedule = .pending
   public var id: Int64 { channel.identity }
 }
 
@@ -26,19 +38,25 @@ public final class ChannelsModel {
   private let kind: MediaKind
   private let group: String?
   private let access: any BrowseAccess
+  private let epg: any EpgAccess
 
   private var favorites: Set<Int64> = []
   private var rows: [ChannelRow] = []
   private var total: UInt64 = 0
   private var isPaging = false
-  private static let pageLimit: UInt32 = 200
+  /// Matches the core's hard upper bound for `nowNextBatch`, so each channel page needs exactly
+  /// one bounded guide query.
+  private static let pageLimit: UInt32 = 100
   private static let prefetchMargin = 20
 
-  public init(sourceId: Int64, kind: MediaKind, group: String?, access: any BrowseAccess) {
+  public init(
+    sourceId: Int64, kind: MediaKind, group: String?, access: any BrowseAccess, epg: any EpgAccess
+  ) {
     self.sourceId = sourceId
     self.kind = kind
     self.group = group
     self.access = access
+    self.epg = epg
   }
 
   /// The ring a channel opened from this list zaps through: this list's own query (PRD §8.4).
@@ -65,6 +83,7 @@ public final class ChannelsModel {
       total = page.total
       append(page.channels)
       state = rows.isEmpty ? .empty : .ready(rows)
+      await loadSchedules(for: page.channels)
     } catch {
       if let failed = LoadState<[ChannelRow]>.failure(from: error) { state = failed }
     }
@@ -84,9 +103,41 @@ public final class ChannelsModel {
         sourceId: sourceId, kind: kind, group: group, offset: offset, limit: Self.pageLimit)
       append(page.channels)
       state = .ready(rows)
+      await loadSchedules(for: page.channels)
     } catch is CancellationError {
     } catch {
       // Keep the rows already loaded; the next scroll retries.
+    }
+  }
+
+  /// Loads a whole page's schedule in one core call. Rows are already visible with fixed-height
+  /// placeholders while this suspends; applying the result mutates values behind stable IDs, so
+  /// focus does not move when the schedule crossfades in.
+  private func loadSchedules(for channels: [Channel], at now: Date = .now) async {
+    guard !channels.isEmpty else { return }
+    let identities = channels.map(\.identity)
+    precondition(identities.count <= Int(Self.pageLimit))
+    do {
+      let values = try await epg.nowNextBatch(
+        sourceId: sourceId, channelIdentities: identities, now: now)
+      guard !Task.isCancelled else { return }
+      let schedules = Dictionary(
+        uniqueKeysWithValues: values.map { value in
+          let programmes = value.programmes
+          let schedule: ChannelSchedule =
+            programmes.current == nil && programmes.next == nil
+            ? .unavailable : .ready(programmes)
+          return (value.channelIdentity, schedule)
+        })
+      applySchedules(schedules, to: identities)
+    } catch is CancellationError {
+    } catch {
+      guard !Task.isCancelled else { return }
+      Self.logger.error(
+        "guide batch failed: \(String(describing: error), privacy: .public)")
+      applySchedules(
+        Dictionary(uniqueKeysWithValues: identities.map { ($0, ChannelSchedule.unavailable) }),
+        to: identities)
     }
   }
 
@@ -113,8 +164,17 @@ public final class ChannelsModel {
 
   private func append(_ channels: [Channel]) {
     for channel in channels {
-      rows.append(ChannelRow(channel: channel, isFavorite: favorites.contains(channel.identity)))
+      rows.append(
+        ChannelRow(channel: channel, isFavorite: favorites.contains(channel.identity)))
     }
+  }
+
+  private func applySchedules(_ schedules: [Int64: ChannelSchedule], to identities: [Int64]) {
+    let pageIdentities = Set(identities)
+    for index in rows.indices where pageIdentities.contains(rows[index].id) {
+      rows[index].schedule = schedules[rows[index].id] ?? .unavailable
+    }
+    if case .ready = state { state = .ready(rows) }
   }
 
   private func setFavorite(_ id: Int64, _ isFavorite: Bool) {
@@ -122,4 +182,9 @@ public final class ChannelsModel {
     if let index = rows.firstIndex(where: { $0.id == id }) { rows[index].isFavorite = isFavorite }
     if case .ready = state { state = .ready(rows) }
   }
+
+  private static let logger = Logger(
+    subsystem: "dev.spidola.tv",
+    category: "spidola::browse"
+  )
 }

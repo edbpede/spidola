@@ -176,6 +176,15 @@ public struct HomeView: View {
         .focused($focused, equals: .manage)
         .accessibilityIdentifier("home-manage")
         SpidolaRow(
+          title: String(localized: "Arrange favorites", bundle: .module),
+          accessory: .symbol("list.number"),
+          isFocused: focused == .favorites
+        ) {
+          navigator.manageFavorites()
+        }
+        .focused($focused, equals: .favorites)
+        .accessibilityIdentifier("home-arrange-favorites")
+        SpidolaRow(
           title: String(localized: "Settings", bundle: .module),
           accessory: .symbol("gearshape"),
           isFocused: focused == .settings
@@ -205,6 +214,7 @@ public struct HomeView: View {
     case source(Int64)
     case search
     case manage
+    case favorites
     case settings
     case recentsToggle
     case recentsClear

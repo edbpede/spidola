@@ -8,6 +8,7 @@ import SwiftUI
 /// catalog through the core.
 @main
 struct SpidolaApp: App {
+  @Environment(\.scenePhase) private var scenePhase
   @State private var container = AppContainer()
   @State private var isReady = false
 
@@ -22,7 +23,12 @@ struct SpidolaApp: App {
       }
       .task {
         await container.seedFixtureIfNeeded()
+        await TopShelfSnapshotWriter.refresh(from: container.core)
         isReady = true
+      }
+      .onChange(of: scenePhase) { _, phase in
+        guard phase == .background else { return }
+        Task { await TopShelfSnapshotWriter.refresh(from: container.core) }
       }
     }
   }

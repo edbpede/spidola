@@ -32,11 +32,14 @@ targets:
     type: application
     platform: tvOS
     deploymentTarget: "18.0"
-    sources: [App]
+    sources:
+      - App
+      - Shared/TopShelfSnapshot.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.spidola.tv
         INFOPLIST_FILE: App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: App/Spidola.entitlements
         MARKETING_VERSION: 0.0.0
         CURRENT_PROJECT_VERSION: 1
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
@@ -51,6 +54,26 @@ targets:
       - package: FeatureSources
       - package: FeatureSearch
       - package: FeatureSettings
+      - target: SpidolaTopShelf
+        embed: true
+  SpidolaTopShelf:
+    type: app-extension
+    platform: tvOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: TopShelf
+        excludes:
+          - README.md
+      - Shared/TopShelfSnapshot.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.spidola.tv.topshelf
+        INFOPLIST_FILE: TopShelf/Info.plist
+        CODE_SIGN_ENTITLEMENTS: TopShelf/SpidolaTopShelf.entitlements
+        MARKETING_VERSION: 0.0.0
+        CURRENT_PROJECT_VERSION: 1
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
   SpidolaUITests:
     type: bundle.ui-testing
     platform: tvOS
@@ -59,6 +82,8 @@ targets:
     # tvOS-triple package: the Apple lane runs them here or not at all.
     sources:
       - UITests
+      - Shared/TopShelfSnapshot.swift
+      - Packages/CoreKit/Tests/CoreKitTests
       - Packages/FeatureBrowse/Tests/FeatureBrowseTests
       - Packages/FeatureSearch/Tests/FeatureSearchTests
       - Packages/FeatureSettings/Tests/FeatureSettingsTests

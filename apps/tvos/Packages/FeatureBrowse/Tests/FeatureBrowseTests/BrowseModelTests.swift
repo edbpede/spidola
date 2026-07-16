@@ -3,6 +3,7 @@
 
 import CoreKit
 import FeatureBrowse
+import Foundation
 import XCTest
 import core_api
 
@@ -68,7 +69,8 @@ final class BrowseModelTests: XCTestCase {
     let access = FakeAccess(
       sources: [Self.source(id: 1, name: "Home")],
       groupChannels: [channel])
-    let model = ChannelsModel(sourceId: 1, kind: .live, group: "Fixture", access: access)
+    let model = ChannelsModel(
+      sourceId: 1, kind: .live, group: "Fixture", access: access, epg: FakeEpgAccess())
     await model.load()
     guard case .ready(let rows) = model.state, let row = rows.first else {
       return XCTFail("expected ready")
@@ -87,7 +89,8 @@ final class BrowseModelTests: XCTestCase {
 
   func testChannelsZapContextNamesItsOwnQuery() {
     let model = ChannelsModel(
-      sourceId: 7, kind: .live, group: "News", access: FakeAccess(sources: []))
+      sourceId: 7, kind: .live, group: "News", access: FakeAccess(sources: []),
+      epg: FakeEpgAccess())
     XCTAssertEqual(model.zapContext, .group(sourceId: 7, kind: .live, group: "News"))
   }
 
@@ -97,18 +100,86 @@ final class BrowseModelTests: XCTestCase {
     let channels = (0..<250).map { Self.channel(identity: Int64($0), name: "Channel \($0)") }
     let access = FakeAccess(
       sources: [Self.source(id: 1, name: "Home")], groupChannels: channels)
-    let model = ChannelsModel(sourceId: 1, kind: .live, group: "Fixture", access: access)
+    let model = ChannelsModel(
+      sourceId: 1, kind: .live, group: "Fixture", access: access, epg: FakeEpgAccess())
 
     await model.load()
     guard case .ready(let firstPage) = model.state else { return XCTFail("expected ready") }
-    XCTAssertEqual(firstPage.count, 200)
-    XCTAssertEqual(model.offset(of: firstPage[199]), 199)
+    XCTAssertEqual(firstPage.count, 100)
+    XCTAssertEqual(model.offset(of: firstPage[99]), 99)
 
-    await model.loadMoreIfNeeded(after: firstPage[199])
+    await model.loadMoreIfNeeded(after: firstPage[99])
+    guard case .ready(let secondPage) = model.state else { return XCTFail("expected ready") }
+    XCTAssertEqual(secondPage.count, 200)
+
+    await model.loadMoreIfNeeded(after: secondPage[199])
     guard case .ready(let rows) = model.state else { return XCTFail("expected ready") }
     XCTAssertEqual(rows.count, 250)
     XCTAssertEqual(rows[249].channel.name, "Channel 249")
     XCTAssertEqual(model.offset(of: rows[249]), 249)
+  }
+
+  // MARK: - Phase 7 guide and ordering
+
+  func testChannelsLoadUsesOneBoundedEpgBatchAndPreservesFocusKeys() async {
+    let channels = (0..<50).map { Self.channel(identity: Int64($0), name: "Channel \($0)") }
+    let access = FakeAccess(
+      sources: [Self.source(id: 1, name: "Home")], groupChannels: channels)
+    let epg = CountingEpgAccess()
+    let model = ChannelsModel(
+      sourceId: 1, kind: .live, group: "Fixture", access: access, epg: epg)
+
+    await model.load()
+    let batches = await epg.requestedBatches()
+    XCTAssertEqual(batches, [Array(0..<50).map(Int64.init)])
+    guard let batch = batches.first else { return XCTFail("expected one EPG batch") }
+    XCTAssertEqual(batch.count, 50)
+    guard case .ready(let scheduledRows) = model.state else {
+      return XCTFail("expected ready after guide load")
+    }
+    XCTAssertEqual(
+      scheduledRows.map(\.id), Array(0..<50).map(Int64.init),
+      "guide updates must preserve focus keys")
+    guard case .ready(let schedule) = scheduledRows[12].schedule else {
+      return XCTFail("focused row should contain now/next")
+    }
+    XCTAssertEqual(schedule.current?.title, "Current 12")
+  }
+
+  func testChannelDetailLoadsNowNextAndBoundedWindow() async {
+    let channel = PlayableChannel(Self.channel(identity: 42, name: "Fixture"))
+    let current = EpgProgramme(
+      id: 1, sourceId: 1, channelIdentity: 42, title: "Evening News", description: nil,
+      startUnix: 900, endUnix: 1_200)
+    let next = EpgProgramme(
+      id: 2, sourceId: 1, channelIdentity: 42, title: "Weather", description: nil,
+      startUnix: 1_200, endUnix: 1_500)
+    let model = ChannelDetailModel(
+      channel: channel, access: FakeAccess(sources: []),
+      epg: FakeEpgAccess(
+        nowNext: NowNext(current: current, next: next), programmes: [current, next]))
+
+    await model.load(at: Date(timeIntervalSince1970: 1_000))
+
+    XCTAssertEqual(model.nowNext.current?.title, "Evening News")
+    XCTAssertEqual(model.upcoming.map(\.title), ["Evening News", "Weather"])
+    XCTAssertFalse(model.scheduleUnavailable)
+  }
+
+  func testFavoriteLineupMovesOneAdjacentAnchorAndReloads() async {
+    let channels = [
+      PlayableChannel(Self.channel(identity: 1, name: "One")),
+      PlayableChannel(Self.channel(identity: 2, name: "Two")),
+      PlayableChannel(Self.channel(identity: 3, name: "Three")),
+    ]
+    let access = FakeFavoriteOrderingAccess(channels: channels)
+    let model = FavoriteLineupModel(access: access)
+    await model.load()
+
+    await model.moveUp(channels[2])
+
+    XCTAssertEqual(access.channels.map(\.name), ["One", "Three", "Two"])
+    XCTAssertEqual(access.lastMove, .before(item: channels[2].id, anchor: channels[1].id))
   }
 
   // MARK: - Fixtures
@@ -128,6 +199,113 @@ final class BrowseModelTests: XCTestCase {
     Recent(
       sourceId: 1, identity: identity, name: name, locator: "https://example.invalid/live.ts",
       playedAtUnix: 1000, positionSecs: nil)
+  }
+}
+
+private final class FakeEpgAccess: EpgAccess {
+  let nowNextValue: NowNext
+  let programmes: [EpgProgramme]
+
+  init(
+    nowNext: NowNext = NowNext(current: nil, next: nil), programmes: [EpgProgramme] = []
+  ) {
+    nowNextValue = nowNext
+    self.programmes = programmes
+  }
+
+  func nowNext(sourceId: Int64, channelIdentity: Int64, now: Date) async throws -> NowNext {
+    nowNextValue
+  }
+
+  func nowNextBatch(
+    sourceId: Int64, channelIdentities: [Int64], now: Date
+  ) async throws -> [ChannelNowNext] {
+    channelIdentities.map {
+      ChannelNowNext(channelIdentity: $0, programmes: nowNextValue)
+    }
+  }
+
+  func epgWindow(_ query: EpgWindowQuery) async throws -> EpgPage {
+    EpgPage(programmes: Array(programmes.prefix(Int(query.limit))), offset: query.offset)
+  }
+
+  func hasEpgFeed(sourceId: Int64) async throws -> Bool { true }
+  func setXmltvFeed(sourceId: Int64, url: String) async throws {}
+  func clearXmltvFeed(sourceId: Int64) async throws {}
+  func refreshEpg(sourceId: Int64, now: Date) -> AsyncStream<EpgRefreshEvent> {
+    AsyncStream { $0.finish() }
+  }
+}
+
+private actor CountingEpgAccess: EpgAccess {
+  private var batches: [[Int64]] = []
+
+  func requestedBatches() -> [[Int64]] { batches }
+
+  func nowNext(sourceId: Int64, channelIdentity: Int64, now: Date) async throws -> NowNext {
+    makeNowNext(sourceId: sourceId, channelIdentity: channelIdentity)
+  }
+
+  func nowNextBatch(
+    sourceId: Int64, channelIdentities: [Int64], now: Date
+  ) async throws -> [ChannelNowNext] {
+    batches.append(channelIdentities)
+    return channelIdentities.map {
+      ChannelNowNext(
+        channelIdentity: $0, programmes: makeNowNext(sourceId: sourceId, channelIdentity: $0))
+    }
+  }
+
+  private func makeNowNext(sourceId: Int64, channelIdentity: Int64) -> NowNext {
+    return NowNext(
+      current: EpgProgramme(
+        id: channelIdentity * 2, sourceId: sourceId, channelIdentity: channelIdentity,
+        title: "Current \(channelIdentity)", description: nil, startUnix: 900, endUnix: 1_200),
+      next: EpgProgramme(
+        id: channelIdentity * 2 + 1, sourceId: sourceId, channelIdentity: channelIdentity,
+        title: "Next \(channelIdentity)", description: nil, startUnix: 1_200, endUnix: 1_500))
+  }
+
+  func epgWindow(_ query: EpgWindowQuery) async throws -> EpgPage {
+    EpgPage(programmes: [], offset: query.offset)
+  }
+
+  func hasEpgFeed(sourceId: Int64) async throws -> Bool { true }
+  func setXmltvFeed(sourceId: Int64, url: String) async throws {}
+  func clearXmltvFeed(sourceId: Int64) async throws {}
+  nonisolated func refreshEpg(sourceId: Int64, now: Date) -> AsyncStream<EpgRefreshEvent> {
+    AsyncStream { $0.finish() }
+  }
+}
+
+@MainActor
+private final class FakeFavoriteOrderingAccess: FavoriteOrderingAccess {
+  enum Move: Equatable {
+    case before(item: String, anchor: String)
+    case after(item: String, anchor: String)
+  }
+
+  var channels: [PlayableChannel]
+  var lastMove: Move?
+
+  init(channels: [PlayableChannel]) { self.channels = channels }
+
+  func favoriteLineup(offset: UInt32, limit: UInt32) async throws -> [PlayableChannel] { channels }
+
+  func moveFavoriteBefore(_ channel: PlayableChannel, anchor: PlayableChannel) async throws {
+    lastMove = .before(item: channel.id, anchor: anchor.id)
+    move(channel, beside: anchor, after: false)
+  }
+
+  func moveFavoriteAfter(_ channel: PlayableChannel, anchor: PlayableChannel) async throws {
+    lastMove = .after(item: channel.id, anchor: anchor.id)
+    move(channel, beside: anchor, after: true)
+  }
+
+  private func move(_ channel: PlayableChannel, beside anchor: PlayableChannel, after: Bool) {
+    channels.removeAll { $0 == channel }
+    guard let anchorIndex = channels.firstIndex(of: anchor) else { return }
+    channels.insert(channel, at: anchorIndex + (after ? 1 : 0))
   }
 }
 

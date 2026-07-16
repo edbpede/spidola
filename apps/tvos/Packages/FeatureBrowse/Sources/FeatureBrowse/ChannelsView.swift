@@ -18,10 +18,11 @@ public struct ChannelsView: View {
 
   public init(
     sourceId: Int64, kind: MediaKind, group: String?, title: String,
-    access: any BrowseAccess, navigator: BrowseNavigator
+    access: any BrowseAccess & EpgAccess, navigator: BrowseNavigator
   ) {
     _model = State(
-      initialValue: ChannelsModel(sourceId: sourceId, kind: kind, group: group, access: access))
+      initialValue: ChannelsModel(
+        sourceId: sourceId, kind: kind, group: group, access: access, epg: access))
     self.title = title
     self.navigator = navigator
   }
@@ -61,12 +62,7 @@ public struct ChannelsView: View {
   }
 
   private func channelRow(_ row: ChannelRow) -> some View {
-    SpidolaRow(
-      title: row.channel.name,
-      subtitle: row.channel.groupTitle,
-      accessory: row.isFavorite ? .symbol("star.fill") : .none,
-      isFocused: focused == row.id
-    ) {
+    ChannelScheduleRow(row: row, isFocused: focused == row.id) {
       open(row)
     }
     .focused($focused, equals: row.id)
@@ -74,7 +70,7 @@ public struct ChannelsView: View {
     // a value: in a list where most channels are not one, saying so on every row would bury the
     // handful that are under the ones that aren't.
     .accessibilityLabel(Self.label(for: row.channel))
-    .accessibilityValue(row.isFavorite ? String(localized: "Favorite", bundle: .module) : "")
+    .accessibilityValue(Self.accessibilityValue(for: row))
     .accessibilityIdentifier("channel-\(row.channel.name)")
     .contextMenu {
       Button(String(localized: "Open", bundle: .module)) { open(row) }
@@ -107,5 +103,21 @@ public struct ChannelsView: View {
   private static func label(for channel: Channel) -> String {
     channel.groupTitle.map { String(localized: "\(channel.name), \($0)", bundle: .module) }
       ?? channel.name
+  }
+
+  private static func accessibilityValue(for row: ChannelRow) -> String {
+    var parts: [String] = []
+    if row.isFavorite { parts.append(String(localized: "Favorite", bundle: .module)) }
+    if case .ready(let nowNext) = row.schedule {
+      if let current = nowNext.current {
+        parts.append(String(localized: "Now: \(current.title)", bundle: .module))
+      }
+      if let next = nowNext.next {
+        parts.append(String(localized: "Next: \(next.title)", bundle: .module))
+      }
+    } else {
+      parts.append(String(localized: "Schedule unavailable", bundle: .module))
+    }
+    return parts.joined(separator: ", ")
   }
 }

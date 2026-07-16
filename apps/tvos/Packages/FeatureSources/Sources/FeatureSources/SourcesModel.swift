@@ -37,6 +37,27 @@ public enum AutoRefreshOption: Sendable, CaseIterable, Identifiable {
   }
 }
 
+public enum SourcesStatus: Sendable {
+  case fileCannotRefresh
+  case refreshed(sourceName: String, inserted: UInt64)
+  case failed(ActionableError)
+
+  public var message: String {
+    switch self {
+    case .fileCannotRefresh:
+      String(
+        localized: "This source was added from a file — re-add it to update its channels.",
+        bundle: .module)
+    case .refreshed(let sourceName, let inserted):
+      String(
+        format: String(localized: "Refreshed %@: %llu channels", bundle: .module),
+        sourceName, inserted)
+    case .failed(let error):
+      error.message
+    }
+  }
+}
+
 /// Backs the manage-sources screen: the list plus rename / enable-disable / refresh / delete /
 /// auto-refresh (PRD §6.1). Refresh preserves favorites and hidden flags via the core's stable
 /// identity (§4.4), so the shell need do nothing special. Depends on the narrow `SourcesAccess`.
@@ -45,7 +66,7 @@ public enum AutoRefreshOption: Sendable, CaseIterable, Identifiable {
 public final class SourcesModel {
   public private(set) var state: LoadState<[Source]> = .loading
   public private(set) var refreshingIds: Set<Int64> = []
-  public private(set) var statusMessage: String?
+  public private(set) var status: SourcesStatus?
 
   private let access: any SourcesAccess
 
@@ -83,7 +104,7 @@ public final class SourcesModel {
 
   public func refresh(_ source: Source) async {
     guard source.isRefreshable else {
-      statusMessage = "This source was added from a file — re-add it to update its channels."
+      status = .fileCannotRefresh
       return
     }
     refreshingIds.insert(source.id)
@@ -93,11 +114,11 @@ public final class SourcesModel {
       case .progress:
         continue
       case .complete(let outcome):
-        statusMessage = "Refreshed \(source.name): \(outcome.inserted) channels"
+        status = .refreshed(sourceName: source.name, inserted: outcome.inserted)
       case .failed(.Cancelled):
         break
       case .failed(let error):
-        statusMessage = ActionableError(error).message
+        status = .failed(ActionableError(error))
       }
     }
     await load()
@@ -108,13 +129,13 @@ public final class SourcesModel {
   private func mutate(_ action: @escaping () async throws -> Void) async {
     do {
       try await action()
-      statusMessage = nil
+      status = nil
       await load()
     } catch is CancellationError {
     } catch let error as ApiError {
-      statusMessage = ActionableError(error).message
+      status = .failed(ActionableError(error))
     } catch {
-      statusMessage = ActionableError(.Internal).message
+      status = .failed(ActionableError(.Internal))
     }
   }
 }

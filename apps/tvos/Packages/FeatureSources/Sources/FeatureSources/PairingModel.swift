@@ -91,8 +91,5 @@ public final class PairingModel {
   /// actually cause it, because "no network address" would send someone to check a cable that is
   /// already plugged in.
   private static let noAddressError = ActionableError(
-    .InvalidInput(
-      reason:
-        "Spidola couldn't find this TV's address on your network. If a VPN is on, turn it off and "
-        + "try again."))
+    .InvalidInput(field: .address, issue: .unavailable))
 }

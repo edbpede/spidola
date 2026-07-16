@@ -112,6 +112,15 @@
         }
       }
     },
+    "Next": {
+
+    },
+    "No programme next": {
+
+    },
+    "No programme now": {
+
+    },
     "Not selected": {
       "localizations": {
         "en": {
@@ -121,6 +130,9 @@
           }
         }
       }
+    },
+    "Now": {
+
     },
     "Off": {
       "localizations": {
@@ -161,6 +173,9 @@
           }
         }
       }
+    },
+    "Schedule unavailable": {
+
     },
     "Selected": {
       "localizations": {

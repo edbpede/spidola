@@ -4,6 +4,7 @@
 import CoreKit
 import DesignSystem
 import SwiftUI
+import core_api
 
 /// The signature (PRD §8.5): a broadcast lower-third that slides up over live video, showing the
 /// playing channel with its neighbours peeking above and below for zap-ahead browsing, underlined
@@ -19,8 +20,19 @@ struct ChannelStrip: View {
   let window: ZapWindow?
   let channel: PlayableChannel
   let isLive: Bool
+  let nowNext: NowNext
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  init(
+    window: ZapWindow?, channel: PlayableChannel, isLive: Bool,
+    nowNext: NowNext = NowNext(current: nil, next: nil)
+  ) {
+    self.window = window
+    self.channel = channel
+    self.isLive = isLive
+    self.nowNext = nowNext
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -38,8 +50,7 @@ struct ChannelStrip: View {
     .accessibilityValue(accessibilityValue)
   }
 
-  /// The band: logo, name, and the live marker. Now/next EPG joins it in Phase 8 — the row is laid
-  /// out to take it without moving anything that is already here.
+  /// The band: logo, channel identity, now/next, and the live marker.
   private var band: some View {
     HStack(spacing: SpidolaSpacing.m) {
       LogoImage(url: channel.logo)
@@ -57,7 +68,9 @@ struct ChannelStrip: View {
             .lineLimit(1)
         }
       }
-      Spacer(minLength: 0)
+      .frame(maxWidth: .infinity, alignment: .leading)
+      PlaybackScheduleTape(nowNext: nowNext)
+        .frame(width: Self.scheduleWidth, alignment: .leading)
       if isLive { LiveMarker() }
       if let position { positionLabel(position) }
     }
@@ -127,11 +140,21 @@ struct ChannelStrip: View {
   private var accessibilityValue: String {
     var parts: [String] = []
     if isLive { parts.append(String(localized: "Live", bundle: .module)) }
+    if let current = nowNext.current {
+      parts.append(String(localized: "Now: \(current.title)", bundle: .module))
+    }
+    if let next = nowNext.next {
+      parts.append(String(localized: "Next: \(next.title)", bundle: .module))
+    }
+    if nowNext.current == nil && nowNext.next == nil {
+      parts.append(String(localized: "Schedule unavailable", bundle: .module))
+    }
     if let spokenPosition { parts.append(spokenPosition) }
     return parts.joined(separator: ", ")
   }
 
   private static let logoWidth: CGFloat = 120
+  private static let scheduleWidth: CGFloat = 620
   /// The band is translucent so the video reads through it — a lower-third, not a panel.
   private static let bandOpacity: Double = 0.92
   private static let peekOpacity: Double = 0.75

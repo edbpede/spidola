@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import CoreKit
+import Foundation
 import PlayerContract
 import XCTest
 import core_api
@@ -61,6 +62,36 @@ final class PlaybackModelTests: XCTestCase {
       headers: [ResolvedPlaybackHeader(name: "Authorization", value: secret)])
 
     XCTAssertFalse(String(reflecting: resolved).contains(secret))
+  }
+
+  func testCustomChannelStaysSealedUntilImmediatelyBeforeEngineConstruction() async {
+    let harness = Harness()
+    harness.access.holdsCustomResolution = true
+    let model = harness.customModel()
+
+    let start = Task { await model.start() }
+    await settle()
+
+    XCTAssertEqual(harness.access.customResolvedIds, [42])
+    XCTAssertTrue(
+      harness.engines.isEmpty, "the engine must not exist while the core handle is sealed")
+
+    harness.access.releaseCustomResolution()
+    await start.value
+
+    XCTAssertEqual(harness.engines.first?.loaded.first?.locator, "https://private.example/live")
+    XCTAssertEqual(harness.engines.first?.loaded.first?.userAgent, "Private-Agent")
+    XCTAssertEqual(
+      harness.engines.first?.loaded.first?.headers,
+      [StreamHeader(name: "Authorization", value: "secret")])
+  }
+
+  func testCustomNavigationValueContainsDisplayMetadataOnly() {
+    let channel = CustomPlayableChannel(id: 42, name: "Local camera", logo: "logo://camera")
+
+    XCTAssertEqual(channel.id, 42)
+    XCTAssertEqual(channel.name, "Local camera")
+    XCTAssertEqual(channel.logo, "logo://camera")
   }
 
   func testHonoursChannelOverrideOverSource() async {
@@ -193,7 +224,7 @@ final class PlaybackModelTests: XCTestCase {
     await model.start()
     await settle()
     await model.zap(.next)
-    XCTAssertEqual(model.channel.identity, 11)
+    XCTAssertEqual(model.channel?.identity, 11)
     XCTAssertTrue(harness.engines[0].isStopped)
     XCTAssertEqual(harness.built.count, 2)
   }
@@ -207,7 +238,7 @@ final class PlaybackModelTests: XCTestCase {
     await model.start()
     await settle()
     await model.zap(.next)
-    XCTAssertEqual(model.channel.kind, .movie)
+    XCTAssertEqual(model.channel?.kind, .movie)
   }
 
   func testZapPreviousAtTheStartIsANoOp() async {
@@ -216,7 +247,7 @@ final class PlaybackModelTests: XCTestCase {
     await model.start()
     await settle()
     await model.zap(.previous)
-    XCTAssertEqual(model.channel.identity, 10)
+    XCTAssertEqual(model.channel?.identity, 10)
     XCTAssertEqual(harness.built.count, 1)
   }
 
@@ -230,7 +261,25 @@ final class PlaybackModelTests: XCTestCase {
     await settle()
     XCTAssertNil(model.window)
     await model.zap(.next)
-    XCTAssertEqual(model.channel.identity, 10)
+    XCTAssertEqual(model.channel?.identity, 10)
+  }
+
+  func testGuideFollowsZapAndAStaleFirstLookupCannotOverwriteIt() async {
+    let harness = Harness()
+    harness.access.heldGuideIdentity = 10
+    let model = harness.model()
+
+    let start = Task { await model.start() }
+    await settle()
+    XCTAssertEqual(harness.access.guideCalls, [10])
+
+    await model.zap(.next)
+    XCTAssertEqual(harness.access.guideCalls, [10, 11])
+    XCTAssertEqual(model.nowNext.current?.title, "Current 11")
+
+    harness.access.releaseHeldGuide()
+    await start.value
+    XCTAssertEqual(model.nowNext.current?.title, "Current 11")
   }
 
   // MARK: - Transport
@@ -311,6 +360,13 @@ private final class Harness {
       registry: registry())
   }
 
+  func customModel() -> PlaybackModel {
+    PlaybackModel(
+      customChannel: CustomPlayableChannel(id: 42, name: "Local camera", logo: nil),
+      access: access,
+      registry: registry())
+  }
+
   private func registry() -> EngineRegistry {
     var factories: [EngineID: @MainActor () -> any PlaybackEngine] = [:]
     for id in registered {
@@ -334,13 +390,14 @@ private final class Harness {
 /// `@MainActor` rather than `@unchecked Sendable`: the tests drive it from the main actor, so the
 /// isolation is real and the compiler checks it (the rules ban asserting Sendability away).
 @MainActor
-private final class FakePlaybackAccess: PlaybackAccess {
+private final class FakePlaybackAccess: PlaybackAccess, EpgAccess {
   var channelEngines: [String: String] = [:]
   var sourceEngines: [Int64: String] = [:]
   var recorded: [PlayableChannel] = []
   var buffering: String?
   /// Locators the model asked to have resolved, in order.
   var resolvedCalls: [String] = []
+  var customResolvedIds: [Int64] = []
   /// Makes resolution fail, standing in for a source deleted or a secret gone from the keychain.
   var resolveFailure: (any Error)?
   /// Forces the window's current row to a different identity, as a refresh would.
@@ -349,6 +406,11 @@ private final class FakePlaybackAccess: PlaybackAccess {
   /// the only way a test can stand where the core does and drive an exit into a load in flight.
   var holdsChannelEngineLookup = false
   private var heldChannelEngine: CheckedContinuation<Void, Never>?
+  var holdsCustomResolution = false
+  private var heldCustomResolution: CheckedContinuation<Void, Never>?
+  var guideCalls: [Int64] = []
+  var heldGuideIdentity: Int64?
+  private var heldGuide: CheckedContinuation<Void, Never>?
 
   func zapWindow(context: ZapContext, offset: UInt32) async throws -> ZapWindow? {
     let identity = windowIdentityOverride ?? Int64(10 + offset)
@@ -397,6 +459,74 @@ private final class FakePlaybackAccess: PlaybackAccess {
       headers: [
         ResolvedPlaybackHeader(name: "Referer", value: "https://portal.example/session")
       ])
+  }
+
+  func resolveCustomPlayback(_ channel: CustomPlayableChannel) async throws
+    -> ResolvedPlaybackStream
+  {
+    customResolvedIds.append(channel.id)
+    if holdsCustomResolution {
+      await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+        heldCustomResolution = continuation
+      }
+    }
+    return ResolvedPlaybackStream(
+      locator: "https://private.example/live",
+      userAgent: "Private-Agent",
+      headers: [ResolvedPlaybackHeader(name: "Authorization", value: "secret")])
+  }
+
+  func releaseCustomResolution() {
+    holdsCustomResolution = false
+    heldCustomResolution?.resume()
+    heldCustomResolution = nil
+  }
+
+  func nowNext(sourceId: Int64, channelIdentity: Int64, now: Date) async throws -> NowNext {
+    guideCalls.append(channelIdentity)
+    if heldGuideIdentity == channelIdentity {
+      await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+        heldGuide = continuation
+      }
+    }
+    return makeNowNext(sourceId: sourceId, channelIdentity: channelIdentity)
+  }
+
+  func nowNextBatch(
+    sourceId: Int64, channelIdentities: [Int64], now: Date
+  ) async throws -> [ChannelNowNext] {
+    channelIdentities.map {
+      ChannelNowNext(
+        channelIdentity: $0,
+        programmes: makeNowNext(sourceId: sourceId, channelIdentity: $0))
+    }
+  }
+
+  func epgWindow(_ query: EpgWindowQuery) async throws -> EpgPage {
+    EpgPage(programmes: [], offset: query.offset)
+  }
+
+  func hasEpgFeed(sourceId: Int64) async throws -> Bool { true }
+  func setXmltvFeed(sourceId: Int64, url: String) async throws {}
+  func clearXmltvFeed(sourceId: Int64) async throws {}
+  nonisolated func refreshEpg(sourceId: Int64, now: Date) -> AsyncStream<EpgRefreshEvent> {
+    AsyncStream { $0.finish() }
+  }
+
+  func releaseHeldGuide() {
+    heldGuideIdentity = nil
+    heldGuide?.resume()
+    heldGuide = nil
+  }
+
+  private func makeNowNext(sourceId: Int64, channelIdentity: Int64) -> NowNext {
+    NowNext(
+      current: EpgProgramme(
+        id: channelIdentity * 2, sourceId: sourceId, channelIdentity: channelIdentity,
+        title: "Current \(channelIdentity)", description: nil, startUnix: 900, endUnix: 1_200),
+      next: EpgProgramme(
+        id: channelIdentity * 2 + 1, sourceId: sourceId, channelIdentity: channelIdentity,
+        title: "Next \(channelIdentity)", description: nil, startUnix: 1_200, endUnix: 1_500))
   }
 
   func bufferingProfile() async throws -> String? { buffering }

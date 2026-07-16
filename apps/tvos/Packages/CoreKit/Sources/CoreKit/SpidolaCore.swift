@@ -25,7 +25,8 @@ public enum ImportEvent: Sendable {
 /// core's task handle. UniFFI async methods arrive back on the caller's continuation; callback
 /// events are trampolined to the caller's isolation by the stream.
 public final class SpidolaCore: CatalogAccess, SourcesAccess, BrowseAccess, SearchAccess,
-  HomeAccess, PlaybackAccess, SettingsAccess, PairingAccess
+  HomeAccess, PlaybackAccess, SettingsAccess, PairingAccess, EpgAccess, CustomChannelsAccess,
+  FavoriteOrderingAccess
 {
   private let core: Core
 
@@ -201,6 +202,149 @@ public final class SpidolaCore: CatalogAccess, SourcesAccess, BrowseAccess, Sear
     try await core.favorites().favoriteChannels(offset: offset, limit: limit)
   }
 
+  public func favoriteLineup(offset: UInt32, limit: UInt32) async throws -> [PlayableChannel] {
+    try await favoriteChannels(offset: offset, limit: limit).channels.map(PlayableChannel.init)
+  }
+
+  public func moveFavoriteBefore(_ channel: PlayableChannel, anchor: PlayableChannel) async throws {
+    try await core.favorites().moveBefore(
+      sourceId: channel.sourceId, identity: channel.identity, anchorSourceId: anchor.sourceId,
+      anchorIdentity: anchor.identity)
+  }
+
+  public func moveFavoriteAfter(_ channel: PlayableChannel, anchor: PlayableChannel) async throws {
+    try await core.favorites().moveAfter(
+      sourceId: channel.sourceId, identity: channel.identity, anchorSourceId: anchor.sourceId,
+      anchorIdentity: anchor.identity)
+  }
+
+  // MARK: - Programme guide
+
+  public func nowNext(sourceId: Int64, channelIdentity: Int64, now: Date) async throws -> NowNext {
+    try await core.epg().nowNext(
+      sourceId: sourceId, channelIdentity: channelIdentity,
+      nowUnix: Int64(now.timeIntervalSince1970))
+  }
+
+  public func nowNextBatch(
+    sourceId: Int64, channelIdentities: [Int64], now: Date
+  ) async throws -> [ChannelNowNext] {
+    try await core.epg().nowNextBatch(
+      sourceId: sourceId, channelIdentities: channelIdentities,
+      nowUnix: Int64(now.timeIntervalSince1970))
+  }
+
+  public func epgWindow(_ query: EpgWindowQuery) async throws -> EpgPage {
+    try await core.epg().window(
+      sourceId: query.sourceId, channelIdentity: query.channelIdentity,
+      earliestUnix: Int64(query.earliest.timeIntervalSince1970),
+      latestUnix: Int64(query.latest.timeIntervalSince1970), offset: query.offset,
+      limit: query.limit)
+  }
+
+  public func hasEpgFeed(sourceId: Int64) async throws -> Bool {
+    try await core.epg().hasFeed(sourceId: sourceId)
+  }
+
+  public func setXmltvFeed(sourceId: Int64, url: String) async throws {
+    try await core.epg().setXmltvFeed(sourceId: sourceId, url: url)
+  }
+
+  public func clearXmltvFeed(sourceId: Int64) async throws {
+    try await core.epg().clearXmltvFeed(sourceId: sourceId)
+  }
+
+  public func refreshEpg(sourceId: Int64, now: Date) -> AsyncStream<EpgRefreshEvent> {
+    AsyncStream { continuation in
+      let listener = EpgRefreshListenerAdapter(continuation: continuation)
+      let handle = core.epg().refresh(
+        sourceId: sourceId, nowUnix: Int64(now.timeIntervalSince1970), listener: listener)
+      continuation.onTermination = { _ in handle.cancel() }
+    }
+  }
+
+  // MARK: - Custom channels
+
+  public func customGroups() async throws -> [CustomGroup] {
+    var groups: [CustomGroup] = []
+    var page: [CustomGroup]
+    repeat {
+      page = try await core.customChannels().groups(offset: UInt32(groups.count), limit: 200)
+      groups.append(contentsOf: page)
+    } while page.count == 200
+    return groups
+  }
+
+  public func customChannels(groupId: Int64?) async throws -> [CustomChannelSummary] {
+    var channels: [CustomChannelSummary] = []
+    var page: [CustomChannelSummary]
+    repeat {
+      page = try await core.customChannels().list(
+        groupId: groupId, offset: UInt32(channels.count), limit: 200)
+      channels.append(contentsOf: page)
+    } while page.count == 200
+    return channels
+  }
+
+  public func createCustomChannel(_ input: CustomChannelInput) async throws -> Int64 {
+    try await core.customChannels().create(draft: customDraft(input))
+  }
+
+  public func updateCustomChannel(id: Int64, input: CustomChannelInput) async throws {
+    try await core.customChannels().update(id: id, draft: customDraft(input))
+  }
+
+  public func deleteCustomChannel(id: Int64) async throws {
+    try await core.customChannels().delete(id: id)
+  }
+
+  public func moveCustomChannelBefore(id: Int64, anchorId: Int64) async throws {
+    try await core.customChannels().moveBefore(id: id, anchorId: anchorId)
+  }
+
+  public func moveCustomChannelAfter(id: Int64, anchorId: Int64) async throws {
+    try await core.customChannels().moveAfter(id: id, anchorId: anchorId)
+  }
+
+  public func createCustomGroup(name: String) async throws -> Int64 {
+    try await core.customChannels().createGroup(name: name)
+  }
+
+  public func renameCustomGroup(id: Int64, name: String) async throws {
+    try await core.customChannels().renameGroup(id: id, name: name)
+  }
+
+  public func deleteCustomGroup(id: Int64) async throws {
+    try await core.customChannels().deleteGroup(id: id)
+  }
+
+  public func moveCustomGroupBefore(id: Int64, anchorId: Int64) async throws {
+    try await core.customChannels().moveGroupBefore(id: id, anchorId: anchorId)
+  }
+
+  public func moveCustomGroupAfter(id: Int64, anchorId: Int64) async throws {
+    try await core.customChannels().moveGroupAfter(id: id, anchorId: anchorId)
+  }
+
+  public func exportCustomChannels() async throws -> String {
+    try await core.customChannels().exportPortable().contents()
+  }
+
+  public func importCustomChannels(_ contents: String, mode: CustomImportMode) async throws
+    -> UInt64
+  {
+    try await core.customChannels().importPortable(contents: contents, mode: mode)
+  }
+
+  private func customDraft(_ input: CustomChannelInput) -> CustomChannelDraft {
+    CustomChannelDraft(
+      groupId: input.groupId, name: input.name, logo: input.logo.nilIfBlank,
+      locator: input.streamAddress, userAgent: input.userAgent.nilIfBlank,
+      headers: input.headers.filter { !$0.name.isEmpty || !$0.value.isEmpty }.map {
+        ResolvedHeader.fromParts(name: $0.name, value: $0.value)
+      })
+  }
+
   // MARK: - Recents
 
   public func recents(limit: UInt32) async throws -> [Recent] {
@@ -366,6 +510,18 @@ public final class SpidolaCore: CatalogAccess, SourcesAccess, BrowseAccess, Sear
         ResolvedPlaybackHeader(name: $0.name(), value: $0.value())
       })
   }
+
+  public func resolveCustomPlayback(_ channel: CustomPlayableChannel) async throws
+    -> ResolvedPlaybackStream
+  {
+    let resolved = try await core.customChannels().resolve(id: channel.id)
+    return ResolvedPlaybackStream(
+      locator: resolved.locator(),
+      userAgent: resolved.userAgent(),
+      headers: resolved.headers().map {
+        ResolvedPlaybackHeader(name: $0.name(), value: $0.value())
+      })
+  }
 }
 
 /// Bridges the UniFFI `ImportListener` callback (which may arrive on any core thread) onto the
@@ -405,6 +561,35 @@ private final class PairingListenerAdapter: PairingListener {
 
   func onSubmission(submission: PairingSubmission) {
     continuation.yield(.submission(submission))
+  }
+}
+
+private final class EpgRefreshListenerAdapter: EpgRefreshListener {
+  private let continuation: AsyncStream<EpgRefreshEvent>.Continuation
+
+  init(continuation: AsyncStream<EpgRefreshEvent>.Continuation) {
+    self.continuation = continuation
+  }
+
+  func onProgress(progress: EpgRefreshProgress) {
+    continuation.yield(.progress(progress))
+  }
+
+  func onComplete(outcome: EpgRefreshOutcome) {
+    continuation.yield(.complete(outcome))
+    continuation.finish()
+  }
+
+  func onFailed(error: ApiError) {
+    continuation.yield(.failed(error))
+    continuation.finish()
+  }
+}
+
+extension String {
+  fileprivate var nilIfBlank: String? {
+    let value = trimmingCharacters(in: .whitespacesAndNewlines)
+    return value.isEmpty ? nil : value
   }
 }
 

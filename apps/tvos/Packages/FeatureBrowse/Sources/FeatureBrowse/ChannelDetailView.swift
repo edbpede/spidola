@@ -17,9 +17,10 @@ public struct ChannelDetailView: View {
   @FocusState private var focused: Action?
 
   public init(
-    channel: PlayableChannel, access: any BrowseAccess, onPlay: @escaping @MainActor () -> Void
+    channel: PlayableChannel, access: any BrowseAccess, epg: any EpgAccess,
+    onPlay: @escaping @MainActor () -> Void
   ) {
-    _model = State(initialValue: ChannelDetailModel(channel: channel, access: access))
+    _model = State(initialValue: ChannelDetailModel(channel: channel, access: access, epg: epg))
     self.onPlay = onPlay
   }
 
@@ -41,6 +42,9 @@ public struct ChannelDetailView: View {
         Text(host(of: channel.locator))
           .font(SpidolaType.caption)
           .foregroundStyle(SpidolaPalette.staticGray)
+        ScheduleTape(
+          nowNext: model.nowNext, upcoming: model.upcoming,
+          unavailable: model.scheduleUnavailable)
         actions
         if let notice = model.notice {
           Text(notice)

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import CoreKit
+import Foundation
 import OSLog
 import Observation
 import core_api
@@ -16,17 +17,22 @@ public final class ChannelDetailModel {
   public let channel: PlayableChannel
   public private(set) var isFavorite = false
   public private(set) var isHidden = false
+  public private(set) var nowNext = NowNext(current: nil, next: nil)
+  public private(set) var upcoming: [EpgProgramme] = []
+  public private(set) var scheduleUnavailable = false
   public private(set) var notice: String?
 
   private let access: any BrowseAccess
+  private let epg: any EpgAccess
   private let logger = Logger(subsystem: "dev.spidola.tv", category: "spidola::browse")
 
-  public init(channel: PlayableChannel, access: any BrowseAccess) {
+  public init(channel: PlayableChannel, access: any BrowseAccess, epg: any EpgAccess) {
     self.channel = channel
     self.access = access
+    self.epg = epg
   }
 
-  public func load() async {
+  public func load(at now: Date = .now) async {
     do {
       isFavorite = try await access.isFavorite(
         sourceId: channel.sourceId, identity: channel.identity)
@@ -34,6 +40,21 @@ public final class ChannelDetailModel {
     } catch is CancellationError {
     } catch {
       logger.error("detail load failed: \(String(describing: error), privacy: .public)")
+    }
+
+    do {
+      nowNext = try await epg.nowNext(
+        sourceId: channel.sourceId, channelIdentity: channel.identity, now: now)
+      upcoming = try await epg.epgWindow(
+        EpgWindowQuery(
+          sourceId: channel.sourceId, channelIdentity: channel.identity, earliest: now,
+          latest: now.addingTimeInterval(6 * 60 * 60), offset: 0, limit: 8)
+      ).programmes
+      scheduleUnavailable = nowNext.current == nil && nowNext.next == nil && upcoming.isEmpty
+    } catch is CancellationError {
+    } catch {
+      scheduleUnavailable = true
+      logger.error("guide load failed: \(String(describing: error), privacy: .public)")
     }
   }
 

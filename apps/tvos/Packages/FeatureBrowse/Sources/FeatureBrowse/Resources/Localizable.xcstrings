@@ -12,6 +12,16 @@
         }
       }
     },
+    "%@–%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@–%2$@"
+          }
+        }
+      }
+    },
     "%lld channels": {
       "localizations": {
         "en": {
@@ -74,6 +84,9 @@
         }
       }
     },
+    "Arrange favorites": {
+
+    },
     "Channels": {
       "localizations": {
         "en": {
@@ -103,6 +116,12 @@
           }
         }
       }
+    },
+    "Favorite a channel to add it here.": {
+
+    },
+    "Favorite lineup": {
+
     },
     "Favorites": {
       "localizations": {
@@ -184,6 +203,9 @@
         }
       }
     },
+    "Loading favorites…": {
+
+    },
     "Loading…": {
       "localizations": {
         "en": {
@@ -193,6 +215,12 @@
           }
         }
       }
+    },
+    "Move down": {
+
+    },
+    "Move up": {
+
     },
     "Movies": {
       "localizations": {
@@ -204,6 +232,12 @@
         }
       }
     },
+    "Next": {
+
+    },
+    "Next: %@": {
+
+    },
     "No channels here.": {
       "localizations": {
         "en": {
@@ -213,6 +247,15 @@
           }
         }
       }
+    },
+    "No favorites yet": {
+
+    },
+    "No programme next": {
+
+    },
+    "No programme now": {
+
     },
     "Not a favorite": {
       "localizations": {
@@ -233,6 +276,12 @@
           }
         }
       }
+    },
+    "Now": {
+
+    },
+    "Now: %@": {
+
     },
     "Off": {
       "localizations": {
@@ -304,6 +353,9 @@
         }
       }
     },
+    "Programme guide": {
+
+    },
     "Recently watched": {
       "localizations": {
         "en": {
@@ -323,6 +375,9 @@
           }
         }
       }
+    },
+    "Schedule unavailable": {
+
     },
     "Search channels": {
       "localizations": {

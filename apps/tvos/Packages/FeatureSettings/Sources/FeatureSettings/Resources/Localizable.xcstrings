@@ -63,6 +63,12 @@
         }
       }
     },
+    "About": {
+
+    },
+    "About and licenses": {
+
+    },
     "App": {
       "localizations": {
         "en": {
@@ -513,6 +519,9 @@
         }
       }
     },
+    "Notices are unavailable in this build.": {
+
+    },
     "Off": {
       "localizations": {
         "en": {
@@ -693,6 +702,12 @@
         }
       }
     },
+    "Spidola %@": {
+
+    },
+    "Spidola and third-party software notices.": {
+
+    },
     "Spidola will forget everything you've watched. This can't be undone.": {
       "localizations": {
         "en": {
@@ -812,6 +827,9 @@
           }
         }
       }
+    },
+    "Third-party notices": {
+
     },
     "Unknown": {
       "localizations": {

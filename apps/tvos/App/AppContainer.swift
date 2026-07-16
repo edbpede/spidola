@@ -49,15 +49,7 @@ final class AppContainer {
       let coreVersion = handshake.coreVersion
       let schemaVersion = handshake.schemaVersion
       let boundaryVersion = handshake.boundaryVersion
-      guard
-        coreVersion.isEmpty == false,
-        schemaVersion == Self.supportedSchemaVersion,
-        boundaryVersion == Self.supportedBoundaryVersion
-      else {
-        fatalError(
-          "Incompatible core: \(coreVersion), schema \(schemaVersion), boundary \(boundaryVersion)"
-        )
-      }
+      try CoreCompatibility.current.validate(handshake)
       logger.info(
         "core \(coreVersion, privacy: .public), schema \(schemaVersion), boundary \(boundaryVersion)"
       )
@@ -137,12 +129,6 @@ final class AppContainer {
   private static let fixtureChannelCount = 24
   private static let fixtureSourceName = "Fixture Catalog"
   private static let fixtureIdKey = "dev.spidola.tv.fixtureSourceId"
-  /// Bumped to 4 when resolved stream requests became opaque objects, preventing generated native
-  /// diagnostic representations from reflecting plaintext locators and header values. This pin is
-  /// the shell stating which boundary it was built against — the handshake guard above turns a
-  /// mismatch into an immediate, legible stop rather than a puzzling failure later (TECH_SPEC §5).
-  private static let supportedBoundaryVersion: UInt32 = 4
-  private static let supportedSchemaVersion: UInt32 = 2
 }
 
 /// Serves `body` once over HTTP/1.1 from an ephemeral `127.0.0.1` port and returns its URL. Same

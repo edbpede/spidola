@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Spidola contributors
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import Foundation
 import core_api
 
 /// The narrow core surface the **sources** slice needs (add / list / manage / import). Feature
@@ -83,6 +84,110 @@ public protocol BrowseAccess: Sendable {
   func isHidden(sourceId: Int64, identity: Int64) async throws -> Bool
   func setHidden(sourceId: Int64, identity: Int64, hidden: Bool) async throws
   func recordRecent(_ channel: PlayableChannel) async throws
+}
+
+/// One event from a running programme-guide refresh. The stream ends after either terminal event.
+public enum EpgRefreshEvent: Sendable {
+  case progress(EpgRefreshProgress)
+  case complete(EpgRefreshOutcome)
+  case failed(ApiError)
+}
+
+/// A bounded guide-window request. Keeping the paging and time bounds together prevents callers
+/// from accidentally issuing an unbounded cross-boundary query.
+public struct EpgWindowQuery: Sendable, Equatable {
+  public let sourceId: Int64
+  public let channelIdentity: Int64
+  public let earliest: Date
+  public let latest: Date
+  public let offset: UInt32
+  public let limit: UInt32
+
+  public init(
+    sourceId: Int64, channelIdentity: Int64, earliest: Date, latest: Date, offset: UInt32,
+    limit: UInt32
+  ) {
+    self.sourceId = sourceId
+    self.channelIdentity = channelIdentity
+    self.earliest = earliest
+    self.latest = latest
+    self.offset = offset
+    self.limit = limit
+  }
+}
+
+/// The narrow guide surface used by channel details and source guide settings.
+public protocol EpgAccess: Sendable {
+  func nowNext(sourceId: Int64, channelIdentity: Int64, now: Date) async throws -> NowNext
+  /// One bounded call per visible page. The core accepts at most 100 identities and preserves
+  /// their order, including channels with no guide match.
+  func nowNextBatch(sourceId: Int64, channelIdentities: [Int64], now: Date) async throws
+    -> [ChannelNowNext]
+  func epgWindow(_ query: EpgWindowQuery) async throws -> EpgPage
+  func hasEpgFeed(sourceId: Int64) async throws -> Bool
+  func setXmltvFeed(sourceId: Int64, url: String) async throws
+  func clearXmltvFeed(sourceId: Int64) async throws
+  func refreshEpg(sourceId: Int64, now: Date) -> AsyncStream<EpgRefreshEvent>
+}
+
+/// A request-header entry typed in the custom-channel editor.
+public struct CustomHeaderInput: Sendable, Equatable, Identifiable {
+  public let id: UUID
+  public var name: String
+  public var value: String
+
+  public init(id: UUID = UUID(), name: String = "", value: String = "") {
+    self.id = id
+    self.name = name
+    self.value = value
+  }
+}
+
+/// The shell-owned editable representation of an opaque core custom-channel draft.
+public struct CustomChannelInput: Sendable, Equatable {
+  public var groupId: Int64?
+  public var name: String
+  public var logo: String
+  public var streamAddress: String
+  public var userAgent: String
+  public var headers: [CustomHeaderInput]
+
+  public init(
+    groupId: Int64? = nil, name: String = "", logo: String = "", streamAddress: String = "",
+    userAgent: String = "", headers: [CustomHeaderInput] = []
+  ) {
+    self.groupId = groupId
+    self.name = name
+    self.logo = logo
+    self.streamAddress = streamAddress
+    self.userAgent = userAgent
+    self.headers = headers
+  }
+}
+
+/// User-created channel and group management, including explicit portable sharing.
+public protocol CustomChannelsAccess: Sendable {
+  func customGroups() async throws -> [CustomGroup]
+  func customChannels(groupId: Int64?) async throws -> [CustomChannelSummary]
+  func createCustomChannel(_ input: CustomChannelInput) async throws -> Int64
+  func updateCustomChannel(id: Int64, input: CustomChannelInput) async throws
+  func deleteCustomChannel(id: Int64) async throws
+  func moveCustomChannelBefore(id: Int64, anchorId: Int64) async throws
+  func moveCustomChannelAfter(id: Int64, anchorId: Int64) async throws
+  func createCustomGroup(name: String) async throws -> Int64
+  func renameCustomGroup(id: Int64, name: String) async throws
+  func deleteCustomGroup(id: Int64) async throws
+  func moveCustomGroupBefore(id: Int64, anchorId: Int64) async throws
+  func moveCustomGroupAfter(id: Int64, anchorId: Int64) async throws
+  func exportCustomChannels() async throws -> String
+  func importCustomChannels(_ contents: String, mode: CustomImportMode) async throws -> UInt64
+}
+
+/// The bounded favorite-lineup surface. Moves name one item and one adjacent anchor only.
+public protocol FavoriteOrderingAccess: Sendable {
+  func favoriteLineup(offset: UInt32, limit: UInt32) async throws -> [PlayableChannel]
+  func moveFavoriteBefore(_ channel: PlayableChannel, anchor: PlayableChannel) async throws
+  func moveFavoriteAfter(_ channel: PlayableChannel, anchor: PlayableChannel) async throws
 }
 
 /// The narrow core surface the **search** slice needs: the ranked, paged query plus the source

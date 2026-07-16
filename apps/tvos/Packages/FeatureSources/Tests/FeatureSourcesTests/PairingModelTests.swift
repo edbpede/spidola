@@ -64,7 +64,8 @@ final class PairingModelTests: XCTestCase {
   }
 
   func testAFailedStartSurfacesAnActionableError() async {
-    let access = FakePairingAccess(session: Self.session, failure: .InvalidInput(reason: "nope"))
+    let access = FakePairingAccess(
+      session: Self.session, failure: .InvalidInput(field: .address, issue: .unavailable))
     let model = PairingModel(access: access, resolveHost: { "10.0.0.5" })
     await model.run()
 

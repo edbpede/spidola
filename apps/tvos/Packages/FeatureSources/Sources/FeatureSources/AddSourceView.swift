@@ -100,8 +100,8 @@ public struct AddSourceView: View {
           .font(SpidolaType.caption)
           .foregroundStyle(SpidolaPalette.staticGray)
         }
-        if let message = model.validationMessage {
-          Text(message)
+        if let validation = model.validation {
+          Text(validation.message)
             .font(SpidolaType.caption)
             .foregroundStyle(SpidolaPalette.streamRed)
         }

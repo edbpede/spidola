@@ -13,6 +13,7 @@ import SwiftUI
 /// channel, and making the viewer re-answer nightly would be the bug.
 struct FallbackOfferView: View {
   let offer: FallbackOffer
+  let canRemember: Bool
   let onTry: (Bool) -> Void
   let onDismiss: () -> Void
   let onBack: () -> Void
@@ -32,20 +33,25 @@ struct FallbackOfferView: View {
         .foregroundStyle(SpidolaPalette.staticGray)
 
       HStack(spacing: SpidolaSpacing.m) {
-        Button(String(localized: "Try other player", bundle: .module)) { onTry(remember) }
-          .focused($focused, equals: .tryOther)
-        Button(
-          remember
-            ? String(localized: "Remember for this channel", bundle: .module)
-            : String(localized: "Just this once", bundle: .module)
-        ) { remember.toggle() }
-        .focused($focused, equals: .remember)
-        // Alone among these three, this button's title states the choice in force rather than what
-        // pressing it does — which a viewer reads from its place beside "Try other player", and a
-        // listener arriving at it cold cannot. The hint is where that goes.
-        .accessibilityHint(
-          String(localized: "Changes whether this choice sticks for this channel.", bundle: .module)
-        )
+        Button(String(localized: "Try other player", bundle: .module)) {
+          onTry(canRemember && remember)
+        }
+        .focused($focused, equals: .tryOther)
+        if canRemember {
+          Button(
+            remember
+              ? String(localized: "Remember for this channel", bundle: .module)
+              : String(localized: "Just this once", bundle: .module)
+          ) { remember.toggle() }
+          .focused($focused, equals: .remember)
+          // Alone among these three, this button's title states the choice in force rather than
+          // what pressing it does — which a viewer reads from its place beside "Try other player",
+          // and a listener arriving at it cold cannot. The hint is where that goes.
+          .accessibilityHint(
+            String(
+              localized: "Changes whether this choice sticks for this channel.", bundle: .module)
+          )
+        }
         Button(String(localized: "Go back", bundle: .module)) { onBack() }
           .focused($focused, equals: .back)
       }
