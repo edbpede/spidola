@@ -36,9 +36,9 @@ pub use error::{ApiError, InputField, InputIssue};
 pub use events::{ImportListener, ImportOutcome, ImportProgress, ImportStage, TaskHandle};
 pub use logging::{LogConfig, LogHandle, LogLevel, LogRecord, LogSink, RingBuffer, RingLayer};
 pub use records::{
-    BrowseGroup, BrowseGroupPage, Channel, ChannelOverrides, ChannelPage, CustomChannelDraft,
-    CustomChannelExport, CustomChannelSummary, CustomGroup, CustomImportMode, EpgPage,
-    EpgProgramme, Favorite, HeaderField, MediaKind, NowNext, Recent, ResolvedHeader,
+    BrowseGroup, BrowseGroupPage, Channel, ChannelNowNext, ChannelOverrides, ChannelPage,
+    CustomChannelDraft, CustomChannelExport, CustomChannelSummary, CustomGroup, CustomImportMode,
+    EpgPage, EpgProgramme, Favorite, HeaderField, MediaKind, NowNext, Recent, ResolvedHeader,
     ResolvedStream, SearchPage, Source, SourceCommon, SourceKind,
 };
 pub use runtime::CoreRuntime;
@@ -62,8 +62,8 @@ uniffi::setup_scaffolding!();
 /// [`Handshake`] lets an older shell refuse a newer core legibly rather than crash (TECH_SPEC
 /// §5, §13).
 ///
-/// `5` — Phase 7 adds structured error codes, EPG, custom channels, and favorite ordering.
-pub const BOUNDARY_VERSION: u32 = 5;
+/// `6` — Phase 7 adds bounded batch now/next after the initial boundary-5 feature cut.
+pub const BOUNDARY_VERSION: u32 = 6;
 
 /// The core's build-time git revision, for the diagnostics screen (PRD §6.9). Resolved by
 /// `build.rs`; `"unknown"` in a source tree without git metadata (a release tarball build),

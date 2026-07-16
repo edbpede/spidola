@@ -160,7 +160,7 @@ fn reorder(
     after: bool,
 ) -> DbResult<bool> {
     if target == anchor {
-        return Ok(true);
+        return is_favorite(conn, target.0, target.1);
     }
     let transaction = conn.transaction()?;
     let mut ordered = {
@@ -271,5 +271,18 @@ mod tests {
         assert_eq!(list_for_source(&conn, src).unwrap().len(), 1);
         remove(&conn, src, ident).unwrap();
         assert!(!is_favorite(&conn, src, ident).unwrap());
+    }
+
+    #[test]
+    fn moving_a_missing_favorite_relative_to_itself_reports_absent() {
+        let db = Db::open_in_memory().unwrap();
+        let mut conn = db.writer();
+        let source = seed_source(&conn);
+        let identity = ChannelIdentity::from_raw(99);
+
+        assert!(!move_before(&mut conn, (source, identity), (source, identity)).unwrap());
+
+        add(&conn, source, identity, 100).unwrap();
+        assert!(move_after(&mut conn, (source, identity), (source, identity)).unwrap());
     }
 }

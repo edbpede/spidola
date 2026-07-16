@@ -1680,6 +1680,35 @@ fn xmltv_refresh_maps_to_catalog_identity_and_swaps_atomically() {
     assert_eq!(now_next.current.unwrap().title, "Midnight News");
     assert!(now_next.next.is_none());
 
+    let requested = vec![channel.identity, 404, channel.identity];
+    let batch = rt
+        .block_on(epg.now_next_batch(source_id, requested.clone(), 1))
+        .unwrap();
+    assert_eq!(
+        batch
+            .iter()
+            .map(|entry| entry.channel_identity)
+            .collect::<Vec<_>>(),
+        requested
+    );
+    assert_eq!(
+        batch[0]
+            .programmes
+            .current
+            .as_ref()
+            .map(|programme| programme.title.as_str()),
+        Some("Midnight News")
+    );
+    assert!(batch[1].programmes.current.is_none());
+    assert!(batch[1].programmes.next.is_none());
+    assert!(matches!(
+        rt.block_on(epg.now_next_batch(source_id, vec![channel.identity; 101], 1)),
+        Err(ApiError::InvalidInput {
+            field: InputField::Source,
+            issue: InputIssue::Unsupported,
+        })
+    ));
+
     let disk = everything_on_disk(harness.db_dir.path());
     assert!(!contains_bytes(&disk, secret_marker.as_bytes()));
     let logs = harness.sink.records.lock().unwrap();

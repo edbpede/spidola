@@ -701,6 +701,11 @@ uint64_t uniffi_core_api_fn_method_epgservice_has_feed(uint64_t ptr, int64_t sou
 uint64_t uniffi_core_api_fn_method_epgservice_now_next(uint64_t ptr, int64_t source_id, int64_t channel_identity, int64_t now_unix
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_EPGSERVICE_NOW_NEXT_BATCH
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_EPGSERVICE_NOW_NEXT_BATCH
+uint64_t uniffi_core_api_fn_method_epgservice_now_next_batch(uint64_t ptr, int64_t source_id, RustBuffer channel_identities, int64_t now_unix
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_EPGSERVICE_REFRESH
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_EPGSERVICE_REFRESH
 uint64_t uniffi_core_api_fn_method_epgservice_refresh(uint64_t ptr, int64_t source_id, int64_t now_unix, uint64_t listener, RustCallStatus *_Nonnull out_status
@@ -1538,6 +1543,12 @@ uint16_t uniffi_core_api_checksum_method_epgservice_has_feed(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGSERVICE_NOW_NEXT
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGSERVICE_NOW_NEXT
 uint16_t uniffi_core_api_checksum_method_epgservice_now_next(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGSERVICE_NOW_NEXT_BATCH
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_EPGSERVICE_NOW_NEXT_BATCH
+uint16_t uniffi_core_api_checksum_method_epgservice_now_next_batch(void
     
 );
 #endif

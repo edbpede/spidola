@@ -20,13 +20,14 @@ use tracing::{instrument, warn};
 use crate::error::{ApiError, InputField, InputIssue};
 use crate::events::{CancelToken, TaskHandle};
 use crate::logging::targets;
-use crate::records::{EpgPage, EpgProgramme, NowNext};
+use crate::records::{ChannelNowNext, EpgPage, EpgProgramme, NowNext};
 use crate::runtime::CoreRuntime;
 use crate::secrets::SecretStore;
 use crate::settings::{AppSettings, count_from, keys};
 
 const CHUNK_CHANNEL_DEPTH: usize = 8;
 const STAGING_BATCH_SIZE: usize = 256;
+const MAX_NOW_NEXT_BATCH: usize = 100;
 type IdentityMap = HashMap<String, Vec<ChannelIdentity>>;
 
 /// Stage of a running guide refresh.
@@ -237,6 +238,58 @@ impl EpgService {
                     current: current.map(EpgProgramme::from),
                     next: next.map(EpgProgramme::from),
                 })
+            })
+            .await
+    }
+
+    /// Returns current and next programmes for one bounded channel page in a single DB query.
+    /// Results preserve the requested identity order, including channels without guide data.
+    ///
+    /// # Errors
+    /// Returns an input error above 100 identities or a storage error if the guide cannot be read.
+    #[instrument(
+        skip(self, channel_identities),
+        fields(source_id, channel_count = channel_identities.len()),
+        err
+    )]
+    pub async fn now_next_batch(
+        &self,
+        source_id: i64,
+        channel_identities: Vec<i64>,
+        now_unix: i64,
+    ) -> Result<Vec<ChannelNowNext>, ApiError> {
+        if channel_identities.len() > MAX_NOW_NEXT_BATCH {
+            return Err(ApiError::InvalidInput {
+                field: InputField::Source,
+                issue: InputIssue::Unsupported,
+            });
+        }
+        let db = Arc::clone(&self.db);
+        self.rt
+            .run_blocking(move || {
+                let conn = db.reader()?;
+                let channels = channel_identities
+                    .iter()
+                    .copied()
+                    .map(ChannelIdentity::from_storage)
+                    .collect::<Vec<_>>();
+                Ok(
+                    repo::epg::now_next_batch(
+                        &conn,
+                        SourceId::new(source_id),
+                        &channels,
+                        now_unix,
+                    )?
+                    .into_iter()
+                    .map(|entry| ChannelNowNext {
+                        channel_identity: entry.channel.to_storage(),
+                        programmes: NowNext {
+                            current: entry.current.map(EpgProgramme::from),
+                            next: entry.next.map(EpgProgramme::from),
+                        },
+                    })
+                    .collect(),
+                )
             })
             .await
     }
@@ -463,6 +516,12 @@ enum StageResult {
     Cancelled,
 }
 
+enum FeedMessage {
+    Chunk(Vec<u8>),
+    Complete,
+    Failed(ApiError),
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn stream_and_stage(
     db: Arc<Db>,
@@ -474,7 +533,7 @@ async fn stream_and_stage(
     token: CancelToken,
     listener: Arc<dyn EpgRefreshListener>,
 ) -> Result<StageResult, ApiError> {
-    let (sender, receiver) = mpsc::channel::<Vec<u8>>(CHUNK_CHANNEL_DEPTH);
+    let (sender, receiver) = mpsc::channel::<FeedMessage>(CHUNK_CHANNEL_DEPTH);
     let worker = {
         let db = Arc::clone(&db);
         let worker_token = token.clone();
@@ -491,13 +550,27 @@ async fn stream_and_stage(
             )
         })
     };
-    while let Some(chunk) = response
-        .chunk()
-        .await
-        .map_err(|error| ApiError::from(core_fetch::classify(error)))?
-    {
-        if token.is_cancelled() || sender.send(chunk.to_vec()).await.is_err() {
-            break;
+    loop {
+        match response.chunk().await {
+            Ok(Some(chunk)) => {
+                if token.is_cancelled()
+                    || sender
+                        .send(FeedMessage::Chunk(chunk.to_vec()))
+                        .await
+                        .is_err()
+                {
+                    break;
+                }
+            }
+            Ok(None) => {
+                let _ = sender.send(FeedMessage::Complete).await;
+                break;
+            }
+            Err(error) => {
+                let error = ApiError::from(core_fetch::classify(error));
+                let _ = sender.send(FeedMessage::Failed(error)).await;
+                break;
+            }
         }
     }
     drop(sender);
@@ -514,7 +587,7 @@ fn parse_and_stage(
     now_unix: i64,
     window: EpgWindow,
     identities: &IdentityMap,
-    mut receiver: mpsc::Receiver<Vec<u8>>,
+    mut receiver: mpsc::Receiver<FeedMessage>,
     token: &CancelToken,
     listener: &Arc<dyn EpgRefreshListener>,
 ) -> Result<StageResult, ApiError> {
@@ -531,18 +604,32 @@ fn parse_and_stage(
         unmapped: 0,
         cancelled: false,
     };
-    while let Some(chunk) = receiver.blocking_recv() {
+    let mut complete = false;
+    while let Some(message) = receiver.blocking_recv() {
         if token.is_cancelled() {
             sink.cancelled = true;
             break;
         }
-        parser.push(&chunk, &mut sink).map_err(map_parse_error)?;
-        if sink.cancelled {
-            break;
+        match message {
+            FeedMessage::Chunk(chunk) => {
+                parser.push(&chunk, &mut sink).map_err(map_parse_error)?;
+                if sink.cancelled {
+                    break;
+                }
+            }
+            FeedMessage::Complete => {
+                complete = true;
+                break;
+            }
+            FeedMessage::Failed(error) => return Err(error),
         }
     }
     if sink.cancelled || token.is_cancelled() {
         return Ok(StageResult::Cancelled);
+    }
+    if !complete {
+        warn!(target: targets::IMPORT, "EPG stream ended without a terminal message");
+        return Err(ApiError::Internal);
     }
     let diagnostics = parser.finish(&mut sink).map_err(map_parse_error)?;
     let mapped = sink.mapped;
@@ -649,11 +736,84 @@ mod tests {
 
     use super::*;
 
+    #[derive(Default)]
+    struct NoopListener;
+
+    impl EpgRefreshListener for NoopListener {
+        fn on_progress(&self, _progress: EpgRefreshProgress) {}
+
+        fn on_complete(&self, _outcome: EpgRefreshOutcome) {}
+
+        fn on_failed(&self, _error: ApiError) {}
+    }
+
     #[test]
     fn feed_references_are_opaque_and_unique() {
         let first = mint_feed_ref();
         let second = mint_feed_ref();
         assert_ne!(first, second);
         assert!(first.as_str().starts_with("spidola/epg/"));
+    }
+
+    #[test]
+    fn midstream_failure_never_commits_a_truncated_guide() {
+        let db = Db::open_in_memory().unwrap();
+        let source = SourceId::new(1);
+        let channel = ChannelIdentity::from_raw(7);
+        {
+            let mut conn = db.writer();
+            conn.execute(
+                "INSERT INTO sources(id, kind, name) VALUES (1, 'm3u-url', 'Source')",
+                [],
+            )
+            .unwrap();
+            repo::epg::replace_window(
+                &mut conn,
+                source,
+                0,
+                7_200,
+                &[EpgEntry {
+                    id: EpgEntryId::new(0),
+                    source_id: source,
+                    channel,
+                    title: "Existing guide".to_owned(),
+                    description: None,
+                    start_unix: 0,
+                    end_unix: 3_600,
+                }],
+            )
+            .unwrap();
+        }
+
+        let (sender, receiver) = mpsc::channel(CHUNK_CHANNEL_DEPTH);
+        sender
+            .blocking_send(FeedMessage::Chunk(
+                br#"<tv><programme channel="id0" start="19700101000000 +0000" stop="19700101010000 +0000"><title>Truncated replacement</title></programme>"#
+                    .to_vec(),
+            ))
+            .unwrap();
+        sender
+            .blocking_send(FeedMessage::Failed(ApiError::NetworkUnreachable))
+            .unwrap();
+        drop(sender);
+
+        let identities = HashMap::from([("id0".to_owned(), vec![channel])]);
+        let listener: Arc<dyn EpgRefreshListener> = Arc::new(NoopListener);
+        let result = parse_and_stage(
+            &db,
+            source,
+            1,
+            EpgWindow::default(),
+            &identities,
+            receiver,
+            &CancelToken::default(),
+            &listener,
+        );
+
+        assert!(matches!(result, Err(ApiError::NetworkUnreachable)));
+        let conn = db.reader().unwrap();
+        let entries = repo::epg::list_window(&conn, source, channel, 0, 7_200, 0, 10).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].title, "Existing guide");
     }
 }

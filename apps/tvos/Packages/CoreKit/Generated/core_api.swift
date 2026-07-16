@@ -2173,6 +2173,15 @@ public protocol EpgServiceProtocol: AnyObject, Sendable {
     func nowNext(sourceId: Int64, channelIdentity: Int64, nowUnix: Int64) async throws  -> NowNext
     
     /**
+     * Returns current and next programmes for one bounded channel page in a single DB query.
+     * Results preserve the requested identity order, including channels without guide data.
+     *
+     * # Errors
+     * Returns an input error above 100 identities or a storage error if the guide cannot be read.
+     */
+    func nowNextBatch(sourceId: Int64, channelIdentities: [Int64], nowUnix: Int64) async throws  -> [ChannelNowNext]
+    
+    /**
      * Refreshes XMLTV in the background with cancellation at parser batch boundaries.
      */
     func refresh(sourceId: Int64, nowUnix: Int64, listener: EpgRefreshListener)  -> TaskHandle
@@ -2312,6 +2321,29 @@ open func nowNext(sourceId: Int64, channelIdentity: Int64, nowUnix: Int64)async 
             completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
             freeFunc: ffi_core_api_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeNowNext_lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Returns current and next programmes for one bounded channel page in a single DB query.
+     * Results preserve the requested identity order, including channels without guide data.
+     *
+     * # Errors
+     * Returns an input error above 100 identities or a storage error if the guide cannot be read.
+     */
+open func nowNextBatch(sourceId: Int64, channelIdentities: [Int64], nowUnix: Int64)async throws  -> [ChannelNowNext]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_epgservice_now_next_batch(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterSequenceInt64.lower(channelIdentities),FfiConverterInt64.lower(nowUnix)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeChannelNowNext.lift,
             errorHandler: FfiConverterTypeApiError_lift
         )
 }
@@ -5470,6 +5502,63 @@ public func FfiConverterTypeChannel_lift(_ buf: RustBuffer) throws -> Channel {
 #endif
 public func FfiConverterTypeChannel_lower(_ value: Channel) -> RustBuffer {
     return FfiConverterTypeChannel.lower(value)
+}
+
+
+/**
+ * Current and next programme associated with one requested channel identity.
+ */
+public struct ChannelNowNext: Equatable, Hashable {
+    public var channelIdentity: Int64
+    public var programmes: NowNext
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(channelIdentity: Int64, programmes: NowNext) {
+        self.channelIdentity = channelIdentity
+        self.programmes = programmes
+    }
+
+    
+
+    
+}
+
+#if compiler(>=6)
+extension ChannelNowNext: Sendable {}
+#endif
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeChannelNowNext: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChannelNowNext {
+        return
+            try ChannelNowNext(
+                channelIdentity: FfiConverterInt64.read(from: &buf), 
+                programmes: FfiConverterTypeNowNext.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ChannelNowNext, into buf: inout [UInt8]) {
+        FfiConverterInt64.write(value.channelIdentity, into: &buf)
+        FfiConverterTypeNowNext.write(value.programmes, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChannelNowNext_lift(_ buf: RustBuffer) throws -> ChannelNowNext {
+    return try FfiConverterTypeChannelNowNext.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeChannelNowNext_lower(_ value: ChannelNowNext) -> RustBuffer {
+    return FfiConverterTypeChannelNowNext.lower(value)
 }
 
 
@@ -9512,6 +9601,31 @@ fileprivate struct FfiConverterOptionTypeMediaKind: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceInt64: FfiConverterRustBuffer {
+    typealias SwiftType = [Int64]
+
+    public static func write(_ value: [Int64], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterInt64.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Int64] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Int64]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterInt64.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
     typealias SwiftType = [String]
 
@@ -9604,6 +9718,31 @@ fileprivate struct FfiConverterSequenceTypeChannel: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeChannel.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeChannelNowNext: FfiConverterRustBuffer {
+    typealias SwiftType = [ChannelNowNext]
+
+    public static func write(_ value: [ChannelNowNext], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeChannelNowNext.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ChannelNowNext] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ChannelNowNext]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeChannelNowNext.read(from: &buf))
         }
         return seq
     }
@@ -10005,6 +10144,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_epgservice_now_next() != 61560) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_epgservice_now_next_batch() != 31908) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_epgservice_refresh() != 1227) {

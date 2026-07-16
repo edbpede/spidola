@@ -916,6 +916,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_core_api_checksum_method_epgservice_now_next(
     ): Int
+    external fun uniffi_core_api_checksum_method_epgservice_now_next_batch(
+    ): Int
     external fun uniffi_core_api_checksum_method_epgservice_refresh(
     ): Int
     external fun uniffi_core_api_checksum_method_epgservice_set_xmltv_feed(
@@ -1188,6 +1190,8 @@ internal object UniffiLib {
     external fun uniffi_core_api_fn_method_epgservice_has_feed(`ptr`: Long,`sourceId`: Long,
     ): Long
     external fun uniffi_core_api_fn_method_epgservice_now_next(`ptr`: Long,`sourceId`: Long,`channelIdentity`: Long,`nowUnix`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_epgservice_now_next_batch(`ptr`: Long,`sourceId`: Long,`channelIdentities`: RustBuffer.ByValue,`nowUnix`: Long,
     ): Long
     external fun uniffi_core_api_fn_method_epgservice_refresh(`ptr`: Long,`sourceId`: Long,`nowUnix`: Long,`listener`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Long
@@ -1565,6 +1569,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_epgservice_now_next() != 61560) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_epgservice_now_next_batch() != 31908) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_epgservice_refresh() != 1227) {
@@ -4676,6 +4683,15 @@ public interface EpgServiceInterface {
     suspend fun `nowNext`(`sourceId`: kotlin.Long, `channelIdentity`: kotlin.Long, `nowUnix`: kotlin.Long): NowNext
     
     /**
+     * Returns current and next programmes for one bounded channel page in a single DB query.
+     * Results preserve the requested identity order, including channels without guide data.
+     *
+     * # Errors
+     * Returns an input error above 100 identities or a storage error if the guide cannot be read.
+     */
+    suspend fun `nowNextBatch`(`sourceId`: kotlin.Long, `channelIdentities`: List<kotlin.Long>, `nowUnix`: kotlin.Long): List<ChannelNowNext>
+    
+    /**
      * Refreshes XMLTV in the background with cancellation at parser batch boundaries.
      */
     fun `refresh`(`sourceId`: kotlin.Long, `nowUnix`: kotlin.Long, `listener`: EpgRefreshListener): TaskHandle
@@ -4885,6 +4901,37 @@ open class EpgService: Disposable, AutoCloseable, EpgServiceInterface
         { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
         // lift function
         { FfiConverterTypeNowNext.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Returns current and next programmes for one bounded channel page in a single DB query.
+     * Results preserve the requested identity order, including channels without guide data.
+     *
+     * # Errors
+     * Returns an input error above 100 identities or a storage error if the guide cannot be read.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `nowNextBatch`(`sourceId`: kotlin.Long, `channelIdentities`: List<kotlin.Long>, `nowUnix`: kotlin.Long) : List<ChannelNowNext> {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_epgservice_now_next_batch(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterSequenceLong.lower(`channelIdentities`),
+        FfiConverterLong.lower(`nowUnix`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterSequenceTypeChannelNowNext.lift(it) },
         // Error FFI converter
         ApiException.ErrorHandler,
     )
@@ -9469,6 +9516,47 @@ public object FfiConverterTypeChannel: FfiConverterRustBuffer<Channel> {
 
 
 /**
+ * Current and next programme associated with one requested channel identity.
+ */
+data class ChannelNowNext (
+    var `channelIdentity`: kotlin.Long
+    , 
+    var `programmes`: NowNext
+    
+){
+    
+
+    
+
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeChannelNowNext: FfiConverterRustBuffer<ChannelNowNext> {
+    override fun read(buf: ByteBuffer): ChannelNowNext {
+        return ChannelNowNext(
+            FfiConverterLong.read(buf),
+            FfiConverterTypeNowNext.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: ChannelNowNext) = (
+            FfiConverterLong.allocationSize(value.`channelIdentity`) +
+            FfiConverterTypeNowNext.allocationSize(value.`programmes`)
+    )
+
+    override fun write(value: ChannelNowNext, buf: ByteBuffer) {
+            FfiConverterLong.write(value.`channelIdentity`, buf)
+            FfiConverterTypeNowNext.write(value.`programmes`, buf)
+    }
+}
+
+
+
+/**
  * Per-channel overrides applied at fetch/playback time.
  */
 data class ChannelOverrides (
@@ -12349,6 +12437,34 @@ public object FfiConverterOptionalTypeMediaKind: FfiConverterRustBuffer<MediaKin
 /**
  * @suppress
  */
+public object FfiConverterSequenceLong: FfiConverterRustBuffer<List<kotlin.Long>> {
+    override fun read(buf: ByteBuffer): List<kotlin.Long> {
+        val len = buf.getInt()
+        return List<kotlin.Long>(len) {
+            FfiConverterLong.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.Long>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterLong.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.Long>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterLong.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.String>> {
     override fun read(buf: ByteBuffer): List<kotlin.String> {
         val len = buf.getInt()
@@ -12451,6 +12567,34 @@ public object FfiConverterSequenceTypeChannel: FfiConverterRustBuffer<List<Chann
         buf.putInt(value.size)
         value.iterator().forEach {
             FfiConverterTypeChannel.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeChannelNowNext: FfiConverterRustBuffer<List<ChannelNowNext>> {
+    override fun read(buf: ByteBuffer): List<ChannelNowNext> {
+        val len = buf.getInt()
+        return List<ChannelNowNext>(len) {
+            FfiConverterTypeChannelNowNext.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<ChannelNowNext>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeChannelNowNext.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<ChannelNowNext>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeChannelNowNext.write(it, buf)
         }
     }
 }

@@ -3,7 +3,7 @@
 
 //! Bounded EPG persistence and now/next queries (PRD §6.6).
 
-use rusqlite::{Connection, Row, params};
+use rusqlite::{Connection, Row, params, params_from_iter, types::Value};
 
 use core_model::{ChannelIdentity, EpgEntry, EpgEntryId, SecretRef, SourceId};
 
@@ -18,6 +18,14 @@ pub enum EpgCommit {
     Committed { inserted: u64 },
     /// The source was removed while the schedule staged off-lock.
     SourceRemoved,
+}
+
+/// One channel's current and next guide entries from a batched lookup.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EpgNowNext {
+    pub channel: ChannelIdentity,
+    pub current: Option<EpgEntry>,
+    pub next: Option<EpgEntry>,
 }
 
 /// Writer-free, bounded EPG staging store. Dropping it leaves the live schedule untouched.
@@ -242,10 +250,97 @@ pub fn now_next(
     let mut rows = statement.query(params![source.value(), channel.to_storage(), now_unix])?;
     let first = rows.next()?.map(map_entry).transpose()?;
     let second = rows.next()?.map(map_entry).transpose()?;
+    Ok(classify_now_next(first, second, now_unix))
+}
+
+/// Returns current and next programmes for a bounded channel selection in one query.
+/// Results preserve the input order, including missing and repeated identities.
+///
+/// # Errors
+/// Returns [`DbError`](crate::error::DbError) on a query failure.
+pub fn now_next_batch(
+    conn: &Connection,
+    source: SourceId,
+    channels: &[ChannelIdentity],
+    now_unix: i64,
+) -> DbResult<Vec<EpgNowNext>> {
+    if channels.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let requested = channels
+        .iter()
+        .enumerate()
+        .map(|(ordinal, _)| format!("(?{}, {ordinal})", ordinal + 3))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let sql = format!(
+        "WITH requested(channel_identity, ordinal) AS (VALUES {requested}), \
+         upcoming AS (\
+           SELECT requested.ordinal, \
+                  epg_entries.id, epg_entries.source_id, epg_entries.channel_identity, \
+                  epg_entries.title, epg_entries.description, \
+                  epg_entries.start_unix, epg_entries.end_unix, \
+                  row_number() OVER (\
+                    PARTITION BY requested.ordinal ORDER BY epg_entries.start_unix\
+                  ) AS sequence \
+           FROM requested \
+           JOIN epg_entries \
+             ON epg_entries.channel_identity = requested.channel_identity \
+           WHERE epg_entries.source_id = ?1 AND epg_entries.end_unix > ?2\
+         ) \
+         SELECT ordinal, id, source_id, channel_identity, title, description, \
+                start_unix, end_unix \
+         FROM upcoming WHERE sequence <= 2 ORDER BY ordinal, sequence"
+    );
+    let mut values = Vec::with_capacity(channels.len() + 2);
+    values.push(Value::Integer(source.value()));
+    values.push(Value::Integer(now_unix));
+    values.extend(
+        channels
+            .iter()
+            .map(|identity| Value::Integer(identity.to_storage())),
+    );
+
+    let mut statement = conn.prepare(&sql)?;
+    let rows = statement.query_map(params_from_iter(values), |row| {
+        Ok((row.get::<_, usize>("ordinal")?, map_entry(row)?))
+    })?;
+    let mut upcoming = vec![(None, None); channels.len()];
+    for row in rows {
+        let (ordinal, entry) = row?;
+        let (first, second) = &mut upcoming[ordinal];
+        if first.is_none() {
+            *first = Some(entry);
+        } else if second.is_none() {
+            *second = Some(entry);
+        }
+    }
+
+    Ok(channels
+        .iter()
+        .copied()
+        .zip(upcoming)
+        .map(|(channel, (first, second))| {
+            let (current, next) = classify_now_next(first, second, now_unix);
+            EpgNowNext {
+                channel,
+                current,
+                next,
+            }
+        })
+        .collect())
+}
+
+fn classify_now_next(
+    first: Option<EpgEntry>,
+    second: Option<EpgEntry>,
+    now_unix: i64,
+) -> (Option<EpgEntry>, Option<EpgEntry>) {
     match first {
-        Some(entry) if entry.is_current(now_unix) => Ok((Some(entry), second)),
-        Some(entry) => Ok((None, Some(entry))),
-        None => Ok((None, None)),
+        Some(entry) if entry.is_current(now_unix) => (Some(entry), second),
+        Some(entry) => (None, Some(entry)),
+        None => (None, None),
     }
 }
 
@@ -302,10 +397,14 @@ mod tests {
     use crate::pool::Db;
 
     fn entry(start: i64, end: i64, title: &str) -> EpgEntry {
+        entry_for(7, start, end, title)
+    }
+
+    fn entry_for(channel: u64, start: i64, end: i64, title: &str) -> EpgEntry {
         EpgEntry {
             id: EpgEntryId::new(0),
             source_id: SourceId::new(1),
-            channel: ChannelIdentity::from_raw(7),
+            channel: ChannelIdentity::from_raw(channel),
             title: title.to_owned(),
             description: None,
             start_unix: start,
@@ -335,5 +434,92 @@ mod tests {
             now_next(&conn, SourceId::new(1), ChannelIdentity::from_raw(7), 100).unwrap();
         assert_eq!(current.unwrap().title, "now");
         assert_eq!(next.unwrap().title, "next");
+    }
+
+    #[test]
+    fn batched_now_next_is_one_ordered_query_with_missing_and_repeated_channels() {
+        let db = Db::open_in_memory().unwrap();
+        let mut conn = db.writer();
+        conn.execute(
+            "INSERT INTO sources(id, kind, name) VALUES (1, 'm3u-url', 'Source')",
+            [],
+        )
+        .unwrap();
+        let entries = vec![
+            entry_for(7, 90, 110, "Seven now"),
+            entry_for(7, 110, 130, "Seven next"),
+            entry_for(8, 105, 125, "Eight next"),
+        ];
+        replace_window(&mut conn, SourceId::new(1), 80, 140, &entries).unwrap();
+
+        let requested = [
+            ChannelIdentity::from_raw(8),
+            ChannelIdentity::from_raw(404),
+            ChannelIdentity::from_raw(7),
+            ChannelIdentity::from_raw(7),
+        ];
+        let results = now_next_batch(&conn, SourceId::new(1), &requested, 100).unwrap();
+
+        assert_eq!(results.len(), requested.len());
+        assert_eq!(results[0].channel, requested[0]);
+        assert!(results[0].current.is_none());
+        assert_eq!(results[0].next.as_ref().unwrap().title, "Eight next");
+        assert_eq!(
+            results[1],
+            EpgNowNext {
+                channel: requested[1],
+                current: None,
+                next: None,
+            }
+        );
+        for result in &results[2..] {
+            assert_eq!(result.channel, requested[2]);
+            assert_eq!(result.current.as_ref().unwrap().title, "Seven now");
+            assert_eq!(result.next.as_ref().unwrap().title, "Seven next");
+        }
+    }
+
+    #[test]
+    fn dropping_or_orphaning_staging_never_replaces_the_live_guide() {
+        let db = Db::open_in_memory().unwrap();
+        {
+            let conn = db.writer();
+            conn.execute(
+                "INSERT INTO sources(id, kind, name) VALUES (1, 'm3u-url', 'Source')",
+                [],
+            )
+            .unwrap();
+        }
+        {
+            let mut conn = db.writer();
+            replace_window(&mut conn, SourceId::new(1), 0, 200, &[entry(10, 20, "old")]).unwrap();
+        }
+
+        let mut abandoned = db.begin_epg_staging(SourceId::new(1)).unwrap();
+        abandoned.stage(&[entry(30, 40, "abandoned")]).unwrap();
+        drop(abandoned);
+        let conn = db.reader().unwrap();
+        assert_eq!(
+            list_window(
+                &conn,
+                SourceId::new(1),
+                ChannelIdentity::from_raw(7),
+                0,
+                200,
+                0,
+                10,
+            )
+            .unwrap()[0]
+                .title,
+            "old"
+        );
+        drop(conn);
+
+        let mut orphaned = db.begin_epg_staging(SourceId::new(1)).unwrap();
+        orphaned.stage(&[entry(50, 60, "new")]).unwrap();
+        db.writer()
+            .execute("DELETE FROM sources WHERE id = 1", [])
+            .unwrap();
+        assert_eq!(orphaned.commit(&db).unwrap(), EpgCommit::SourceRemoved);
     }
 }

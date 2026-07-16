@@ -448,6 +448,13 @@ pub struct NowNext {
     pub next: Option<EpgProgramme>,
 }
 
+/// Current and next programme associated with one requested channel identity.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ChannelNowNext {
+    pub channel_identity: i64,
+    pub programmes: NowNext,
+}
+
 /// A bounded EPG page.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct EpgPage {
