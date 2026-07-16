@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic fixture; see README.md for provenance. -->
+<tv>
+  <programme channel="valid" start="20260101100000 +0000" stop="20260101110000 +0000">
+    <title>Valid programme</title>
+  </programme>
+  <programme channel="missing-title" start="20260101110000 +0000" stop="20260101120000 +0000">
+    <desc>This row deliberately has no title.</desc>
+  </programme>
+  <programme channel="bad-time" start="20260230000000 +0000" stop="20260230010000 +0000">
+    <title>Impossible date</title>
+  </programme>
+</tv>

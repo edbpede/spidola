@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import AVFoundation
+import CoreMedia
 import Foundation
 import PlayerContract
 
@@ -77,6 +78,14 @@ public enum AVErrorMapping {
     switch error.domain {
     case NSURLErrorDomain: verdict(forURLErrorCode: error.code)
     case AVFoundationErrorDomain: verdict(forAVErrorCode: error.code)
+    case coreMediaErrorDomain: verdict(forCoreMediaErrorCode: error.code)
+    default: nil
+    }
+  }
+
+  private static func verdict(forCoreMediaErrorCode raw: Int) -> EngineError? {
+    switch raw {
+    case Int(kCMFormatDescriptionBridgeError_InvalidParameter): .decoderFailed
     default: nil
     }
   }
@@ -122,4 +131,6 @@ public enum AVErrorMapping {
       return nil
     }
   }
+
+  private static let coreMediaErrorDomain = "CoreMediaErrorDomain"
 }

@@ -5,6 +5,7 @@ package dev.spidola.tv.core.corekit
 
 import uniffi.core_api.BufferingProfile
 import uniffi.core_api.MediaKind
+import uniffi.core_api.NowNext
 
 /**
  * The list a channel was played from, and therefore the ring that D-pad up/down zaps through
@@ -77,6 +78,17 @@ data class ResolvedPlaybackStream(
 }
 
 /**
+ * Secret-free identity and display metadata for a user-created channel. The playable locator and
+ * request overrides deliberately do not exist on this value; [PlaybackAccess.resolveCustomPlayback]
+ * opens them only when an engine is about to be loaded.
+ */
+data class CustomPlayableChannel(
+    val id: Long,
+    val name: String,
+    val logo: String?,
+)
+
+/**
  * The narrow core surface the **playback** slice needs: the zap ring, the persisted engine overrides
  * the selection policy reads, the engine-neutral playback settings, and the play-time recents
  * record.
@@ -129,6 +141,16 @@ interface PlaybackAccess {
      * authenticated envelopes until this call.
      */
     suspend fun resolvePlayback(channel: PlayableChannel): ResolvedPlaybackStream
+
+    /** Opens a custom channel's sealed request details for immediate engine construction only. */
+    suspend fun resolveCustomPlayback(id: Long): ResolvedPlaybackStream
+
+    /** Bounded now/next lookup for the channel currently shown in the playback strip. */
+    suspend fun nowNext(
+        sourceId: Long,
+        channelIdentity: Long,
+        nowUnix: Long,
+    ): NowNext
 
     suspend fun recordRecent(channel: PlayableChannel)
 }

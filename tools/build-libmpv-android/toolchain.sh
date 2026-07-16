@@ -66,6 +66,17 @@ abi_clang_triple() {
   esac
 }
 
+# The sysroot directory holding the ABI's shared C++ runtime. This differs from the compiler
+# triple only for armeabi-v7a.
+abi_sysroot_triple() {
+  case "$1" in
+    arm64-v8a) printf 'aarch64-linux-android' ;;
+    armeabi-v7a) printf 'arm-linux-androideabi' ;;
+    x86_64) printf 'x86_64-linux-android' ;;
+    *) fail "unknown ABI: $1" ;;
+  esac
+}
+
 # What FFmpeg's configure calls this architecture (--arch).
 abi_ffmpeg_arch() {
   case "$1" in
@@ -154,7 +165,7 @@ pkg-config = 'pkg-config'
 [built-in options]
 c_args = ['-fPIC', '-O2']
 cpp_args = ['-fPIC', '-O2']
-c_link_args = ['-Wl,-z,max-page-size=16384']
+c_link_args = ['-Wl,-z,max-page-size=16384', '-lc++_shared']
 cpp_link_args = ['-Wl,-z,max-page-size=16384']
 prefix = '$PREFIX'
 libdir = 'lib'

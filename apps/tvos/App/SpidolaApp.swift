@@ -8,22 +8,56 @@ import SwiftUI
 /// catalog through the core.
 @main
 struct SpidolaApp: App {
+  @Environment(\.scenePhase) private var scenePhase
   @State private var container = AppContainer()
   @State private var isReady = false
+  @State private var pendingDeepLink: URL?
 
   var body: some Scene {
     WindowGroup {
-      Group {
-        if isReady {
-          RootView(core: container.core, registry: container.registry)
-        } else {
-          ProgressView("Preparing fixture catalog…")
+      root
+        .onChange(of: scenePhase) { _, phase in
+          guard phase == .background else { return }
+          Task { await TopShelfSnapshotWriter.refresh(from: container.core) }
         }
+    }
+  }
+
+  @ViewBuilder private var root: some View {
+    #if DEBUG
+      if let configuration = EngineAcceptanceConfiguration.current {
+        EngineAcceptanceView(configuration: configuration)
+      } else {
+        normalRoot
       }
-      .task {
-        await container.seedFixtureIfNeeded()
-        isReady = true
+    #else
+      normalRoot
+    #endif
+  }
+
+  private var normalRoot: some View {
+    Group {
+      if isReady {
+        RootView(
+          core: container.core,
+          registry: container.registry,
+          pendingDeepLink: $pendingDeepLink)
+      } else {
+        ProgressView("Preparing fixture catalog…")
       }
+    }
+    .onOpenURL { pendingDeepLink = $0 }
+    .onContinueUserActivity("dev.spidola.browse") { activity in
+      guard
+        let deepLink = activity.userInfo?["deepLink"] as? String,
+        let url = URL(string: deepLink)
+      else { return }
+      pendingDeepLink = url
+    }
+    .task {
+      await container.seedFixtureIfNeeded()
+      await TopShelfSnapshotWriter.refresh(from: container.core)
+      isReady = true
     }
   }
 }

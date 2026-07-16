@@ -5,6 +5,7 @@ import CoreKit
 import Foundation
 import OSLog
 import PlayerContract
+import core_api
 
 /// The offer shown when the default engine hit a format/decode failure (TECH_SPEC §8).
 ///
@@ -28,7 +29,11 @@ public final class PlaybackModel {
   public private(set) var state: PlaybackState = .idle
   /// The playing channel and its neighbours — the channel strip's peek and the zap ends.
   public private(set) var window: ZapWindow?
-  public private(set) var channel: PlayableChannel
+  public private(set) var channel: PlayableChannel?
+  /// A custom channel has no catalog locator in shell state; only this display-safe handle lives
+  /// beyond the core until playback asks the resolver to open it.
+  public let customChannel: CustomPlayableChannel?
+  public private(set) var nowNext = NowNext(current: nil, next: nil)
   public private(set) var tracks = TrackSelection()
   public private(set) var isSeekable = false
   public private(set) var aspect: AspectMode = .fit
@@ -40,9 +45,28 @@ public final class PlaybackModel {
   /// The live engine. The view hosts its surface; nothing else reaches through it.
   public private(set) var engine: (any PlaybackEngine)?
 
+  private enum Target: Sendable {
+    case catalog(PlayableChannel)
+    case custom(CustomPlayableChannel)
+
+    var logIdentity: String {
+      switch self {
+      case .catalog(let channel): "catalog-\(channel.sourceId)-\(channel.identity)"
+      case .custom(let channel): "custom-\(channel.id)"
+      }
+    }
+  }
+
+  private var target: Target? {
+    if let channel { return .catalog(channel) }
+    if let customChannel { return .custom(customChannel) }
+    return nil
+  }
+
   private let access: any PlaybackAccess
+  private let epg: any EpgAccess
   private let registry: EngineRegistry
-  private let context: ZapContext
+  private let context: ZapContext?
   private var offset: UInt32
   private var stateTask: Task<Void, Never>?
   /// Bumped by every `stop` and every load. A load suspended in a core lookup compares it on resume
@@ -56,47 +80,72 @@ public final class PlaybackModel {
     channel: PlayableChannel,
     context: ZapContext,
     offset: UInt32,
-    access: any PlaybackAccess,
+    access: any PlaybackAccess & EpgAccess,
     registry: EngineRegistry
   ) {
     self.channel = channel
+    self.customChannel = nil
     self.context = context
     self.offset = offset
     self.access = access
+    self.epg = access
     self.registry = registry
   }
+
+  public init(
+    customChannel: CustomPlayableChannel,
+    access: any PlaybackAccess & EpgAccess,
+    registry: EngineRegistry
+  ) {
+    self.channel = nil
+    self.customChannel = customChannel
+    self.context = nil
+    self.offset = 0
+    self.access = access
+    self.epg = access
+    self.registry = registry
+  }
+
+  public var displayName: String { channel?.name ?? customChannel?.name ?? "" }
+  public var isLive: Bool { channel?.kind == .live || customChannel != nil }
+  public var canRememberEngine: Bool { channel != nil }
 
   /// Resolves the engine by policy and starts the stream. The recents record and the zap window
   /// are deliberately *not* awaited before `load`: click-to-first-frame is budgeted at two seconds
   /// (PRD §9) and neither is needed to put video on screen.
   public func start() async {
-    await play(channel, engineOverride: nil)
-    async let _ = loadWindow()
-    async let _ = recordRecent()
+    guard let target else { return }
+    await play(target, engineOverride: nil)
+    if let channel {
+      async let _ = loadGuide(for: channel)
+      async let _ = loadWindow()
+      async let _ = recordRecent()
+    }
   }
 
   /// Zaps to an adjacent channel — the sacred path (TECH_SPEC §11). Tears the engine down and
   /// rebuilds, which is exactly what the contract's single-use engines are designed for.
   public func zap(_ direction: ZapDirection) async {
-    guard let target = direction.channel(in: window) else { return }
+    guard let targetChannel = direction.channel(in: window) else { return }
     let nextOffset = direction.offset(from: offset)
     offset = nextOffset
-    channel = target
+    channel = targetChannel
     // The window is refreshed after the stream is loading, not before: the peek is cosmetic and
     // must never sit between a D-pad press and video.
-    await play(target, engineOverride: nil)
+    await play(.catalog(targetChannel), engineOverride: nil)
+    async let _ = loadGuide(for: targetChannel)
     async let _ = loadWindow()
     async let _ = recordRecent()
   }
 
   /// Accepts the loud-fallback offer, optionally remembering the choice for this channel.
   public func tryOtherPlayer(remember: Bool) async {
-    guard let offer = fallbackOffer else { return }
+    guard let offer = fallbackOffer, let target else { return }
     fallbackOffer = nil
     if remember {
       await rememberEngine(offer.alternate)
     }
-    await play(channel, engineOverride: offer.alternate)
+    await play(target, engineOverride: offer.alternate)
   }
 
   public func dismissFallback() {
@@ -150,7 +199,7 @@ public final class PlaybackModel {
 
   // MARK: - Engine lifecycle
 
-  private func play(_ target: PlayableChannel, engineOverride: EngineID?) async {
+  private func play(_ target: Target, engineOverride: EngineID?) async {
     stop()
     fallbackOffer = nil
     engineUnavailable = false
@@ -192,7 +241,7 @@ public final class PlaybackModel {
     observe(built, id: resolved)
     loadStartedAt = clock.now
     logger.info(
-      "load channel \(target.identity) on \(resolved.rawValue, privacy: .public)")
+      "load \(target.logIdentity, privacy: .public) on \(resolved.rawValue, privacy: .public)")
     built.load(streamRequest)
     built.play()
   }
@@ -209,13 +258,14 @@ public final class PlaybackModel {
     loadGeneration == generation && !Task.isCancelled
   }
 
-  private func resolveEngine(_ target: PlayableChannel, override: EngineID?) async -> EngineID {
+  private func resolveEngine(_ target: Target, override: EngineID?) async -> EngineID {
     if let override { return override }
+    guard case .catalog(let channel) = target else { return registry.platformDefault }
     // Overrides are opaque strings in the core (engine identity is a shell concept, TECH_SPEC §8);
     // the mapping to `EngineID` happens here, where both layers are in scope.
     let channelKey = try? await access.channelEngine(
-      sourceId: target.sourceId, identity: target.identity)
-    let sourceKey = try? await access.sourceEngine(sourceId: target.sourceId)
+      sourceId: channel.sourceId, identity: channel.identity)
+    let sourceKey = try? await access.sourceEngine(sourceId: channel.sourceId)
     return EngineSelection.resolve(
       channelOverride: channelKey.flatMap { $0 }.map { EngineID(rawValue: $0) },
       sourceOverride: sourceKey.flatMap { $0 }.map { EngineID(rawValue: $0) },
@@ -223,7 +273,7 @@ public final class PlaybackModel {
       registered: registry.registered)
   }
 
-  private func request(for target: PlayableChannel) async throws -> StreamRequest {
+  private func request(for target: Target) async throws -> StreamRequest {
     let profile =
       (try? await access.bufferingProfile())
       .flatMap { $0 }
@@ -235,7 +285,13 @@ public final class PlaybackModel {
     //
     // Resolution is mandatory: the stored value may be an encrypted M3U envelope or an Xtream
     // reference, neither of which is a playable fallback.
-    let resolved = try await access.resolvePlayback(target)
+    let resolved: ResolvedPlaybackStream
+    switch target {
+    case .catalog(let channel):
+      resolved = try await access.resolvePlayback(channel)
+    case .custom(let channel):
+      resolved = try await access.resolveCustomPlayback(channel)
+    }
     return StreamRequest(
       locator: resolved.locator,
       headers: resolved.headers.map { StreamHeader(name: $0.name, value: $0.value) },
@@ -300,6 +356,7 @@ public final class PlaybackModel {
   }
 
   private func rememberEngine(_ id: EngineID) async {
+    guard let channel else { return }
     do {
       try await access.setChannelEngine(
         sourceId: channel.sourceId, identity: channel.identity, engine: id.rawValue)
@@ -309,6 +366,10 @@ public final class PlaybackModel {
   }
 
   private func loadWindow() async {
+    guard let context, let channel else {
+      window = nil
+      return
+    }
     window = try? await access.zapWindow(context: context, offset: offset)
     // A refresh can move offsets under a playing channel. Rather than zap somewhere the viewer did
     // not ask for, drop the ring and keep playing: the strip then shows no peek, which is honest.
@@ -318,7 +379,24 @@ public final class PlaybackModel {
   }
 
   private func recordRecent() async {
+    guard let channel else { return }
     try? await access.recordRecent(channel)
+  }
+
+  private func loadGuide(for channel: PlayableChannel) async {
+    nowNext = NowNext(current: nil, next: nil)
+    let generation = loadGeneration
+    let value: NowNext
+    do {
+      value = try await epg.nowNext(
+        sourceId: channel.sourceId, channelIdentity: channel.identity, now: .now)
+    } catch {
+      logger.error(
+        "guide load failed: \(String(describing: error), privacy: .public)")
+      return
+    }
+    guard isCurrent(generation), self.channel?.id == channel.id else { return }
+    nowNext = value
   }
 
   private static let firstFrameBudget: Duration = .milliseconds(2000)

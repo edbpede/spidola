@@ -25,13 +25,25 @@ public struct PlaybackView: View {
     channel: PlayableChannel,
     context: ZapContext,
     offset: UInt32,
-    access: any PlaybackAccess,
+    access: any PlaybackAccess & EpgAccess,
     registry: EngineRegistry,
     onExit: @escaping () -> Void
   ) {
     _model = State(
       initialValue: PlaybackModel(
         channel: channel, context: context, offset: offset, access: access, registry: registry))
+    self.onExit = onExit
+  }
+
+  public init(
+    customChannel: CustomPlayableChannel,
+    access: any PlaybackAccess & EpgAccess,
+    registry: EngineRegistry,
+    onExit: @escaping () -> Void
+  ) {
+    _model = State(
+      initialValue: PlaybackModel(
+        customChannel: customChannel, access: access, registry: registry))
     self.onExit = onExit
   }
 
@@ -60,7 +72,7 @@ public struct PlaybackView: View {
     if !model.state.isShowingVideo && model.fallbackOffer == nil && model.state.failure == nil {
       VStack(spacing: SpidolaSpacing.m) {
         ProgressView().tint(SpidolaPalette.testCardAmber)
-        Text(model.channel.name)
+        Text(model.displayName)
           .font(SpidolaType.title)
           .foregroundStyle(SpidolaPalette.broadcastWhite)
       }
@@ -71,6 +83,7 @@ public struct PlaybackView: View {
     if let offer = model.fallbackOffer {
       FallbackOfferView(
         offer: offer,
+        canRemember: model.canRememberEngine,
         onTry: { remember in Task { await model.tryOtherPlayer(remember: remember) } },
         onDismiss: { model.dismissFallback() },
         onBack: exit)
@@ -83,10 +96,13 @@ public struct PlaybackView: View {
     } else if strip.isVisible {
       VStack {
         Spacer()
-        ChannelStrip(
-          window: model.window,
-          channel: model.channel,
-          isLive: model.channel.isLive)
+        if let channel = model.channel {
+          ChannelStrip(
+            window: model.window, channel: channel, isLive: model.isLive,
+            nowNext: model.nowNext)
+        } else if let customChannel = model.customChannel {
+          CustomChannelStrip(channel: customChannel)
+        }
         Spacer().frame(height: SpidolaSpacing.safeVertical)
       }
       .transition(stripTransition)

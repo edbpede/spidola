@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -55,16 +56,21 @@ fun SearchScreen(
     access: SearchAccess,
     onOpenChannel: (channel: PlayableChannel, context: ZapContext, offset: UInt) -> Unit,
     modifier: Modifier = Modifier,
+    initialQuery: String = "",
     viewModel: SearchViewModel = viewModel(factory = SearchViewModel.factory(access)),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sources by viewModel.sources.collectAsStateWithLifecycle()
 
-    var query by rememberSaveable { mutableStateOf("") }
+    var query by rememberSaveable(initialQuery) { mutableStateOf(initialQuery) }
     var sourceFilter by rememberSaveable { mutableStateOf<Long?>(null) }
     var kindFilter by rememberSaveable { mutableStateOf<MediaKind?>(null) }
 
     fun runSearch() = viewModel.search(query, sourceFilter, kindFilter)
+
+    LaunchedEffect(initialQuery) {
+        if (initialQuery.isNotBlank()) runSearch()
+    }
 
     Column(
         modifier =

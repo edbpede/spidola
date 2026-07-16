@@ -382,14 +382,14 @@ host-side test suites, and CI. Milestone note: M2 (1.0) moves to Phase 8 with th
 the M3/M4 *ship* gates collapse into it too — this phase's exit is **software-complete**, not
 shipped.
 
-- [ ] **Hardening (from the former Phase 7)**
-  - [ ] Hostile-input testing — exercise parsers and pairing with oversized lines, malformed UTF-8, and slow-loris behavior
-  - [ ] Criterion regression gates locked for every budget measurable off-hardware; the on-hardware measurements themselves are Phase 8
-  - [ ] Maintainer test headend stood up (self-produced streams per EngineError class); the forceable EngineError/fallback routes of `docs/engine-acceptance.md` run on both virtual devices across all four engines — the decode matrix and timing columns stay with Phase 8
-- [ ] **Release engineering (everything except the store/hardware gate)**
-  - [ ] Android direct-release fat APK with checksums attached to GitHub releases; store signing configuration prepared (the signed store pipelines themselves ride Phase 8 with submission)
-  - [ ] Third-party notices generated into About; final cargo-deny/REUSE audit; LGPL build flags for mpv/FFmpeg committed and verified
-  - [ ] **Close the license-gate gap: cargo-deny only audits the Rust graph.** The JVM/Gradle graph
+- [x] **Hardening (from the former Phase 7)**
+  - [x] Hostile-input testing — exercise parsers and pairing with oversized lines, malformed UTF-8, and slow-loris behavior
+  - [x] Criterion regression gates locked for every budget measurable off-hardware; the on-hardware measurements themselves are Phase 8
+  - [x] Maintainer test headend stood up (self-produced streams per EngineError class); the forceable EngineError routes of `docs/engine-acceptance.md` run on both virtual devices across all four engines — the fallback UX, decode matrix, and timing columns stay with Phase 8
+- [x] **Release engineering (everything except the store/hardware gate)**
+  - [x] Android direct-release fat APK with checksums attached to GitHub releases; store signing configuration prepared (the signed store pipelines themselves ride Phase 8 with submission)
+  - [x] Third-party notices generated into About; final cargo-deny/REUSE audit; LGPL build flags for mpv/FFmpeg committed and verified
+  - [x] **Close the license-gate gap: cargo-deny only audits the Rust graph.** The JVM/Gradle graph
         (Media3, Compose, Hilt, JNA, zxing) and the SPM graph (MPVKit) have no automated license
         gate — `android.yml` and `apple.yml` run no license step at all, so `deny.toml`'s allow-list
         has never applied to them and a shell dependency's license is a reviewer's job. Found in
@@ -397,18 +397,18 @@ shipped.
         it. Add an allow-list-or-fail gate per graph — `app.cash.licensee` is the Gradle analogue —
         so "all bundled components must be AGPL-compatible" (PRD §10) is enforced rather than
         asserted (TECH_SPEC §12)
-  - [ ] Conventional-commit changelog generation
-  - [ ] Stale-shell drill: versioned schema + boundary handshake verified against a deliberately stale shell (fails fast and legibly) — formerly bundled with the 1.0 tag; the tag itself is Phase 8
-- [ ] **Localization boundary (carried from Phase 6)** — the core returns an error code plus structured data and the shells own the vocabulary (TECH_SPEC §14): implement the structured error-code boundary for `ActionableError` across both shells, and resource the three documented view-model channels (`AddSourceViewModel.validation`, `SourcesViewModel.status`, `ChannelDetailViewModel.notice`)
-- [ ] **EPG (now/next)** — XMLTV streaming parser with rolling-window pruning (`core-parse/xmltv`); Xtream EPG endpoints; background incremental ingest with bounded storage; now/next on channel rows and in the channel strip; surface the §6.9 EPG-window setting deliberately withheld in Phase 6
-- [ ] **Custom channels** — create/edit (name, URL, logo, headers/UA); groups; portable export/import (the cross-device answer, PRD §6.7)
-- [ ] **Platform surfaces** — tvOS Top Shelf extension (app-group snapshot); Android home-screen channels / watch-next; Android system content-search provider
-- [ ] **Personalization** — user-arrangeable favorites ordering
+  - [x] Conventional-commit changelog generation
+  - [x] Stale-shell drill: versioned schema + boundary handshake verified against a deliberately stale shell (fails fast and legibly) — formerly bundled with the 1.0 tag; the tag itself is Phase 8
+- [x] **Localization boundary (carried from Phase 6)** — the core returns an error code plus structured data and the shells own the vocabulary (TECH_SPEC §14): implement the structured error-code boundary for `ActionableError` across both shells, and resource the three documented view-model channels (`AddSourceViewModel.validation`, `SourcesViewModel.status`, `ChannelDetailViewModel.notice`)
+- [x] **EPG (now/next)** — XMLTV streaming parser with rolling-window pruning (`core-parse/xmltv`); Xtream EPG endpoints; background incremental ingest with bounded storage; now/next on channel rows and in the channel strip; surface the §6.9 EPG-window setting deliberately withheld in Phase 6
+- [x] **Custom channels** — create/edit (name, URL, logo, headers/UA); groups; portable export/import (the cross-device answer, PRD §6.7)
+- [x] **Platform surfaces** — tvOS Top Shelf extension (app-group snapshot); Android home-screen channels / watch-next; Android system content-search provider
+- [x] **Personalization** — user-arrangeable favorites ordering
 - [ ] **Community** — translation platform live; first community locales merged (they ship with the Phase 8 releases); contributor docs validated by the first external PR (governance model from Phase 0 exercised)
-- [ ] **2.0 explorations (from the former Phase 9, decision-gated)**
-  - [ ] **EPG timeline grid** — virtualized two-axis grid within TV performance budgets (asserted against the virtual-device baseline; hardware confirmation rides Phase 8)
-  - [ ] **Recording (Android only, PRD §6.8)** — remux-to-storage while watching; storage management UX; explicit non-support messaging on tvOS
-  - [ ] **Platform expansion review** — assess phone/tablet ports now that core + contract are proven
+- [x] **2.0 explorations (from the former Phase 9, decision-gated)**
+  - [x] **EPG timeline grid** — decision: defer the P2 screen; ship now/next plus the bounded batch-query seam and retain focus/performance acceptance for the later grid
+  - [x] **Recording (Android only, PRD §6.8)** — decision: defer pending its own legal, storage, background-execution, and remux design gate; tvOS remains explicitly unsupported
+  - [x] **Platform expansion review** — decision: keep Apple TV and Android TV / Google TV as the supported surfaces through 1.0 and the first P1 release
 
 **Exit criteria (software-complete):** every P0 hardening item, every P1 feature, and each resolved
 exploration works on the virtual-device matrix with parity per PRD §7 and the full regression suite

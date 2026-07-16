@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -45,7 +46,8 @@ import dev.spidola.tv.core.designsystem.SpidolaSpacing
  * off-switch, clear history) act in place. The tvOS settings shell mirrors this list unit for unit
  * (PRD §7).
  *
- * The EPG window is deliberately not offered, though the core carries it — see [SettingsSnapshot].
+ * Guide feed configuration lives on its own screen so source-specific addresses never crowd the
+ * global settings list.
  */
 @Composable
 fun SettingsScreen(
@@ -225,6 +227,14 @@ private fun SettingsList(
         }
 
         section(R.string.settings_section_storage)
+        item(key = "guide") {
+            SpidolaRow(
+                title = stringResource(R.string.settings_guide),
+                subtitle = stringResource(R.string.settings_guide_explainer),
+                onClick = navigator.openGuide,
+                modifier = Modifier.testTag("settings-guide"),
+            )
+        }
         item(key = "image-cache") {
             ChoiceRow(
                 picker = SettingsPicker.IMAGE_CACHE,
@@ -242,6 +252,14 @@ private fun SettingsList(
                 subtitle = stringResource(R.string.settings_diagnostics_explainer),
                 onClick = navigator.openDiagnostics,
                 modifier = Modifier.testTag("settings-diagnostics"),
+            )
+        }
+        item(key = "about") {
+            SpidolaRow(
+                title = stringResource(R.string.settings_about),
+                subtitle = stringResource(R.string.settings_about_explainer),
+                onClick = navigator.openAbout,
+                modifier = Modifier.testTag("settings-about"),
             )
         }
     }
@@ -274,7 +292,7 @@ private fun StatusLine(status: SettingsStatus) {
     val message =
         when (status) {
             SettingsStatus.HistoryCleared -> stringResource(R.string.settings_clear_history_done)
-            is SettingsStatus.Failed -> status.error.message
+            is SettingsStatus.Failed -> status.error.message.resolve(LocalContext.current)
         }
     Text(
         text = message,

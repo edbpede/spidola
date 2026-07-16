@@ -8,6 +8,7 @@
 //! (This module cannot `#![forbid(unsafe_code)]` — it hosts `#[uniffi::export]` impls whose
 //! generated FFI scaffolding contains `unsafe`; the workspace warns on `unsafe` instead.)
 pub mod catalog;
+pub mod custom;
 pub mod epg;
 pub mod favorites;
 pub mod pairing;
@@ -17,6 +18,10 @@ pub mod settings;
 pub mod source;
 
 pub use catalog::CatalogService;
+pub use custom::CustomChannelService;
+pub use epg::{
+    EpgRefreshListener, EpgRefreshOutcome, EpgRefreshProgress, EpgRefreshStage, EpgService,
+};
 pub use favorites::FavoritesService;
 pub use pairing::{PairingListener, PairingService, PairingSession, PairingSubmission};
 pub use recents::RecentsService;

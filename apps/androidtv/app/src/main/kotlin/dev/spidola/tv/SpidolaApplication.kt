@@ -12,8 +12,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import uniffi.core_api.Handshake
 
-private const val SUPPORTED_SCHEMA_VERSION = 2u
-private const val SUPPORTED_BOUNDARY_VERSION = 4u
+private const val SUPPORTED_SCHEMA_VERSION = 3u
+private const val SUPPORTED_BOUNDARY_VERSION = 7u
 
 /** Refuses a core whose persisted schema or boundary this shell cannot safely interpret. */
 internal fun requireCompatibleCore(handshake: Handshake) {
@@ -52,7 +52,11 @@ class SpidolaApplication : Application() {
             "core ${handshake.coreVersion}, schema ${handshake.schemaVersion}, " +
                 "boundary ${handshake.boundaryVersion}",
         )
-        bootstrap = appScope.async { container.fixtureSeeder.seedIfNeeded() }
+        bootstrap =
+            appScope.async {
+                container.fixtureSeeder.seedIfNeeded()
+                container.tvContentPublisher.sync(container.core)
+            }
     }
 
     private companion object {

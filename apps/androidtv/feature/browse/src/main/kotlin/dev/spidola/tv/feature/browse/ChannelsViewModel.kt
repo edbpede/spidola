@@ -3,6 +3,7 @@
 
 package dev.spidola.tv.feature.browse
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -10,6 +11,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.spidola.tv.core.corekit.ActionableError
 import dev.spidola.tv.core.corekit.BrowseAccess
+import dev.spidola.tv.core.corekit.EpgAccess
 import dev.spidola.tv.core.corekit.LoadState
 import dev.spidola.tv.core.corekit.ZapContext
 import kotlinx.collections.immutable.ImmutableList
@@ -22,11 +24,13 @@ import kotlinx.coroutines.launch
 import uniffi.core_api.ApiException
 import uniffi.core_api.Channel
 import uniffi.core_api.MediaKind
+import uniffi.core_api.NowNext
 
 /** One channel row plus its favorite flag, so the list marks favorites without a per-row query. */
 data class ChannelRow(
     val channel: Channel,
     val isFavorite: Boolean,
+    val schedule: NowNext?,
 ) {
     /** The stable identity — the lazy-list/focus key that survives a refresh. */
     val key: Long get() = channel.identity
@@ -42,6 +46,8 @@ class ChannelsViewModel(
     private val kind: MediaKind,
     private val group: String?,
     private val access: BrowseAccess,
+    private val epgAccess: EpgAccess,
+    private val nowUnix: () -> Long = { System.currentTimeMillis() / UNIX_MILLIS_PER_SECOND },
 ) : ViewModel() {
     private val _state = MutableStateFlow<LoadState<ImmutableList<ChannelRow>>>(LoadState.Loading)
     val state: StateFlow<LoadState<ImmutableList<ChannelRow>>> = _state.asStateFlow()
@@ -137,9 +143,20 @@ class ChannelsViewModel(
         }
     }
 
-    private fun append(channels: List<Channel>) {
+    private suspend fun append(channels: List<Channel>) {
+        val schedules =
+            try {
+                epgAccess
+                    .nowNextBatch(sourceId, channels.map(Channel::identity), nowUnix())
+                    .associate { it.channelIdentity to it.programmes }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (error: ApiException) {
+                Log.w(LOG_TAG, "guide batch failed", error)
+                emptyMap()
+            }
         channels.forEach { channel ->
-            rows.add(ChannelRow(channel, channel.identity in favorites))
+            rows.add(ChannelRow(channel, channel.identity in favorites, schedules[channel.identity]))
         }
     }
 
@@ -162,12 +179,15 @@ class ChannelsViewModel(
             kind: MediaKind,
             group: String?,
             access: BrowseAccess,
+            epgAccess: EpgAccess,
         ): ViewModelProvider.Factory =
             viewModelFactory {
-                initializer { ChannelsViewModel(sourceId, kind, group, access) }
+                initializer { ChannelsViewModel(sourceId, kind, group, access, epgAccess) }
             }
 
-        private const val PAGE_LIMIT = 200u
+        private const val PAGE_LIMIT = 80u
         private const val PREFETCH_MARGIN = 20
+        private const val UNIX_MILLIS_PER_SECOND = 1_000L
+        private const val LOG_TAG = "spidola::browse"
     }
 }

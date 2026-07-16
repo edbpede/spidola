@@ -35,6 +35,31 @@ impl<'a> RequestSpec<'a> {
     }
 }
 
+/// Validates request overrides without constructing or sending a request.
+///
+/// # Errors
+/// Returns [`FetchError::InvalidHeader`] when the user agent or any header is not valid HTTP.
+pub fn validate(user_agent: Option<&str>, headers: &[(String, String)]) -> Result<(), FetchError> {
+    if let Some(agent) = user_agent {
+        HeaderValue::from_str(agent).map_err(|error| FetchError::InvalidHeader {
+            name: "User-Agent".to_owned(),
+            reason: error.to_string(),
+        })?;
+    }
+    for (name, value) in headers {
+        name.parse::<HeaderName>()
+            .map_err(|error| FetchError::InvalidHeader {
+                name: name.clone(),
+                reason: error.to_string(),
+            })?;
+        HeaderValue::from_str(value).map_err(|error| FetchError::InvalidHeader {
+            name: name.clone(),
+            reason: error.to_string(),
+        })?;
+    }
+    Ok(())
+}
+
 /// Applies the spec's user-agent and headers to a request builder.
 ///
 /// # Errors
@@ -43,6 +68,7 @@ pub(crate) fn apply(
     mut builder: RequestBuilder,
     spec: &RequestSpec<'_>,
 ) -> Result<RequestBuilder, FetchError> {
+    validate(spec.user_agent, spec.headers)?;
     if let Some(ua) = spec.user_agent {
         let value = HeaderValue::from_str(ua).map_err(|e| FetchError::InvalidHeader {
             name: "User-Agent".to_owned(),

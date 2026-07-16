@@ -23,7 +23,28 @@ use core_fetch::FetchError;
 use core_model::ModelError;
 use core_search::SearchError;
 
-/// The stable, user-mappable error surface the shells receive across the FFI.
+/// Which user-controlled field failed validation. Shell resources turn this code into words.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum InputField {
+    Address,
+    Server,
+    Name,
+    Header,
+    LogLevel,
+    File,
+    Source,
+}
+
+/// Why an input field is unusable. Shell resources own the sentence and grammar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum InputIssue {
+    Empty,
+    Invalid,
+    Unsupported,
+    Unavailable,
+}
+
+/// The stable, code-and-data error surface the shells receive across the FFI.
 #[derive(Debug, Clone, PartialEq, Eq, Error, uniffi::Error)]
 pub enum ApiError {
     /// The source's server could not be reached.
@@ -43,10 +64,10 @@ pub enum ApiError {
     NotFound,
 
     /// Input provided by the user was not usable.
-    #[error("that entry isn't valid: {reason}")]
+    #[error("invalid input ({field:?}, {issue:?})")]
     InvalidInput {
-        /// A short, plain-language reason (never contains secret material).
-        reason: String,
+        field: InputField,
+        issue: InputIssue,
     },
 
     /// The response was fetched but yielded no usable channels.
@@ -71,76 +92,6 @@ pub enum ApiError {
     Internal,
 }
 
-/// A prescribed user action for an error's UX (PRD §6.3). The set is deliberately small;
-/// the shell renders each as a button.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UserAction {
-    /// Try the same operation again.
-    Retry,
-    /// Return to the previous screen.
-    GoBack,
-    /// Correct the input that caused the failure.
-    FixInput,
-}
-
-/// The plain-language presentation of an error: a failure class and its prescribed actions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ErrorUx {
-    /// A short, couch-legible failure class (PRD §8.6 voice).
-    pub failure_class: &'static str,
-    /// The actions offered; always non-empty.
-    pub actions: &'static [UserAction],
-}
-
-impl ApiError {
-    /// Maps this error to its plain-language failure class and prescribed actions.
-    ///
-    /// This table is the single source of truth cross-checked against PRD §6.3; the shells'
-    /// error-presentation component (Phase 4) renders from it.
-    #[must_use]
-    pub fn ux(&self) -> ErrorUx {
-        use UserAction::{FixInput, GoBack, Retry};
-        match self {
-            Self::NetworkUnreachable => ErrorUx {
-                failure_class: "Can't reach the source",
-                actions: &[Retry, GoBack],
-            },
-            Self::Timeout => ErrorUx {
-                failure_class: "The source is slow to respond",
-                actions: &[Retry, GoBack],
-            },
-            Self::Unauthorized => ErrorUx {
-                failure_class: "Login was rejected",
-                actions: &[FixInput, GoBack],
-            },
-            Self::NotFound => ErrorUx {
-                failure_class: "Not available anymore",
-                actions: &[GoBack],
-            },
-            Self::InvalidInput { .. } => ErrorUx {
-                failure_class: "That entry isn't valid",
-                actions: &[FixInput, GoBack],
-            },
-            Self::ParseFailed { .. } => ErrorUx {
-                failure_class: "No channels found",
-                actions: &[Retry, GoBack],
-            },
-            Self::StorageCorrupt => ErrorUx {
-                failure_class: "Local storage problem",
-                actions: &[Retry, GoBack],
-            },
-            Self::Cancelled => ErrorUx {
-                failure_class: "Cancelled",
-                actions: &[GoBack],
-            },
-            Self::Internal => ErrorUx {
-                failure_class: "Something went wrong",
-                actions: &[Retry, GoBack],
-            },
-        }
-    }
-}
-
 impl From<FetchError> for ApiError {
     fn from(error: FetchError) -> Self {
         match error {
@@ -151,7 +102,8 @@ impl From<FetchError> for ApiError {
                 _ => Self::NetworkUnreachable,
             },
             FetchError::InvalidHeader { .. } => Self::InvalidInput {
-                reason: "a request header wasn't valid".to_owned(),
+                field: InputField::Header,
+                issue: InputIssue::Invalid,
             },
             FetchError::Connect(_)
             | FetchError::TooManyRedirects(_)
@@ -178,10 +130,14 @@ impl From<SearchError> for ApiError {
 
 impl From<ModelError> for ApiError {
     fn from(error: ModelError) -> Self {
-        Self::InvalidInput {
-            reason: match error {
-                ModelError::InvalidLocator { .. } => "that isn't a valid stream address".to_owned(),
-                ModelError::Empty { field } => format!("{field} can't be empty"),
+        match error {
+            ModelError::InvalidLocator { .. } => Self::InvalidInput {
+                field: InputField::Address,
+                issue: InputIssue::Invalid,
+            },
+            ModelError::Empty { .. } => Self::InvalidInput {
+                field: InputField::Name,
+                issue: InputIssue::Empty,
             },
         }
     }
@@ -201,7 +157,8 @@ mod tests {
             ApiError::Unauthorized,
             ApiError::NotFound,
             ApiError::InvalidInput {
-                reason: "x".to_owned(),
+                field: InputField::Address,
+                issue: InputIssue::Invalid,
             },
             ApiError::ParseFailed {
                 emitted: 0,
@@ -214,14 +171,8 @@ mod tests {
     }
 
     #[test]
-    fn every_variant_has_an_action() {
-        for error in all_variants() {
-            assert!(
-                !error.ux().actions.is_empty(),
-                "{error:?} has no prescribed action — that is a design bug (PRD §6.3)"
-            );
-            assert!(!error.ux().failure_class.is_empty());
-        }
+    fn every_variant_has_a_stable_code() {
+        assert_eq!(all_variants().len(), 9);
     }
 
     #[test]
@@ -263,8 +214,11 @@ mod tests {
         let err = ApiError::from(ModelError::Empty { field: "name" });
         assert!(matches!(err, ApiError::InvalidInput { .. }));
         assert_eq!(
-            err.ux().actions,
-            &[UserAction::FixInput, UserAction::GoBack]
+            err,
+            ApiError::InvalidInput {
+                field: InputField::Name,
+                issue: InputIssue::Empty,
+            }
         );
     }
 }

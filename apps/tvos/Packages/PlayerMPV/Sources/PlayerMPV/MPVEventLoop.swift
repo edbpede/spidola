@@ -113,11 +113,12 @@ private struct MPVEventLoopBody: Sendable {
   /// nothing on this one.
   private func setUp(_ client: MPVHandle) -> Bool {
     do {
-      // mpv's log stream is requested at `error` and read *only* to classify why a load failed
+      // mpv's log stream is requested at `warn` and read *only* to classify why a load failed
       // (`MPVErrorMapping.logHint`). Its text never reaches OSLog: mpv logs full stream URLs, and an
-      // Xtream URL carries the account in its path (TECH_SPEC §12). `error` rather than `debug`
-      // keeps the volume to the lines that actually diagnose a failure.
-      try client.requestLogMessages(level: "error")
+      // Xtream URL carries the account in its path (TECH_SPEC §12). FFmpeg reports HTTP status and
+      // decode failures at warning level, so `error` would erase the distinctions the contract
+      // needs; `warn` is still narrow enough to exclude resolved options and normal stream data.
+      try client.requestLogMessages(level: "warn")
       for property in observedProperties {
         try client.observe(property.name, format: property.format)
       }

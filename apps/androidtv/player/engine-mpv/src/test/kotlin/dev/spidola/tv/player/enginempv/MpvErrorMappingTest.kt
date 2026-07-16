@@ -34,6 +34,18 @@ class MpvErrorMappingTest {
         }
 
         @Test
+        fun `eof after frame decode errors is decoder failed`() {
+            assertEquals(
+                EngineError.DecoderFailed,
+                MpvErrorMapping.endFileError(
+                    reason = MpvErrorMapping.EndFileReason.EOF,
+                    errorCode = MpvErrorMapping.Code.SUCCESS,
+                    diagnostic = "[ffmpeg/video] Error while decoding frame!",
+                ),
+            )
+        }
+
+        @Test
         fun `stop is not a failure`() {
             assertNull(
                 MpvErrorMapping.endFileError(MpvErrorMapping.EndFileReason.STOP, MpvErrorMapping.Code.SUCCESS, null),
@@ -213,6 +225,14 @@ class MpvErrorMappingTest {
             assertEquals(
                 EngineError.DecoderFailed,
                 MpvErrorMapping.engineErrorFor(-13, "[ffmpeg/video] h264: Error while decoding frame"),
+            )
+        }
+
+        @Test
+        fun `h264 slice header failure is a decoder failure`() {
+            assertEquals(
+                EngineError.DecoderFailed,
+                MpvErrorMapping.engineErrorFor(-17, "[ffmpeg/video] h264: decode_slice_header error"),
             )
         }
 

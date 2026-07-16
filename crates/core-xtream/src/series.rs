@@ -237,6 +237,7 @@ fn map_episode(
     Some(EpisodeRow {
         channel: CatalogChannel {
             identity: identity_key(series_id, episode_id, &locator, &name),
+            epg_key: None,
             name,
             // The show is the group: browse reads source → type → series → episode.
             group_title: series_name.map(str::to_owned),

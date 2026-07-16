@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic fixture; see README.md for provenance. -->
+<tv generator-info-name="Spidola fixtures">
+  <channel id="bbc.one"><display-name>BBC One</display-name></channel>
+  <programme channel="bbc.one" start="20260101110000 +0000" stop="20260101120000 +0000">
+    <title lang="en">Morning &amp; News</title>
+    <desc lang="en"><![CDATA[Headlines > weather]]></desc>
+  </programme>
+  <programme channel="bbc.one" start="20260101130000 +0100" stop="20260101140000 +0100">
+    <title>Midday</title>
+  </programme>
+  <programme channel="bbc.one" start="20260110000000 +0000" stop="20260110010000 +0000">
+    <title>Outside the window</title>
+  </programme>
+</tv>

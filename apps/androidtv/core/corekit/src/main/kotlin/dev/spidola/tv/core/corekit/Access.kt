@@ -7,11 +7,19 @@ import kotlinx.coroutines.flow.Flow
 import uniffi.core_api.AppSettings
 import uniffi.core_api.BrowseGroupPage
 import uniffi.core_api.BufferingProfile
+import uniffi.core_api.ChannelNowNext
 import uniffi.core_api.ChannelPage
+import uniffi.core_api.CustomChannelSummary
+import uniffi.core_api.CustomGroup
+import uniffi.core_api.CustomImportMode
+import uniffi.core_api.EpgPage
+import uniffi.core_api.EpgRefreshOutcome
+import uniffi.core_api.EpgRefreshProgress
 import uniffi.core_api.Handshake
 import uniffi.core_api.InterfaceDensity
 import uniffi.core_api.LogLevel
 import uniffi.core_api.MediaKind
+import uniffi.core_api.NowNext
 import uniffi.core_api.PairingSession
 import uniffi.core_api.PairingSubmission
 import uniffi.core_api.Recent
@@ -258,4 +266,152 @@ interface HomeAccess {
     suspend fun clearRecents()
 
     suspend fun recordRecent(channel: PlayableChannel)
+
+    /** Moves [channel] one slot earlier while keeping the transfer bounded to two identities. */
+    suspend fun moveFavoriteBefore(
+        channel: PlayableChannel,
+        anchor: PlayableChannel,
+    )
+
+    /** Moves [channel] one slot later while keeping the transfer bounded to two identities. */
+    suspend fun moveFavoriteAfter(
+        channel: PlayableChannel,
+        anchor: PlayableChannel,
+    )
+}
+
+/** One event from a running guide refresh. Cancelling its flow cancels the core task. */
+sealed interface EpgRefreshEvent {
+    data class Progress(
+        val progress: EpgRefreshProgress,
+    ) : EpgRefreshEvent
+
+    data class Complete(
+        val outcome: EpgRefreshOutcome,
+    ) : EpgRefreshEvent
+
+    data class Failed(
+        val error: uniffi.core_api.ApiException,
+    ) : EpgRefreshEvent
+}
+
+/** The narrow guide surface used by channel details and guide configuration. */
+interface EpgAccess {
+    suspend fun guideSources(): List<Source>
+
+    suspend fun epgWindowSettings(): EpgWindowSettings
+
+    suspend fun setEpgWindow(
+        aheadHours: UInt,
+        behindHours: UInt,
+    )
+
+    suspend fun nowNext(
+        sourceId: Long,
+        channelIdentity: Long,
+        nowUnix: Long,
+    ): NowNext
+
+    /** One bounded query for a catalog page; the generated core accepts at most 100 identities. */
+    suspend fun nowNextBatch(
+        sourceId: Long,
+        channelIdentities: List<Long>,
+        nowUnix: Long,
+    ): List<ChannelNowNext>
+
+    suspend fun epgWindow(
+        sourceId: Long,
+        channelIdentity: Long,
+        earliestUnix: Long,
+        latestUnix: Long,
+        offset: UInt,
+        limit: UInt,
+    ): EpgPage
+
+    suspend fun hasEpgFeed(sourceId: Long): Boolean
+
+    suspend fun setXmltvFeed(
+        sourceId: Long,
+        url: String,
+    )
+
+    suspend fun clearXmltvFeed(sourceId: Long)
+
+    fun refreshEpg(
+        sourceId: Long,
+        nowUnix: Long,
+    ): Flow<EpgRefreshEvent>
+}
+
+data class EpgWindowSettings(
+    val aheadHours: UInt,
+    val behindHours: UInt,
+)
+
+/** A plaintext request header that exists only while a custom-channel draft is submitted. */
+data class CustomRequestHeader(
+    val name: String,
+    val value: String,
+)
+
+/** Editable custom-channel fields. Credential-bearing values must stay out of saved state and logs. */
+data class CustomChannelInput(
+    val groupId: Long?,
+    val name: String,
+    val logo: String?,
+    val locator: String,
+    val userAgent: String?,
+    val headers: List<CustomRequestHeader>,
+)
+
+/** The bounded custom-channel manager surface, including explicit portable sharing modes. */
+interface CustomChannelsAccess {
+    suspend fun customGroups(): List<CustomGroup>
+
+    suspend fun customChannels(groupId: Long?): List<CustomChannelSummary>
+
+    suspend fun createCustomGroup(name: String): Long
+
+    suspend fun renameCustomGroup(
+        id: Long,
+        name: String,
+    )
+
+    suspend fun deleteCustomGroup(id: Long)
+
+    suspend fun moveCustomGroupBefore(
+        id: Long,
+        anchorId: Long,
+    )
+
+    suspend fun moveCustomGroupAfter(
+        id: Long,
+        anchorId: Long,
+    )
+
+    suspend fun createCustomChannel(input: CustomChannelInput): Long
+
+    suspend fun updateCustomChannel(
+        id: Long,
+        input: CustomChannelInput,
+    )
+
+    suspend fun deleteCustomChannel(id: Long)
+
+    suspend fun moveCustomChannelBefore(
+        id: Long,
+        anchorId: Long,
+    )
+
+    suspend fun moveCustomChannelAfter(
+        id: Long,
+        anchorId: Long,
+    )
+
+    suspend fun exportCustomChannels(): String
+
+    suspend fun importCustomChannels(
+        contents: String,
+        mode: CustomImportMode,
+    ): ULong
 }

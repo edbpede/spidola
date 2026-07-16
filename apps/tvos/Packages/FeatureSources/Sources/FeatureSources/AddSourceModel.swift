@@ -31,6 +31,27 @@ public enum AddSourceState: Sendable {
   case failed(ActionableError)
 }
 
+/// Shell-owned validation key. The model exposes state, while the view resolves localized prose.
+public enum AddSourceValidation: Sendable, Equatable {
+  case name
+  case playlistAddress
+  case playlistText
+  case server
+  case username
+  case password
+
+  public var message: String {
+    switch self {
+    case .name: String(localized: "Give this source a name.", bundle: .module)
+    case .playlistAddress: String(localized: "Enter the playlist address.", bundle: .module)
+    case .playlistText: String(localized: "Paste the playlist text.", bundle: .module)
+    case .server: String(localized: "Enter the server address.", bundle: .module)
+    case .username: String(localized: "Enter the username.", bundle: .module)
+    case .password: String(localized: "Enter the password.", bundle: .module)
+    }
+  }
+}
+
 /// Drives adding a source and importing its catalog with live progress, cancellation, and a
 /// diagnostics summary (PRD §6.1). Depends on the narrow `SourcesAccess`, so it is unit-tested
 /// against a fake. A cancelled or failed first import deletes the just-created empty source, so a
@@ -50,7 +71,7 @@ public final class AddSourceModel {
   /// It lives here only as long as the form does: it is never logged, never persisted by the
   /// shell, and what reaches SQLite is an opaque key the core mints (TECH_SPEC §12).
   public var password = ""
-  public private(set) var validationMessage: String?
+  public private(set) var validation: AddSourceValidation?
   public private(set) var state: AddSourceState = .editing
 
   private let access: any SourcesAccess
@@ -72,7 +93,7 @@ public final class AddSourceModel {
 
   public func submit() {
     guard validate() else { return }
-    validationMessage = nil
+    validation = nil
     state = .importing(stage: .connecting, channels: 0)
     let mode = mode
     importTask = Task { [weak self] in await self?.run(mode: mode) }
@@ -93,33 +114,33 @@ public final class AddSourceModel {
   private func validate() -> Bool {
     let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
     if trimmedName.isEmpty {
-      validationMessage = "Give this source a name."
+      validation = .name
       return false
     }
     switch mode {
     case .url:
       if url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-        validationMessage = "Enter the playlist address."
+        validation = .playlistAddress
         return false
       }
     case .file:
       if pastedContent.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-        validationMessage = "Paste the playlist text."
+        validation = .playlistText
         return false
       }
     case .xtream:
       if server.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-        validationMessage = "Enter the server address."
+        validation = .server
         return false
       }
       if username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-        validationMessage = "Enter the username."
+        validation = .username
         return false
       }
       // Not trimmed: leading and trailing spaces are legal in a password, and silently eating
       // them would reject a correct one with a message about the account being wrong.
       if password.isEmpty {
-        validationMessage = "Enter the password."
+        validation = .password
         return false
       }
     }
@@ -132,7 +153,7 @@ public final class AddSourceModel {
   /// same error, and the most likely failure on this screen would have no way out but Back.
   public func returnToForm() {
     state = .editing
-    validationMessage = nil
+    validation = nil
   }
 
   /// Fills the form from what a phone sent, for the person at the TV to confirm (PRD §6.1). It

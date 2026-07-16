@@ -169,6 +169,17 @@ public struct SettingsView: View {
         String(localized: "Versions, and what Spidola has been doing.", bundle: .module)
       )
       .accessibilityIdentifier("settings-diagnostics")
+
+    case .about:
+      SpidolaRow(
+        title: String(localized: "About and licenses", bundle: .module),
+        subtitle: String(localized: "Spidola and third-party software notices.", bundle: .module),
+        accessory: .symbol("info.circle"), isFocused: focused == row
+      ) {
+        navigator.openAbout()
+      }
+      .focused($focused, equals: row)
+      .accessibilityIdentifier("settings-about")
     }
   }
 }

@@ -49,6 +49,12 @@
     <string name="add_source_server">Server address</string>
     <string name="add_source_username">Username</string>
     <string name="add_source_password">Password</string>
+    <string name="add_source_validation_name">Give this source a name.</string>
+    <string name="add_source_validation_playlist_address">Enter the playlist address.</string>
+    <string name="add_source_validation_playlist_text">Paste the playlist text.</string>
+    <string name="add_source_validation_server">Enter the server address.</string>
+    <string name="add_source_validation_username">Enter your username.</string>
+    <string name="add_source_validation_password">Enter your password.</string>
 
     <!-- Sources list -->
     <string name="sources_loading">Loading sources…</string>
@@ -75,6 +81,8 @@
     <string name="sources_delete">Delete</string>
     <string name="sources_delete_confirm">Confirm delete</string>
     <string name="sources_delete_warning">Can\'t be undone</string>
+    <string name="sources_file_cannot_refresh">This source was added from a file — re-add it to update its channels.</string>
+    <string name="sources_refreshed">Refreshed %1$s: %2$s channels</string>
 
     <!-- Auto-refresh intervals -->
     <string name="auto_refresh_off">Manual only</string>

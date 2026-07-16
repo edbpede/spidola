@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.spidola.tv.core.corekit.BrowseAccess
+import dev.spidola.tv.core.corekit.EpgAccess
 import dev.spidola.tv.core.corekit.LoadState
 import dev.spidola.tv.core.corekit.PlayableChannel
 import dev.spidola.tv.core.designsystem.RowAccessory
@@ -46,10 +47,11 @@ fun ChannelsScreen(
     kind: MediaKind,
     group: String?,
     access: BrowseAccess,
+    epgAccess: EpgAccess,
     navigator: BrowseNavigator,
     modifier: Modifier = Modifier,
     viewModel: ChannelsViewModel =
-        viewModel(factory = ChannelsViewModel.factory(sourceId, kind, group, access)),
+        viewModel(factory = ChannelsViewModel.factory(sourceId, kind, group, access, epgAccess)),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     Box(modifier = modifier.fillMaxSize().background(SpidolaPalette.Studio)) {
@@ -94,7 +96,7 @@ private fun ChannelList(
             val favorite = stringResource(R.string.browse_channels_favorite_state)
             SpidolaRow(
                 title = row.channel.name,
-                subtitle = row.channel.groupTitle,
+                subtitle = row.scheduleSubtitle(),
                 accessory = if (row.isFavorite) RowAccessory.Star else RowAccessory.None,
                 onClick = { open(row) },
                 modifier =
@@ -109,5 +111,17 @@ private fun ChannelList(
                         .then(if (row.key == rows.first().key) Modifier.focusRequester(firstRow) else Modifier),
             )
         }
+    }
+}
+
+@Composable
+private fun ChannelRow.scheduleSubtitle(): String? {
+    val current = schedule?.current?.title
+    val next = schedule?.next?.title
+    return when {
+        current != null && next != null -> stringResource(R.string.browse_channels_now_next, current, next)
+        current != null -> stringResource(R.string.browse_channels_now, current)
+        next != null -> stringResource(R.string.browse_channels_next, next)
+        else -> channel.groupTitle
     }
 }

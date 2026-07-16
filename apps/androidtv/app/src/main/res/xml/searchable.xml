@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: 2026 Spidola contributors -->
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<searchable xmlns:android="http://schemas.android.com/apk/res/android"
+    android:label="@string/app_name"
+    android:hint="@string/platform_search_hint"
+    android:includeInGlobalSearch="true"
+    android:searchSuggestAuthority="dev.spidola.tv.search"
+    android:searchSuggestIntentAction="android.intent.action.VIEW"
+    android:searchSuggestThreshold="1"
+    android:voiceSearchMode="showVoiceSearchButton|launchRecognizer" />

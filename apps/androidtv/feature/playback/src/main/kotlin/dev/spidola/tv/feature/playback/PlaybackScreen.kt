@@ -45,6 +45,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import dev.spidola.tv.core.corekit.CustomPlayableChannel
 import dev.spidola.tv.core.corekit.PlayableChannel
 import dev.spidola.tv.core.corekit.PlaybackAccess
 import dev.spidola.tv.core.corekit.ZapContext
@@ -66,6 +67,7 @@ import kotlin.time.Duration.Companion.seconds
  * video fills it, and every control is summoned.
  */
 @Composable
+@Suppress("ViewModelForwarding")
 fun PlaybackScreen(
     channel: PlayableChannel,
     context: ZapContext,
@@ -76,6 +78,30 @@ fun PlaybackScreen(
     modifier: Modifier = Modifier,
     viewModel: PlaybackViewModel =
         viewModel(factory = PlaybackViewModel.factory(channel, context, offset, access, registry)),
+) {
+    PlaybackContent(viewModel, onExit, modifier)
+}
+
+/** Custom-channel entry point; its route and screen inputs contain no request material. */
+@Composable
+@Suppress("ViewModelForwarding")
+fun PlaybackScreen(
+    customChannel: CustomPlayableChannel,
+    access: PlaybackAccess,
+    registry: EngineRegistry,
+    onExit: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: PlaybackViewModel =
+        viewModel(factory = PlaybackViewModel.factory(customChannel, access, registry)),
+) {
+    PlaybackContent(viewModel, onExit, modifier)
+}
+
+@Composable
+private fun PlaybackContent(
+    viewModel: PlaybackViewModel,
+    onExit: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val engine by viewModel.engine.collectAsStateWithLifecycle()
@@ -183,6 +209,7 @@ fun PlaybackScreen(
                     offer = offer,
                     onTry = viewModel::tryOtherPlayer,
                     onBack = ::exit,
+                    canRemember = state.canRememberEngine,
                 )
 
             // A failure with no other engine to offer still has to say what happened and what to
@@ -239,6 +266,9 @@ private fun BoxScope.StripLayer(
                 window = state.window,
                 channel = state.channel,
                 isLive = state.channel.isLive,
+                schedule = state.schedule,
+                scheduleLoaded = state.scheduleLoaded,
+                showSchedule = state.showSchedule,
             )
             if (showSeekHint) {
                 Box(modifier = Modifier.fillMaxWidth().padding(top = SpidolaSpacing.s)) {

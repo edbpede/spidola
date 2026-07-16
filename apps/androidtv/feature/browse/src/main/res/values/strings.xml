@@ -22,6 +22,8 @@
     <string name="browse_home_recents">Recently watched</string>
     <string name="browse_home_sources">Sources</string>
     <string name="browse_home_search">Search channels</string>
+    <string name="browse_home_order_favorites">Order favorite lineup</string>
+    <string name="browse_home_custom_channels">Custom channels</string>
     <string name="browse_home_manage_sources">Add or manage sources</string>
     <string name="browse_home_settings">Settings</string>
     <string name="browse_home_keep_recents">Keep recently watched</string>
@@ -55,9 +57,50 @@
     <string name="browse_detail_not_favorite_state">Not a favorite</string>
     <string name="browse_detail_hidden_state">Hidden</string>
     <string name="browse_detail_visible_state">Visible</string>
+    <string name="browse_schedule_now">Now</string>
+    <string name="browse_schedule_next">Next</string>
+    <string name="browse_schedule_unavailable">Schedule unavailable</string>
+
+    <!-- Favorite lineup -->
+    <string name="browse_favorites_order_title">Favorite lineup</string>
+    <string name="browse_favorites_order_empty">Add favorites before arranging the lineup.</string>
+    <string name="browse_favorites_move_up">Move up</string>
+    <string name="browse_favorites_move_down">Move down</string>
+
+    <!-- Custom channels: a remote-first control-room form. -->
+    <string name="browse_custom_title">Custom channels</string>
+    <string name="browse_custom_loading">Loading custom channels…</string>
+    <string name="browse_custom_add">Add channel</string>
+    <string name="browse_custom_add_group">Add group</string>
+    <string name="browse_custom_share">Share or restore</string>
+    <string name="browse_custom_ungrouped">Ungrouped</string>
+    <string name="browse_custom_delete">Delete</string>
+    <string name="browse_custom_edit">Edit</string>
+    <string name="browse_custom_request_count">%1$d request details</string>
+    <string name="browse_custom_group_editor">Custom group</string>
+    <string name="browse_custom_name">Name</string>
+    <string name="browse_custom_save_group">Save group</string>
+    <string name="browse_custom_cancel">Cancel</string>
+    <string name="browse_custom_editor">Custom channel</string>
+    <string name="browse_custom_address">Stream address</string>
+    <string name="browse_custom_logo">Logo address (optional)</string>
+    <string name="browse_custom_group">Group</string>
+    <string name="browse_custom_request_details">Request details</string>
+    <string name="browse_custom_browser_identity">Browser identity (optional)</string>
+    <string name="browse_custom_request_lines">Extra request lines, one per line</string>
+    <string name="browse_custom_reenter_address">For privacy, re-enter the stream address when saving changes.</string>
+    <string name="browse_custom_save">Save channel</string>
+    <string name="browse_custom_share_explainer">Export creates a portable file through Android sharing. Import can add to this lineup or replace it completely.</string>
+    <string name="browse_custom_export">Export portable file</string>
+    <string name="browse_custom_import_text">Portable channel text</string>
+    <string name="browse_custom_import_merge">Import and keep current channels</string>
+    <string name="browse_custom_import_replace">Replace all custom channels</string>
 
     <!-- Channel list -->
     <string name="browse_channels_loading">Loading channels…</string>
+    <string name="browse_channels_now_next">Now: %1$s · Next: %2$s</string>
+    <string name="browse_channels_now">Now: %1$s</string>
+    <string name="browse_channels_next">Next: %1$s</string>
     <string name="browse_channels_empty">No channels here.</string>
     <!--
       Spoken in place of the star a favorite wears. Only the marked rows carry it: an unmarked row

@@ -49,6 +49,7 @@ fn build_db(channels: usize) -> Db {
         let url = format!("http://host.example/live/{i}.ts");
         batch.push(NewChannel {
             identity: channel_identity(None, &url, &name),
+            epg_key: None,
             name,
             group_title: Some(WORDS[i % WORDS.len()].to_owned()),
             logo: None,

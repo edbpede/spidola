@@ -89,6 +89,29 @@ impl CatalogService {
             .await
     }
 
+    /// Fetches one channel by the stable source/identity pair used by platform deep links.
+    ///
+    /// # Errors
+    /// Returns [`ApiError::StorageCorrupt`] on a query failure.
+    pub async fn channel_by_identity(
+        &self,
+        source_id: i64,
+        identity: i64,
+    ) -> Result<Option<Channel>, ApiError> {
+        let db = Arc::clone(&self.db);
+        self.rt
+            .run_blocking(move || {
+                let conn = db.reader()?;
+                Ok(repo::channels::get_by_identity(
+                    &conn,
+                    SourceId::new(source_id),
+                    identity_from_storage(identity),
+                )?
+                .map(Channel::from))
+            })
+            .await
+    }
+
     /// Lists the media kinds present in a source's catalog, in display order — the "type" level
     /// of the browse drill-down (source → type → category → channel). For an M3U source this is
     /// just `[Live]`, so a shell may skip the type screen when only one kind exists.

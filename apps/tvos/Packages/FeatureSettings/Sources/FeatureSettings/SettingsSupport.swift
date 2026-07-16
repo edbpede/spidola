@@ -15,13 +15,16 @@ public struct SettingsNavigator {
   /// there is one picker screen in this slice, and the field it is about is its whole payload.
   public var openOptions: (_ field: SettingsField) -> Void
   public var openDiagnostics: () -> Void
+  public var openAbout: () -> Void
 
   public init(
     openOptions: @escaping (SettingsField) -> Void,
-    openDiagnostics: @escaping () -> Void
+    openDiagnostics: @escaping () -> Void,
+    openAbout: @escaping () -> Void
   ) {
     self.openOptions = openOptions
     self.openDiagnostics = openDiagnostics
+    self.openAbout = openAbout
   }
 }
 

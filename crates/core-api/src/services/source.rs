@@ -26,7 +26,7 @@ use core_xtream::Endpoint;
 use rand::Rng;
 use tracing::warn;
 
-use crate::error::ApiError;
+use crate::error::{ApiError, InputField, InputIssue};
 use crate::events::{CancelToken, ImportListener, TaskHandle};
 use crate::import::{run_import, run_import_content};
 use crate::logging::targets;
@@ -513,7 +513,7 @@ impl SourceService {
                 // credential, so the key must be recovered while it still exists.
                 let secret_keys = {
                     let conn = db.reader()?;
-                    match repo::sources::get(&conn, SourceId::new(id))? {
+                    let mut keys = match repo::sources::get(&conn, SourceId::new(id))? {
                         Some(DomainSource::M3uUrl {
                             url_secret,
                             has_user_agent,
@@ -529,7 +529,11 @@ impl SourceService {
                             vec![secret.as_str().to_owned()]
                         }
                         _ => Vec::new(),
+                    };
+                    if let Some(feed) = repo::epg::get_feed(&conn, SourceId::new(id))? {
+                        keys.push(feed.as_str().to_owned());
                     }
+                    keys
                 };
                 for secret in secret_keys {
                     // Ahead of the row, and allowed to fail the call. `SecretStore::delete` is
@@ -691,8 +695,8 @@ async fn run_refresh(
         // pasted text back through `import_m3u_content`. Not a failure of this refresh so much
         // as the wrong call, so it says which call to make instead (PRD §6.3).
         DomainSource::M3uFile { .. } => listener.on_failed(ApiError::InvalidInput {
-            reason: "this source is imported from a file — pick the file again to update it"
-                .to_owned(),
+            field: InputField::Source,
+            issue: InputIssue::Unsupported,
         }),
     }
 }

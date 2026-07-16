@@ -80,6 +80,24 @@ public struct ResolvedPlaybackStream: Sendable, Equatable, CustomDebugStringConv
   }
 }
 
+/// The only custom-channel data allowed to survive navigation. The core keeps the sealed stream
+/// locator and request overrides until `resolveCustomPlayback` is called at play time.
+public struct CustomPlayableChannel: Hashable, Sendable, Identifiable {
+  public let id: Int64
+  public let name: String
+  public let logo: String?
+
+  public init(id: Int64, name: String, logo: String?) {
+    self.id = id
+    self.name = name
+    self.logo = logo
+  }
+
+  public init(_ summary: CustomChannelSummary) {
+    self.init(id: summary.id, name: summary.name, logo: summary.logo)
+  }
+}
+
 /// The narrow core surface the **playback** slice needs: the zap ring, the persisted engine
 /// overrides the selection policy reads, the engine-neutral playback settings, and the play-time
 /// recents record.
@@ -114,6 +132,11 @@ public protocol PlaybackAccess: Sendable {
   /// path never branches on where a channel came from. M3U locators and override values remain
   /// authenticated envelopes until this call.
   func resolvePlayback(_ channel: PlayableChannel) async throws -> ResolvedPlaybackStream
+
+  /// Opens a sealed custom channel only for immediate engine construction. The navigation value
+  /// carries no locator, user-agent, or header values, so this is the sole plaintext seam.
+  func resolveCustomPlayback(_ channel: CustomPlayableChannel) async throws
+    -> ResolvedPlaybackStream
 
   func recordRecent(_ channel: PlayableChannel) async throws
 }

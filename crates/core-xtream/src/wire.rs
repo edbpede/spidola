@@ -278,6 +278,8 @@ pub(crate) struct StreamDto {
     #[serde(default, deserialize_with = "de_flex_opt_string")]
     pub(crate) stream_icon: Option<String>,
     #[serde(default, deserialize_with = "de_flex_opt_string")]
+    pub(crate) epg_channel_id: Option<String>,
+    #[serde(default, deserialize_with = "de_flex_opt_string")]
     pub(crate) category_id: Option<String>,
     #[serde(default, deserialize_with = "de_flex_opt_string")]
     pub(crate) container_extension: Option<String>,

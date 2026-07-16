@@ -6,6 +6,7 @@
 package dev.spidola.tv.player.engineexo
 
 import androidx.annotation.OptIn
+import androidx.media3.common.ParserException
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException
@@ -30,6 +31,12 @@ internal fun PlaybackException.toEngineError(): EngineError {
     val responseCode = findHttpResponseCode()
     if (responseCode == HTTP_UNAUTHORIZED || responseCode == HTTP_FORBIDDEN) {
         return EngineError.Unauthorized
+    }
+    if (responseCode == HTTP_UNCLASSIFIED) {
+        return EngineError.Unknown("unclassified HTTP 520")
+    }
+    if (hasIncompletePreparationFailure()) {
+        return EngineError.DecoderFailed
     }
 
     return when (errorCode) {
@@ -70,6 +77,20 @@ internal fun PlaybackException.toEngineError(): EngineError {
     }
 }
 
+private fun PlaybackException.hasIncompletePreparationFailure(): Boolean {
+    val visited = mutableSetOf<Throwable>()
+    var current: Throwable? = this
+    while (current != null && visited.add(current)) {
+        if (current is ParserException &&
+            current.message.startsWith(INCOMPLETE_PREPARATION_MESSAGE)
+        ) {
+            return true
+        }
+        current = current.cause
+    }
+    return false
+}
+
 /**
  * The diagnostic string carried by [EngineError.Unknown], bound for the log stream.
  *
@@ -97,3 +118,6 @@ private fun PlaybackException.findHttpResponseCode(): Int? {
     }
     return null
 }
+
+private const val HTTP_UNCLASSIFIED = 520
+private const val INCOMPLETE_PREPARATION_MESSAGE = "Loading finished before preparation is complete"

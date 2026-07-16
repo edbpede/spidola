@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import AVFoundation
+import CoreMedia
 import Foundation
 import PlayerContract
 import XCTest
@@ -15,6 +16,18 @@ import XCTest
 /// on the simulator (`swift test` cannot run a tvOS-triple package), the same route
 /// `PlayerContractTests` and `FeatureBrowseTests` take.
 final class AVErrorMappingTests: XCTestCase {
+
+  func testKnownUnsupportedContainersAreRejectedBeforeLoading() throws {
+    XCTAssertTrue(
+      AVContainerSupport.isKnownUnsupported(
+        try XCTUnwrap(URL(string: "https://example.test/live.MKV"))))
+    XCTAssertTrue(
+      AVContainerSupport.isKnownUnsupported(
+        try XCTUnwrap(URL(string: "https://example.test/live.webm"))))
+    XCTAssertFalse(
+      AVContainerSupport.isKnownUnsupported(
+        try XCTUnwrap(URL(string: "https://example.test/live.m3u8"))))
+  }
 
   // MARK: - Fixtures
 
@@ -84,6 +97,13 @@ final class AVErrorMappingTests: XCTestCase {
         AVErrorMapping.engineError(from: avError(code)), .decoderFailed,
         "AVError \(code.rawValue) should be decoderFailed")
     }
+  }
+
+  func testInvalidCoreMediaFormatDescriptionMapsToDecoderFailed() {
+    let error = NSError(
+      domain: "CoreMediaErrorDomain",
+      code: Int(kCMFormatDescriptionBridgeError_InvalidParameter))
+    XCTAssertEqual(AVErrorMapping.engineError(from: error), .decoderFailed)
   }
 
   func testAuthorizationFailuresMapToUnauthorized() {

@@ -20,6 +20,7 @@ final class AppContainer {
   let registry: EngineRegistry
 
   private let logger = Logger(subsystem: "dev.spidola.tv", category: "spidola::boot")
+  private let persistsFixtureOwnership: Bool
 
   /// The engines this build can construct (TECH_SPEC §8): MPVKit the default for its codec breadth,
   /// AVPlayer the alternate for HLS-native content. Engines are peers wired here, never children of
@@ -37,27 +38,46 @@ final class AppContainer {
 
   init() {
     self.registry = Self.makeRegistry()
-    let dbPath = URL.documentsDirectory.appending(path: "spidola.sqlite").path()
+    #if DEBUG
+      let isFixtureUITest =
+        ProcessInfo.processInfo.environment["SPIDOLA_FIXTURE_UI_TEST"] == "1"
+      let dbPath =
+        isFixtureUITest
+        ? URL.temporaryDirectory.appending(path: "spidola-ui-\(UUID().uuidString).sqlite").path()
+        : URL.documentsDirectory.appending(path: "spidola.sqlite").path()
+      self.persistsFixtureOwnership = !isFixtureUITest
+    #else
+      let dbPath = URL.documentsDirectory.appending(path: "spidola.sqlite").path()
+      self.persistsFixtureOwnership = true
+    #endif
     do {
-      let core = try SpidolaCore(
-        dbPath: dbPath,
-        logDirectives: "info,spidola=debug",
-        secrets: KeychainSecretStore(),
-        logSink: OSLogSink()
-      )
+      #if DEBUG
+        let core =
+          if isFixtureUITest {
+            try SpidolaCore(
+              dbPath: dbPath,
+              logDirectives: "info,spidola=debug",
+              secrets: EphemeralSecretStore(),
+              logSink: OSLogSink())
+          } else {
+            try SpidolaCore(
+              dbPath: dbPath,
+              logDirectives: "info,spidola=debug",
+              secrets: KeychainSecretStore(),
+              logSink: OSLogSink())
+          }
+      #else
+        let core = try SpidolaCore(
+          dbPath: dbPath,
+          logDirectives: "info,spidola=debug",
+          secrets: KeychainSecretStore(),
+          logSink: OSLogSink())
+      #endif
       let handshake = core.handshake()
       let coreVersion = handshake.coreVersion
       let schemaVersion = handshake.schemaVersion
       let boundaryVersion = handshake.boundaryVersion
-      guard
-        coreVersion.isEmpty == false,
-        schemaVersion == Self.supportedSchemaVersion,
-        boundaryVersion == Self.supportedBoundaryVersion
-      else {
-        fatalError(
-          "Incompatible core: \(coreVersion), schema \(schemaVersion), boundary \(boundaryVersion)"
-        )
-      }
+      try CoreCompatibility.current.validate(handshake)
       logger.info(
         "core \(coreVersion, privacy: .public), schema \(schemaVersion), boundary \(boundaryVersion)"
       )
@@ -76,20 +96,20 @@ final class AppContainer {
       // the Phase 4 add-source flow) must never be treated as ours and torn down. The name is
       // re-verified only as a secondary guard, so a reused SQLite rowid (rowids are not
       // `AUTOINCREMENT`) can never authorize deleting a source we did not create.
-      if let ownedId = Self.storedFixtureId,
+      if let ownedId = fixtureId,
         let fixture = sources.first(where: { $0.id == ownedId }),
         fixture.name == Self.fixtureSourceName
       {  // swiftlint:disable:this opening_brace
         let page = try await core.page(sourceId: fixture.id, offset: 0, limit: 1)
         if page.total > 0 { return }
         try await core.deleteSource(id: fixture.id)
-        Self.storedFixtureId = nil
+        fixtureId = nil
       } else if sources.isEmpty == false {
         return
       }
       let url = serveFixtureOnce(Self.fixturePlaylist())
       let source = try await core.addM3uUrl(name: Self.fixtureSourceName, url: url)
-      Self.storedFixtureId = source.id
+      fixtureId = source.id
       for await event in core.importSource(id: source.id) {
         switch event {
         case .progress:
@@ -99,11 +119,18 @@ final class AppContainer {
         case .failed(let error):
           logger.error("fixture import failed: \(String(describing: error), privacy: .public)")
           try? await core.deleteSource(id: source.id)
-          Self.storedFixtureId = nil
+          fixtureId = nil
         }
       }
     } catch {
       logger.error("fixture seed failed: \(String(describing: error), privacy: .public)")
+    }
+  }
+
+  private var fixtureId: Int64? {
+    get { persistsFixtureOwnership ? Self.storedFixtureId : nil }
+    set {
+      if persistsFixtureOwnership { Self.storedFixtureId = newValue }
     }
   }
 
@@ -137,12 +164,6 @@ final class AppContainer {
   private static let fixtureChannelCount = 24
   private static let fixtureSourceName = "Fixture Catalog"
   private static let fixtureIdKey = "dev.spidola.tv.fixtureSourceId"
-  /// Bumped to 4 when resolved stream requests became opaque objects, preventing generated native
-  /// diagnostic representations from reflecting plaintext locators and header values. This pin is
-  /// the shell stating which boundary it was built against — the handshake guard above turns a
-  /// mismatch into an immediate, legible stop rather than a puzzling failure later (TECH_SPEC §5).
-  private static let supportedBoundaryVersion: UInt32 = 4
-  private static let supportedSchemaVersion: UInt32 = 2
 }
 
 /// Serves `body` once over HTTP/1.1 from an ephemeral `127.0.0.1` port and returns its URL. Same

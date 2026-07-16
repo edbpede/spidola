@@ -166,8 +166,27 @@ data class PlaybackRoute(
     }
 }
 
+/**
+ * A custom channel playback destination. Only its opaque database ID and presentation metadata are
+ * saved with the back stack; the sealed locator and request overrides are resolved at play time.
+ */
 @Serializable
-data object SearchRoute : NavKey
+data class CustomPlaybackRoute(
+    val id: Long,
+    val name: String,
+    val logo: String?,
+) : NavKey
+
+@Serializable
+data class SearchRoute(
+    val initialQuery: String = "",
+) : NavKey
+
+@Serializable
+data object FavoriteLineupRoute : NavKey
+
+@Serializable
+data object CustomChannelsRoute : NavKey
 
 @Serializable
 data object ManageSourcesRoute : NavKey
@@ -199,3 +218,9 @@ data class SettingsPickerRoute(
 
 @Serializable
 data object DiagnosticsRoute : NavKey
+
+@Serializable
+data object GuideRoute : NavKey
+
+@Serializable
+data object AboutRoute : NavKey

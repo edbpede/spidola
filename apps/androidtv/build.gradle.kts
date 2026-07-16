@@ -11,6 +11,7 @@ plugins {
     alias(libs.plugins.hilt) apply false
     alias(libs.plugins.ktlint) apply false
     alias(libs.plugins.detekt) apply false
+    alias(libs.plugins.licensee) apply false
 }
 
 // Toolchain assertion (TECH_SPEC §9: "build scripts assert them"). The pinned JDK is 21;

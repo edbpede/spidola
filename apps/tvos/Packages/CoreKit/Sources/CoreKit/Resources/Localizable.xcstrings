@@ -1,0 +1,46 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "address" : {},
+    "An unexpected problem came up. Try again." : {},
+    "Cancelled" : {},
+    "Can't reach the source" : {},
+    "Check the %@ and try again." : {
+      "comment" : "Validation message. The argument is the localized field name."
+    },
+    "Edit" : {},
+    "Enter a value for the %@." : {
+      "comment" : "Validation message. The argument is the localized field name."
+    },
+    "entry" : {},
+    "file" : {},
+    "Go back" : {},
+    "Local storage problem" : {},
+    "log level" : {},
+    "Login was rejected" : {},
+    "name" : {},
+    "No channels found" : {},
+    "Not available anymore" : {},
+    "request detail" : {},
+    "server address" : {},
+    "Something went wrong" : {},
+    "Something went wrong saving to this device. Try again." : {},
+    "source" : {},
+    "Spidola couldn't connect. Check the address and your network, then try again." : {},
+    "Spidola reached the source but found no channels to add. Check the playlist and try again." : {},
+    "That %@ isn't available right now." : {
+      "comment" : "Validation message. The argument is the localized field name."
+    },
+    "That %@ isn't supported." : {
+      "comment" : "Validation message. The argument is the localized field name."
+    },
+    "That entry isn't valid" : {},
+    "That was cancelled." : {},
+    "The source didn't accept these sign-in details. Edit them and try again." : {},
+    "The source didn't answer in time. It may be busy — try again in a moment." : {},
+    "The source is slow to respond" : {},
+    "This isn't at the source any longer." : {},
+    "Try again" : {}
+  },
+  "version" : "1.0"
+}

@@ -19,6 +19,8 @@ public struct SourcesView: View {
   @State private var model: SourcesModel
   private let onAddSource: @MainActor () -> Void
   private let onPair: @MainActor () -> Void
+  private let onCustomChannels: @MainActor () -> Void
+  private let onGuide: @MainActor (_ sourceId: Int64, _ name: String, _ acceptsUrl: Bool) -> Void
 
   @FocusState private var focused: Focus?
   @State private var renameTarget: SourceTarget?
@@ -29,11 +31,15 @@ public struct SourcesView: View {
   public init(
     access: any SourcesAccess,
     onAddSource: @escaping @MainActor () -> Void,
-    onPair: @escaping @MainActor () -> Void
+    onPair: @escaping @MainActor () -> Void,
+    onCustomChannels: @escaping @MainActor () -> Void,
+    onGuide: @escaping @MainActor (Int64, String, Bool) -> Void
   ) {
     _model = State(initialValue: SourcesModel(access: access))
     self.onAddSource = onAddSource
     self.onPair = onPair
+    self.onCustomChannels = onCustomChannels
+    self.onGuide = onGuide
   }
 
   public var body: some View {
@@ -96,8 +102,8 @@ public struct SourcesView: View {
   private func list(sources: [Source]) -> some View {
     ScrollView {
       VStack(alignment: .leading, spacing: SpidolaSpacing.s) {
-        if let status = model.statusMessage {
-          Text(status)
+        if let status = model.status {
+          Text(status.message)
             .font(SpidolaType.caption)
             .foregroundStyle(SpidolaPalette.testCardAmber)
             .padding(.horizontal, SpidolaSpacing.safeHorizontal)
@@ -130,6 +136,18 @@ public struct SourcesView: View {
             bundle: .module)
         )
         .accessibilityIdentifier("sources-pair")
+
+        SpidolaRow(
+          title: String(localized: "Custom channels", bundle: .module),
+          subtitle: String(
+            localized: "Build and arrange a private channel lineup.", bundle: .module),
+          accessory: .symbol("slider.horizontal.below.rectangle"),
+          isFocused: focused == .custom
+        ) {
+          onCustomChannels()
+        }
+        .focused($focused, equals: .custom)
+        .accessibilityIdentifier("sources-custom-channels")
 
         if sources.isEmpty {
           Text(String(localized: "No sources yet — add one to start watching.", bundle: .module))
@@ -187,6 +205,9 @@ public struct SourcesView: View {
           autoRefreshTarget = SourceTarget(id: source.id, name: source.name)
         }
       }
+      Button(String(localized: "Programme guide…", bundle: .module)) {
+        onGuide(source.id, source.name, source.acceptsXmltvUrl)
+      }
       Button(String(localized: "Delete", bundle: .module), role: .destructive) {
         deleteTarget = SourceTarget(id: source.id, name: source.name)
       }
@@ -226,7 +247,18 @@ public struct SourcesView: View {
   private enum Focus: Hashable {
     case add
     case pair
+    case custom
     case source(Int64)
+  }
+}
+
+extension Source {
+  fileprivate var acceptsXmltvUrl: Bool {
+    switch self {
+    case .m3uUrl, .m3uFile: true
+    case .xtream: false
+    @unknown default: false
+    }
   }
 }
 

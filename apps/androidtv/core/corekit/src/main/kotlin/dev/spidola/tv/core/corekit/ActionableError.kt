@@ -3,18 +3,31 @@
 
 package dev.spidola.tv.core.corekit
 
+import android.content.Context
 import uniffi.core_api.ApiException
+import uniffi.core_api.InputField
+import uniffi.core_api.InputIssue
 
 /**
  * A prescribed user action for an error (PRD §6.3). The set is deliberately small; the shell
  * renders each as a focusable button.
  */
 enum class ErrorAction(
-    val label: String,
+    val label: Int,
 ) {
-    RETRY("Try again"),
-    GO_BACK("Go back"),
-    FIX_INPUT("Edit"),
+    RETRY(R.string.core_action_retry),
+    GO_BACK(R.string.core_action_go_back),
+    FIX_INPUT(R.string.core_action_edit),
+}
+
+/** A shell-owned string resource with an optional shell-owned string argument. */
+data class LocalizedText(
+    val resource: Int,
+    val argument: Int? = null,
+) {
+    /** Resolves the resource only at the Android presentation edge. */
+    fun resolve(context: Context): String =
+        argument?.let { context.getString(resource, context.getString(it)) } ?: context.getString(resource)
 }
 
 /**
@@ -28,8 +41,8 @@ enum class ErrorAction(
  * be handed an actionless error.
  */
 data class ActionableError(
-    val failureClass: String,
-    val message: String,
+    val failureClass: LocalizedText,
+    val message: LocalizedText,
     val primaryAction: ErrorAction,
     val otherActions: List<ErrorAction>,
 ) {
@@ -46,68 +59,93 @@ data class ActionableError(
             when (error) {
                 is ApiException.NetworkUnreachable ->
                     ActionableError(
-                        "Can't reach the source",
-                        "Spidola couldn't connect. Check the address and your network, then try again.",
+                        LocalizedText(R.string.core_error_network_title),
+                        LocalizedText(R.string.core_error_network_message),
                         ErrorAction.RETRY,
                         listOf(ErrorAction.GO_BACK),
                     )
                 is ApiException.Timeout ->
                     ActionableError(
-                        "The source is slow to respond",
-                        "The source didn't answer in time. It may be busy — try again in a moment.",
+                        LocalizedText(R.string.core_error_timeout_title),
+                        LocalizedText(R.string.core_error_timeout_message),
                         ErrorAction.RETRY,
                         listOf(ErrorAction.GO_BACK),
                     )
                 is ApiException.Unauthorized ->
                     ActionableError(
-                        "Login was rejected",
-                        "The source didn't accept these sign-in details. Edit them and try again.",
+                        LocalizedText(R.string.core_error_unauthorized_title),
+                        LocalizedText(R.string.core_error_unauthorized_message),
                         ErrorAction.FIX_INPUT,
                         listOf(ErrorAction.GO_BACK),
                     )
                 is ApiException.NotFound ->
                     ActionableError(
-                        "Not available anymore",
-                        "This isn't at the source any longer.",
+                        LocalizedText(R.string.core_error_not_found_title),
+                        LocalizedText(R.string.core_error_not_found_message),
                         ErrorAction.GO_BACK,
                         emptyList(),
                     )
                 is ApiException.InvalidInput ->
                     ActionableError(
-                        "That entry isn't valid",
-                        error.reason,
+                        LocalizedText(R.string.core_error_invalid_title),
+                        inputMessage(error.field, error.issue),
                         ErrorAction.FIX_INPUT,
                         listOf(ErrorAction.GO_BACK),
                     )
                 is ApiException.ParseFailed ->
                     ActionableError(
-                        "No channels found",
-                        "Spidola reached the source but found no channels to add. " +
-                            "Check the playlist and try again.",
+                        LocalizedText(R.string.core_error_parse_title),
+                        LocalizedText(R.string.core_error_parse_message),
                         ErrorAction.RETRY,
                         listOf(ErrorAction.GO_BACK),
                     )
                 is ApiException.StorageCorrupt ->
                     ActionableError(
-                        "Local storage problem",
-                        "Something went wrong saving to this device. Try again.",
+                        LocalizedText(R.string.core_error_storage_title),
+                        LocalizedText(R.string.core_error_storage_message),
                         ErrorAction.RETRY,
                         listOf(ErrorAction.GO_BACK),
                     )
                 is ApiException.Cancelled ->
                     ActionableError(
-                        "Cancelled",
-                        "That was cancelled.",
+                        LocalizedText(R.string.core_error_cancelled_title),
+                        LocalizedText(R.string.core_error_cancelled_message),
                         ErrorAction.GO_BACK,
                         emptyList(),
                     )
                 is ApiException.Internal ->
                     ActionableError(
-                        "Something went wrong",
-                        "An unexpected problem came up. Try again.",
+                        LocalizedText(R.string.core_error_internal_title),
+                        LocalizedText(R.string.core_error_internal_message),
                         ErrorAction.RETRY,
                         listOf(ErrorAction.GO_BACK),
                     )
             }
+
+        /** Turns stable boundary codes into shell-owned copy. The generated exception's message is
+         * intentionally ignored because it is diagnostic data, not localized UI prose. */
+        private fun inputMessage(
+            field: InputField,
+            issue: InputIssue,
+        ): LocalizedText {
+            val fieldResource =
+                when (field) {
+                    InputField.ADDRESS -> R.string.core_error_field_address
+                    InputField.SERVER -> R.string.core_error_field_server
+                    InputField.NAME -> R.string.core_error_field_name
+                    InputField.HEADER -> R.string.core_error_field_header
+                    InputField.LOG_LEVEL -> R.string.core_error_field_log_level
+                    InputField.FILE -> R.string.core_error_field_file
+                    InputField.SOURCE -> R.string.core_error_field_source
+                }
+            val messageResource =
+                when (issue) {
+                    InputIssue.EMPTY -> R.string.core_error_issue_empty
+                    InputIssue.INVALID -> R.string.core_error_issue_invalid
+                    InputIssue.UNSUPPORTED -> R.string.core_error_issue_unsupported
+                    InputIssue.UNAVAILABLE -> R.string.core_error_issue_unavailable
+                }
+            return LocalizedText(messageResource, fieldResource)
+        }
     }
 }

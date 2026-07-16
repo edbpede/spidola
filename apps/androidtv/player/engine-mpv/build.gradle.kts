@@ -57,7 +57,8 @@ android {
                         listOf(
                             "-DLIBMPV_DIST=${libmpvDist.absolutePath}",
                             "-DLIBMPV_HEADERS=${libmpvHeaders.absolutePath}",
-                            // The shim is C and calls no C++ runtime; libmpv brings its own.
+                            // The shim is C. libmpv's C++ runtime is staged beside it and loaded
+                            // explicitly before the shim, so CMake must not add a second copy.
                             "-DANDROID_STL=none",
                         )
                 }

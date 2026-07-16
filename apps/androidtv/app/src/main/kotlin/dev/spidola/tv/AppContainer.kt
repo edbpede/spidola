@@ -56,4 +56,6 @@ class AppContainer(context: Context) {
     val pairingHandoff: PairingHandoff = PairingHandoff()
 
     val fixtureSeeder: FixtureSeeder = FixtureSeeder(core)
+
+    val tvContentPublisher: TvContentPublisher = TvContentPublisher(appContext)
 }

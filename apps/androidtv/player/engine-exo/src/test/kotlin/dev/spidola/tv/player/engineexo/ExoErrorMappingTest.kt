@@ -6,6 +6,7 @@
 package dev.spidola.tv.player.engineexo
 
 import androidx.annotation.OptIn
+import androidx.media3.common.ParserException
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSpec
@@ -86,6 +87,23 @@ class ExoErrorMappingTest {
     }
 
     @Test
+    fun `recognized container with no playable samples is decoder failed`() {
+        val parser =
+            ParserException.createForMalformedContainer(
+                "Loading finished before preparation is complete.",
+                null,
+            )
+        val error =
+            PlaybackException(
+                "source error",
+                parser,
+                PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+            )
+
+        assertEquals(EngineError.DecoderFailed, error.toEngineError())
+    }
+
+    @Test
     fun `timeouts are timeout`() {
         val timeouts =
             listOf(
@@ -127,6 +145,13 @@ class ExoErrorMappingTest {
         val error = playbackException(PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS, responseCode = HTTP_NOT_FOUND)
 
         assertEquals(EngineError.SourceUnreachable, error.toEngineError())
+    }
+
+    @Test
+    fun `http 520 remains unclassified`() {
+        val error = playbackException(PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS, responseCode = HTTP_UNCLASSIFIED)
+
+        assertEquals(EngineError.Unknown("unclassified HTTP 520"), error.toEngineError())
     }
 
     @Test
@@ -236,5 +261,6 @@ class ExoErrorMappingTest {
         const val HTTP_UNAUTHORIZED = 401
         const val HTTP_FORBIDDEN = 403
         const val HTTP_NOT_FOUND = 404
+        const val HTTP_UNCLASSIFIED = 520
     }
 }

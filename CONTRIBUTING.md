@@ -49,3 +49,26 @@ The documents in `.augment/rules/` (`rust-dev-pro.md`, `swift-dev-pro.md`, `kotl
 - Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) (hook-enforced), signed off (`git commit -s`).
 - Never commit to `main` — branch and open a PR. Local hooks mirror the fast format/lint gates; full compilation, simulator/emulator smoke tests, and the REUSE lint run in CI.
 - Every new file carries an SPDX header (`AGPL-3.0-or-later` for project code) per REUSE conventions.
+
+## Translation contributions
+
+The translation source of truth is the six Xcode String Catalogs and six Android `strings.xml`
+files listed in `crowdin.yml`. Crowdin credentials are read only from
+`CROWDIN_PROJECT_ID` and `CROWDIN_PERSONAL_TOKEN`; they never belong in the repository. The
+hosted project must be provisioned by a maintainer before service-driven sync can start.
+
+Translation pull requests are ordinary DCO-signed contributions. Before opening one, run:
+
+```sh
+python3 tools/community/validate-translations.py
+```
+
+Once a locale claims full support, maintainers run the stricter release gate:
+
+```sh
+python3 tools/community/validate-translations.py --require-locale
+```
+
+That gate requires every translatable key in every catalog, and requires the same locale set in
+both shells. It validates repository evidence only; it does not invent an external contributor or
+claim that the unprovisioned hosted project is live.

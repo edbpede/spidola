@@ -22,4 +22,8 @@ pub use migrations::SCHEMA_VERSION;
 pub use pool::{Db, ReaderGuard};
 pub use refresh::{RefreshCommit, RefreshOutcome, Staging};
 pub use repo::channels::NewChannel;
+pub use repo::custom::{
+    create_channel as create_custom_channel, create_group as create_custom_group,
+};
+pub use repo::epg::{EpgCommit, EpgStaging};
 pub use repo::history::NewHistory;

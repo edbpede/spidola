@@ -32,6 +32,23 @@ final class MPVErrorMappingTests: XCTestCase {
     XCTAssertEqual(MPVErrorMapping.logHint(from: "authentication failed"), .unauthorized)
   }
 
+  func testLogHintKeepsIntentionalUnknownOutsideGenericFiveHundreds() {
+    XCTAssertEqual(
+      MPVErrorMapping.logHint(from: "Server returned 520 Unknown Error"),
+      .unknown(detail: "unclassified HTTP 520"))
+  }
+
+  func testPreferredHintKeepsSpecificFailureOverLaterGenericLines() {
+    XCTAssertEqual(
+      MPVErrorMapping.preferredHint(current: .unauthorized, next: .sourceUnreachable),
+      .unauthorized)
+    XCTAssertEqual(
+      MPVErrorMapping.preferredHint(current: .timeout, next: .unsupportedFormat), .timeout)
+    XCTAssertEqual(
+      MPVErrorMapping.preferredHint(current: .unsupportedFormat, next: .decoderFailed),
+      .decoderFailed)
+  }
+
   func testLogHintClassifiesSourceUnreachable() {
     XCTAssertEqual(
       MPVErrorMapping.logHint(from: "Failed to resolve hostname example.invalid"),
@@ -44,7 +61,8 @@ final class MPVErrorMappingTests: XCTestCase {
       MPVErrorMapping.logHint(from: "Server returned 404 Not Found"), .sourceUnreachable)
     XCTAssertEqual(
       MPVErrorMapping.logHint(from: "Server returned 502 Bad Gateway"), .sourceUnreachable)
-    XCTAssertEqual(MPVErrorMapping.logHint(from: "Connection timed out"), .sourceUnreachable)
+    XCTAssertEqual(MPVErrorMapping.logHint(from: "Connection timed out"), .timeout)
+    XCTAssertEqual(MPVErrorMapping.logHint(from: "Network timeout"), .timeout)
   }
 
   func testLogHintClassifiesUnsupportedFormat() {
@@ -60,6 +78,7 @@ final class MPVErrorMappingTests: XCTestCase {
   func testLogHintClassifiesDecoderFailed() {
     XCTAssertEqual(MPVErrorMapping.logHint(from: "Could not open codec."), .decoderFailed)
     XCTAssertEqual(MPVErrorMapping.logHint(from: "No decoder found for codec"), .decoderFailed)
+    XCTAssertEqual(MPVErrorMapping.logHint(from: "Error while decoding frame!"), .decoderFailed)
     XCTAssertEqual(
       MPVErrorMapping.logHint(from: "Could not initialize video chain"), .decoderFailed)
     XCTAssertEqual(MPVErrorMapping.logHint(from: "Could not open video decoder"), .decoderFailed)
@@ -160,6 +179,13 @@ final class MPVErrorMappingTests: XCTestCase {
   func testEndFileEOFIsEnded() {
     XCTAssertEqual(
       MPVErrorMapping.endFileOutcome(reason: MPV_END_FILE_REASON_EOF, mpvError: 0), .ended)
+  }
+
+  func testEndFileEOFWithDecoderFailureHintIsFailed() {
+    XCTAssertEqual(
+      MPVErrorMapping.endFileOutcome(
+        reason: MPV_END_FILE_REASON_EOF, mpvError: 0, logHint: .decoderFailed),
+      .failed(.decoderFailed))
   }
 
   func testEndFileErrorIsFailedWithMappedError() {

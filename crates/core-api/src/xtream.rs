@@ -32,7 +32,7 @@ use core_model::secret::Secret;
 use core_xtream::{CatalogChannel, Endpoint, StreamRef, XtreamError, catalog, series};
 use tracing::{info, info_span, warn};
 
-use crate::error::ApiError;
+use crate::error::{ApiError, InputField, InputIssue};
 use crate::events::{CancelToken, ImportListener, ImportOutcome, ImportProgress, ImportStage};
 use crate::logging::targets;
 use crate::secrets::SecretStore;
@@ -268,6 +268,7 @@ async fn stage_and_swap(
 fn to_new_channel(channel: &CatalogChannel) -> NewChannel {
     NewChannel {
         identity: channel.identity,
+        epg_key: channel.epg_key.clone(),
         name: channel.name.clone(),
         group_title: channel.group_title.clone(),
         logo: channel.logo.clone(),
@@ -358,7 +359,8 @@ pub(crate) fn map_error(error: XtreamError) -> ApiError {
             }
         }
         XtreamError::InvalidServer { .. } => ApiError::InvalidInput {
-            reason: "that server address isn't valid".to_owned(),
+            field: InputField::Server,
+            issue: InputIssue::Invalid,
         },
     }
 }

@@ -43,6 +43,12 @@ enum StagingResult {
     Cancelled,
 }
 
+enum ImportMessage {
+    Chunk(Vec<u8>),
+    Complete,
+    Failed(ApiError),
+}
+
 /// Runs a full import for `url` into `source_id`, reporting to `listener` and honouring
 /// `token`. Intended to be driven as a task on the core runtime; it never panics across the
 /// boundary — every failure path ends in exactly one terminal `listener` call.
@@ -114,7 +120,7 @@ async fn import_content_inner(
     if token.is_cancelled() {
         return Ok(StagingResult::Cancelled);
     }
-    let (tx, rx) = mpsc::channel::<Vec<u8>>(CHUNK_CHANNEL_DEPTH);
+    let (tx, rx) = mpsc::channel::<ImportMessage>(CHUNK_CHANNEL_DEPTH);
     let worker = {
         let db = Arc::clone(db);
         let cipher = Arc::clone(cipher);
@@ -124,13 +130,19 @@ async fn import_content_inner(
             run_staging(&db, &cipher, source_id, rx, &token, &listener)
         })
     };
+    let mut complete = true;
     for chunk in content.chunks(CONTENT_CHUNK_SIZE) {
         if token.is_cancelled() {
+            complete = false;
             break;
         }
-        if tx.send(chunk.to_vec()).await.is_err() {
+        if tx.send(ImportMessage::Chunk(chunk.to_vec())).await.is_err() {
+            complete = false;
             break; // the worker exited early (error); its result is reported below
         }
+    }
+    if complete {
+        let _ = tx.send(ImportMessage::Complete).await;
     }
     drop(tx); // close the channel so the worker finishes draining
 
@@ -170,7 +182,7 @@ async fn import_inner(
         channels_seen: 0,
     });
 
-    let (tx, rx) = mpsc::channel::<Vec<u8>>(CHUNK_CHANNEL_DEPTH);
+    let (tx, rx) = mpsc::channel::<ImportMessage>(CHUNK_CHANNEL_DEPTH);
     let worker = {
         let db = Arc::clone(db);
         let cipher = Arc::clone(cipher);
@@ -181,16 +193,24 @@ async fn import_inner(
         })
     };
 
-    while let Some(chunk) = response
-        .chunk()
-        .await
-        .map_err(|error| ApiError::from(core_fetch::classify(error)))?
-    {
-        if token.is_cancelled() {
-            break;
-        }
-        if tx.send(chunk.to_vec()).await.is_err() {
-            break; // the worker exited early (error); its result is reported below
+    loop {
+        match response.chunk().await {
+            Ok(Some(chunk)) => {
+                if token.is_cancelled()
+                    || tx.send(ImportMessage::Chunk(chunk.to_vec())).await.is_err()
+                {
+                    break;
+                }
+            }
+            Ok(None) => {
+                let _ = tx.send(ImportMessage::Complete).await;
+                break;
+            }
+            Err(error) => {
+                let error = ApiError::from(core_fetch::classify(error));
+                let _ = tx.send(ImportMessage::Failed(error)).await;
+                break;
+            }
         }
     }
     drop(tx); // close the channel so the worker finishes draining
@@ -210,7 +230,7 @@ fn run_staging(
     db: &Db,
     cipher: &CatalogCipher,
     source_id: SourceId,
-    mut rx: mpsc::Receiver<Vec<u8>>,
+    mut rx: mpsc::Receiver<ImportMessage>,
     token: &CancelToken,
     listener: &Arc<dyn ImportListener>,
 ) -> Result<StagingResult, ApiError> {
@@ -233,20 +253,34 @@ fn run_staging(
         cancelled: false,
     };
 
-    while let Some(chunk) = rx.blocking_recv() {
+    let mut complete = false;
+    while let Some(message) = rx.blocking_recv() {
         if token.is_cancelled() {
             sink.cancelled = true;
             break;
         }
-        parser.push(&chunk, &mut sink).map_err(map_parse_error)?;
-        if sink.cancelled {
-            break;
+        match message {
+            ImportMessage::Chunk(chunk) => {
+                parser.push(&chunk, &mut sink).map_err(map_parse_error)?;
+                if sink.cancelled {
+                    break;
+                }
+            }
+            ImportMessage::Complete => {
+                complete = true;
+                break;
+            }
+            ImportMessage::Failed(error) => return Err(error),
         }
     }
 
     if sink.cancelled || token.is_cancelled() {
         debug!(target: targets::IMPORT, "import cancelled; discarding the staging database");
         return Ok(StagingResult::Cancelled); // `staging` drops here → temp file gone, main untouched
+    }
+    if !complete {
+        warn!(target: targets::IMPORT, "playlist stream ended without a terminal message");
+        return Err(ApiError::Internal);
     }
 
     let diagnostics = parser.finish(&mut sink).map_err(map_parse_error)?;
@@ -342,6 +376,7 @@ impl ChannelSink for ProgressSink<'_, '_> {
 pub fn map_parsed(parsed: ParsedChannel) -> Option<NewChannel> {
     let locator = StreamLocator::parse(&parsed.url).ok()?;
     let identity = channel_identity(parsed.tvg_id(), &parsed.url, &parsed.name);
+    let epg_key = parsed.tvg_id().map(str::to_owned);
     let group_title = parsed.group().map(str::to_owned);
     let logo = parsed.logo().map(str::to_owned);
     let ParsedChannel {
@@ -352,6 +387,7 @@ pub fn map_parsed(parsed: ParsedChannel) -> Option<NewChannel> {
     } = parsed;
     Some(NewChannel {
         identity,
+        epg_key,
         name,
         group_title,
         logo,

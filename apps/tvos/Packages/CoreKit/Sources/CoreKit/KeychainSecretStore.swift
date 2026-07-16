@@ -3,6 +3,7 @@
 
 import Foundation
 import Security
+import Synchronization
 import core_api
 
 /// The host-secrets callback (TECH_SPEC §12): the core stores only opaque keys and calls back
@@ -67,3 +68,25 @@ public final class KeychainSecretStore: SecretStore {
 public enum KeychainError: Error {
   case unexpected(OSStatus)
 }
+
+#if DEBUG
+  /// A process-local secret store for unsigned simulator tests, where Keychain access is not
+  /// available. App code opts into this store explicitly; production launches always use Keychain.
+  public final class EphemeralSecretStore: SecretStore {
+    private let values = Mutex<[String: String]>([:])
+
+    public init() {}
+
+    public func get(key: String) throws -> String? {
+      values.withLock { $0[key] }
+    }
+
+    public func set(key: String, value: String) throws {
+      values.withLock { $0[key] = value }
+    }
+
+    public func delete(key: String) throws {
+      values.withLock { $0[key] = nil }
+    }
+  }
+#endif

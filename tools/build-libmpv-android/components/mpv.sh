@@ -89,3 +89,7 @@ echo "==> $DIST/$ABI/libmpv.so ($(du -h "$DIST/$ABI/libmpv.so" | cut -f1))"
 # has something to compile against without reaching into a per-ABI build tree.
 mkdir -p "$DIST/include"
 cp -R "$PREFIX/include/mpv" "$DIST/include/"
+# The JNI shim registers Android's JavaVM through FFmpeg before mpv creates a video output.
+# Stage only that narrow public header instead of exposing the entire FFmpeg development surface.
+mkdir -p "$DIST/include/libavcodec"
+cp "$PREFIX/include/libavcodec/jni.h" "$DIST/include/libavcodec/jni.h"

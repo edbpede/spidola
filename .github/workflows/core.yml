@@ -54,6 +54,94 @@ jobs:
       - name: bindings drift check
         run: cargo run --quiet -p xtask -- check-bindings
 
+      - name: translation contribution path
+        run: python3 tools/community/validate-translations.py
+
+  performance:
+    name: Criterion regression gate
+    runs-on: ubuntu-latest
+    env:
+      CRITERION_TARGET_DIR: ${{ github.workspace }}/target/criterion-gate
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Show pinned toolchain
+        run: rustup show
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Unit-test regression comparison
+        run: python3 -B tools/ci/test_criterion_regression.py
+
+      - name: Check out pull-request base
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: git worktree add --detach "$RUNNER_TEMP/spidola-benchmark" "$BASE_SHA"
+
+      - name: Check benchmark baseline availability
+        id: benchmark-baseline
+        if: github.event_name == 'pull_request'
+        run: |
+          if [[ -f "$RUNNER_TEMP/spidola-benchmark/tools/ci/criterion-benchmarks.txt" ]]; then
+            echo "available=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "available=false" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Benchmark pull-request base
+        if: >-
+          github.event_name == 'pull_request' &&
+          steps.benchmark-baseline.outputs.available == 'true'
+        run: |
+          tools/ci/run-criterion-benchmarks.sh \
+            "$RUNNER_TEMP/spidola-benchmark" "$CRITERION_TARGET_DIR" \
+            "$RUNNER_TEMP/spidola-benchmark/tools/ci/criterion-benchmarks.txt"
+          mv "$CRITERION_TARGET_DIR/criterion" "$RUNNER_TEMP/criterion-base"
+          cp "$RUNNER_TEMP/spidola-benchmark/tools/ci/criterion-benchmarks.txt" \
+            "$RUNNER_TEMP/criterion-base-benchmarks.txt"
+
+      # Keep the source path stable across revisions so Cargo can safely reuse unchanged
+      # dependencies without confusing same-version path packages from two worktrees.
+      - name: Switch benchmark worktree to candidate
+        if: github.event_name == 'pull_request'
+        env:
+          HEAD_SHA: ${{ github.sha }}
+        run: git -C "$RUNNER_TEMP/spidola-benchmark" checkout --detach "$HEAD_SHA"
+
+      - name: Benchmark pull-request candidate
+        if: github.event_name == 'pull_request'
+        run: |
+          tools/ci/run-criterion-benchmarks.sh \
+            "$RUNNER_TEMP/spidola-benchmark" "$CRITERION_TARGET_DIR"
+
+      - name: Benchmark main
+        if: github.event_name != 'pull_request'
+        run: tools/ci/run-criterion-benchmarks.sh "$GITHUB_WORKSPACE" "$CRITERION_TARGET_DIR"
+
+      - name: Compare base and candidate
+        if: >-
+          github.event_name == 'pull_request' &&
+          steps.benchmark-baseline.outputs.available == 'true'
+        run: |
+          python3 -B tools/ci/criterion_regression.py \
+            --baseline "$RUNNER_TEMP/criterion-base" \
+            --baseline-config "$RUNNER_TEMP/criterion-base-benchmarks.txt" \
+            --candidate "$CRITERION_TARGET_DIR/criterion" \
+            --max-regression-percent 20
+
+      # Main has no distinct base revision. The gate's first PR also has no committed base
+      # contract, so validate every candidate estimate and start relative comparison after merge.
+      - name: Validate candidate estimates
+        if: >-
+          github.event_name != 'pull_request' ||
+          steps.benchmark-baseline.outputs.available != 'true'
+        run: |
+          python3 -B tools/ci/criterion_regression.py \
+            --candidate "$CRITERION_TARGET_DIR/criterion"
+
   reuse:
     runs-on: ubuntu-latest
     steps:

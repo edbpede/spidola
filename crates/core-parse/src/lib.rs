@@ -6,8 +6,8 @@
 //! Parsers consume the input as chunks and emit channels in batches through a caller
 //! [`ChannelSink`], never buffering the whole playlist (TECH_SPEC §4.2). They are pure (no
 //! I/O, no clock beyond an injected "now" for the EPG window) and tolerant (unknown
-//! attributes preserved, malformed entries skipped-and-counted). The XMLTV parser (same
-//! streaming shape) lands in Phase 8.
+//! attributes preserved, malformed entries skipped-and-counted). XMLTV programmes are pruned
+//! against an injected rolling window before crossing their sink boundary.
 #![forbid(unsafe_code)]
 
 pub mod error;
@@ -19,3 +19,8 @@ pub use error::ParseError;
 pub use m3u::diagnostics::{Diagnostics, SkipReason};
 pub use m3u::{DEFAULT_BATCH_SIZE, M3uParser};
 pub use sink::{ChannelSink, ParsedChannel};
+pub use xmltv::window::EpgWindow;
+pub use xmltv::{
+    DEFAULT_PROGRAMME_BATCH_SIZE, ParsedProgramme, ProgrammeSink, XmltvDiagnostics,
+    XmltvParseError, XmltvParser, XmltvSkipReason, parse_xmltv_timestamp,
+};

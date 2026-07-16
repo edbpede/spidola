@@ -88,8 +88,14 @@ jobs:
       - name: Build Android jniLibs
         run: cargo run -p xtask -- package-android
 
+      - name: Verify libmpv pins and LGPL flags
+        run: ../../tools/build-libmpv-android/verify-pins.sh
+
       - name: Android Lint + ktlint + detekt (advisory complexity)
         run: ./gradlew lintDebug ktlintCheck detekt
+
+      - name: Gradle dependency license gate
+        run: ./gradlew :app:licenseeRelease
 
       - name: Assemble (debug)
         run: ./gradlew assembleDebug :app:assembleDebugAndroidTest
@@ -131,6 +137,7 @@ jobs:
             apps/androidtv/app/build/outputs/connected_android_test_additional_output/**
             apps/androidtv/**/build/reports/tests/**
             apps/androidtv/**/build/test-results/**
+            apps/androidtv/app/build/reports/licensee/**
             target/androidtv-m0/**
 
   # FFI parity keel (TECH_SPEC §5, §10): build the Kotlin contract harness against the real

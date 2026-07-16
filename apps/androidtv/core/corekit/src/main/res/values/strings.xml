@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-FileCopyrightText: 2026 Spidola contributors -->
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<resources>
+    <string name="core_action_retry">Try again</string>
+    <string name="core_action_go_back">Go back</string>
+    <string name="core_action_edit">Edit</string>
+
+    <string name="core_error_network_title">Can\'t reach the source</string>
+    <string name="core_error_network_message">Spidola couldn\'t connect. Check the address and your network, then try again.</string>
+    <string name="core_error_timeout_title">The source is slow to respond</string>
+    <string name="core_error_timeout_message">The source didn\'t answer in time. It may be busy — try again in a moment.</string>
+    <string name="core_error_unauthorized_title">Login was rejected</string>
+    <string name="core_error_unauthorized_message">The source didn\'t accept these sign-in details. Edit them and try again.</string>
+    <string name="core_error_not_found_title">Not available anymore</string>
+    <string name="core_error_not_found_message">This isn\'t at the source any longer.</string>
+    <string name="core_error_invalid_title">That entry isn\'t valid</string>
+    <string name="core_error_parse_title">No channels found</string>
+    <string name="core_error_parse_message">Spidola reached the source but found no channels to add. Check the playlist and try again.</string>
+    <string name="core_error_storage_title">Local storage problem</string>
+    <string name="core_error_storage_message">Something went wrong saving to this device. Try again.</string>
+    <string name="core_error_cancelled_title">Cancelled</string>
+    <string name="core_error_cancelled_message">That was cancelled.</string>
+    <string name="core_error_internal_title">Something went wrong</string>
+    <string name="core_error_internal_message">An unexpected problem came up. Try again.</string>
+
+    <string name="core_error_field_address">address</string>
+    <string name="core_error_field_server">server address</string>
+    <string name="core_error_field_name">name</string>
+    <string name="core_error_field_header">request detail</string>
+    <string name="core_error_field_log_level">recording detail</string>
+    <string name="core_error_field_file">file</string>
+    <string name="core_error_field_source">source</string>
+    <string name="core_error_issue_empty">Enter the %1$s.</string>
+    <string name="core_error_issue_invalid">Check the %1$s and try again.</string>
+    <string name="core_error_issue_unsupported">This %1$s isn\'t supported.</string>
+    <string name="core_error_issue_unavailable">This %1$s isn\'t available right now.</string>
+</resources>

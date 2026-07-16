@@ -28,6 +28,17 @@ readonly DIST="$here/dist"
 #   libass + ffmpeg + libplacebo → mpv
 readonly COMPONENTS=(mbedtls freetype harfbuzz fribidi libass ffmpeg libplacebo mpv)
 
+stage_cxx_runtime() {
+  local abi="$1"
+  local host_tag sysroot_triple runtime
+  host_tag="$(ndk_host_tag "$NDK_ROOT")"
+  sysroot_triple="$(abi_sysroot_triple "$abi")"
+  runtime="$NDK_ROOT/toolchains/llvm/prebuilt/$host_tag/sysroot/usr/lib/$sysroot_triple/libc++_shared.so"
+  [ -f "$runtime" ] || fail "NDK C++ runtime missing at $runtime"
+  mkdir -p "$DIST/$abi"
+  cp "$runtime" "$DIST/$abi/libc++_shared.so"
+}
+
 require_host_tools() {
   local missing=()
   local tool
@@ -57,6 +68,7 @@ build_abi() {
   for component in "${COMPONENTS[@]}"; do
     "$here/components/$component.sh"
   done
+  stage_cxx_runtime "$abi"
 }
 
 write_manifest() {

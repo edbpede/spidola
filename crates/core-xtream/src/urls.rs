@@ -297,6 +297,24 @@ impl Endpoint {
         Ok(CredentialUrl { inner: url })
     }
 
+    /// Builds the account-wide XMLTV endpoint used for schedule ingestion.
+    ///
+    /// The credential handling is identical to [`Self::player_api`]: values are form-encoded,
+    /// the result redacts itself, and callers expose it only to `core-fetch` for one request.
+    ///
+    /// # Errors
+    /// Returns [`XtreamError::InvalidServer`] if the base cannot host a path.
+    pub fn xmltv(&self, password: &Secret) -> XtreamResult<CredentialUrl> {
+        let mut url = self.server.clone();
+        push_path(&mut url, &["xmltv.php"])?;
+        {
+            let mut query = url.query_pairs_mut();
+            query.append_pair("username", &self.username);
+            query.append_pair("password", password.expose());
+        }
+        Ok(CredentialUrl { inner: url })
+    }
+
     /// **Audited credential embedding.** Builds the playable stream URL for `stream`:
     /// `{server}/{live|movie|series}/{username}/{password}/{id}.{ext}`.
     ///
@@ -387,6 +405,30 @@ mod tests {
         assert_eq!(
             resolved.into_locator().as_str(),
             "http://panel.example:8080/live/alice/hunter2/4242.ts"
+        );
+    }
+
+    #[test]
+    fn xmltv_credentials_are_encoded_and_redacted() {
+        let url = endpoint("http://panel.example:8080", "alice/name")
+            .xmltv(&Secret::new("p&a=s#word"))
+            .unwrap();
+        assert_eq!(format!("{url:?}"), "CredentialUrl([REDACTED])");
+        let parsed = Url::parse(url.expose()).unwrap();
+        let query = parsed
+            .query_pairs()
+            .collect::<std::collections::HashMap<_, _>>();
+        assert_eq!(
+            query
+                .get("username")
+                .map(std::convert::AsRef::<str>::as_ref),
+            Some("alice/name")
+        );
+        assert_eq!(
+            query
+                .get("password")
+                .map(std::convert::AsRef::<str>::as_ref),
+            Some("p&a=s#word")
         );
     }
 

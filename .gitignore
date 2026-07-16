@@ -46,6 +46,8 @@ captures/
 *.aab
 *.apk
 output-metadata.json
+/dist/
+apps/androidtv/signing.env
 # Keystores / signing material must never be committed
 *.jks
 *.keystore

@@ -3,14 +3,13 @@
 
 //! The [`EpgEntry`] type — one programme in the guide (TECH_SPEC §4.1).
 //!
-//! The type is defined now (Phase 1) so the domain surface is complete; EPG ingestion and
-//! the rolling-window store land in Phase 8 (`core-parse/xmltv`, `core-db/repo/epg`).
-//! Times are Unix seconds so the domain carries no clock; parsers take an injected "now"
-//! for the rolling window (§4.2).
+//! Times are Unix seconds so the domain carries no clock; the streaming XMLTV parser takes an
+//! injected "now" for the rolling window (§4.2), and persistence keys entries to the same stable
+//! source-scoped identity used by favorites.
 
 use serde::{Deserialize, Serialize};
 
-use crate::ids::{ChannelIdentity, EpgEntryId};
+use crate::ids::{ChannelIdentity, EpgEntryId, SourceId};
 
 /// A single programme entry, keyed to a channel by its stable identity so entries survive
 /// a catalog refresh.
@@ -18,6 +17,8 @@ use crate::ids::{ChannelIdentity, EpgEntryId};
 pub struct EpgEntry {
     /// Persisted identity.
     pub id: EpgEntryId,
+    /// Owning source; channel identities are stable only within a source.
+    pub source_id: SourceId,
     /// The channel this programme belongs to (stable identity, not rowid).
     pub channel: ChannelIdentity,
     /// Programme title.
@@ -48,6 +49,7 @@ mod tests {
     fn is_current_uses_injected_now() {
         let entry = EpgEntry {
             id: EpgEntryId::new(1),
+            source_id: SourceId::new(2),
             channel: ChannelIdentity::from_raw(9),
             title: "News".to_owned(),
             description: None,

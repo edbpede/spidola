@@ -7,6 +7,8 @@ package dev.spidola.tv.feature.settings
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import dev.spidola.tv.core.corekit.ActionableError
 import dev.spidola.tv.core.corekit.ErrorAction
 import dev.spidola.tv.core.designsystem.ActionableErrorView
@@ -21,6 +23,8 @@ data class SettingsNavigator(
     /** Opens the option list for one closed-set setting. */
     val openPicker: (SettingsPicker) -> Unit,
     val openDiagnostics: () -> Unit,
+    val openGuide: () -> Unit,
+    val openAbout: () -> Unit,
 )
 
 /**
@@ -37,9 +41,12 @@ internal fun ActionableErrorContent(
     onGoBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val resources = LocalResources.current
+
     fun button(action: ErrorAction): SpidolaErrorButton =
         SpidolaErrorButton(
-            title = action.label,
+            title = resources.getString(action.label),
             onClick =
                 when (action) {
                     ErrorAction.RETRY -> onRetry
@@ -49,8 +56,8 @@ internal fun ActionableErrorContent(
                 },
         )
     ActionableErrorView(
-        failureClass = error.failureClass,
-        message = error.message,
+        failureClass = error.failureClass.resolve(context),
+        message = error.message.resolve(context),
         primary = button(error.primaryAction),
         others = error.otherActions.map(::button),
         modifier = modifier,

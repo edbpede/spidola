@@ -14,9 +14,18 @@ import uniffi.core_api.ApiException
 import uniffi.core_api.AppSettings
 import uniffi.core_api.BrowseGroupPage
 import uniffi.core_api.BufferingProfile
+import uniffi.core_api.ChannelNowNext
 import uniffi.core_api.ChannelPage
 import uniffi.core_api.Core
 import uniffi.core_api.CoreConfig
+import uniffi.core_api.CustomChannelDraft
+import uniffi.core_api.CustomChannelSummary
+import uniffi.core_api.CustomGroup
+import uniffi.core_api.CustomImportMode
+import uniffi.core_api.EpgPage
+import uniffi.core_api.EpgRefreshListener
+import uniffi.core_api.EpgRefreshOutcome
+import uniffi.core_api.EpgRefreshProgress
 import uniffi.core_api.Handshake
 import uniffi.core_api.ImportListener
 import uniffi.core_api.ImportOutcome
@@ -25,9 +34,12 @@ import uniffi.core_api.InterfaceDensity
 import uniffi.core_api.LogLevel
 import uniffi.core_api.LogSink
 import uniffi.core_api.MediaKind
+import uniffi.core_api.NowNext
 import uniffi.core_api.PairingListener
 import uniffi.core_api.PairingSubmission
 import uniffi.core_api.Recent
+import uniffi.core_api.ResolvedHeader
+import uniffi.core_api.ResolvedStream
 import uniffi.core_api.SearchPage
 import uniffi.core_api.SecretStore
 import uniffi.core_api.Source
@@ -117,7 +129,9 @@ class SpidolaCore private constructor(
     HomeAccess,
     PlaybackAccess,
     SettingsAccess,
-    PairingAccess {
+    PairingAccess,
+    EpgAccess,
+    CustomChannelsAccess {
     /** The startup handshake (core / schema / boundary versions), checked before first use. */
     override fun handshake(): Handshake = core.handshake()
 
@@ -228,6 +242,12 @@ class SpidolaCore private constructor(
         limit: UInt,
     ): ChannelPage = core.catalog().channels(sourceId, offset, limit)
 
+    /** Resolves the stable pair carried by platform search/TV-provider links after a cold start. */
+    suspend fun channelByIdentity(
+        sourceId: Long,
+        identity: Long,
+    ): PlayableChannel? = core.catalog().channelByIdentity(sourceId, identity)?.let(PlayableChannel::of)
+
     override suspend fun kinds(sourceId: Long): List<MediaKind> = core.catalog().kinds(sourceId)
 
     override suspend fun groups(
@@ -283,6 +303,192 @@ class SpidolaCore private constructor(
         offset: UInt,
         limit: UInt,
     ): ChannelPage = core.favorites().favoriteChannels(offset, limit)
+
+    override suspend fun moveFavoriteBefore(
+        channel: PlayableChannel,
+        anchor: PlayableChannel,
+    ) = core.favorites().moveBefore(
+        channel.sourceId,
+        channel.identity,
+        anchor.sourceId,
+        anchor.identity,
+    )
+
+    override suspend fun moveFavoriteAfter(
+        channel: PlayableChannel,
+        anchor: PlayableChannel,
+    ) = core.favorites().moveAfter(
+        channel.sourceId,
+        channel.identity,
+        anchor.sourceId,
+        anchor.identity,
+    )
+
+    // ---- Guide ----
+
+    override suspend fun guideSources(): List<Source> = core.sources().list()
+
+    override suspend fun epgWindowSettings(): EpgWindowSettings {
+        val settings = core.settings().snapshot()
+        return EpgWindowSettings(settings.epgWindowAheadHours, settings.epgWindowBehindHours)
+    }
+
+    override suspend fun setEpgWindow(
+        aheadHours: UInt,
+        behindHours: UInt,
+    ) = core.settings().setEpgWindow(aheadHours, behindHours)
+
+    override suspend fun nowNext(
+        sourceId: Long,
+        channelIdentity: Long,
+        nowUnix: Long,
+    ): NowNext = core.epg().nowNext(sourceId, channelIdentity, nowUnix)
+
+    override suspend fun nowNextBatch(
+        sourceId: Long,
+        channelIdentities: List<Long>,
+        nowUnix: Long,
+    ): List<ChannelNowNext> = core.epg().nowNextBatch(sourceId, channelIdentities, nowUnix)
+
+    override suspend fun epgWindow(
+        sourceId: Long,
+        channelIdentity: Long,
+        earliestUnix: Long,
+        latestUnix: Long,
+        offset: UInt,
+        limit: UInt,
+    ): EpgPage = core.epg().window(sourceId, channelIdentity, earliestUnix, latestUnix, offset, limit)
+
+    override suspend fun hasEpgFeed(sourceId: Long): Boolean = core.epg().hasFeed(sourceId)
+
+    override suspend fun setXmltvFeed(
+        sourceId: Long,
+        url: String,
+    ) = core.epg().setXmltvFeed(sourceId, url)
+
+    override suspend fun clearXmltvFeed(sourceId: Long) = core.epg().clearXmltvFeed(sourceId)
+
+    override fun refreshEpg(
+        sourceId: Long,
+        nowUnix: Long,
+    ): Flow<EpgRefreshEvent> =
+        callbackFlow {
+            val listener =
+                object : EpgRefreshListener {
+                    override fun onProgress(progress: EpgRefreshProgress) {
+                        trySend(EpgRefreshEvent.Progress(progress))
+                    }
+
+                    override fun onComplete(outcome: EpgRefreshOutcome) {
+                        trySend(EpgRefreshEvent.Complete(outcome))
+                        close()
+                    }
+
+                    override fun onFailed(error: ApiException) {
+                        trySend(EpgRefreshEvent.Failed(error))
+                        close()
+                    }
+                }
+            val handle = core.epg().refresh(sourceId, nowUnix, listener)
+            awaitClose { handle.cancel() }
+        }
+
+    // ---- Custom channels ----
+
+    override suspend fun customGroups(): List<CustomGroup> {
+        val groups = mutableListOf<CustomGroup>()
+        var page: List<CustomGroup>
+        do {
+            page = core.customChannels().groups(groups.size.toUInt(), CUSTOM_PAGE_LIMIT)
+            groups += page
+        } while (page.size == CUSTOM_PAGE_LIMIT.toInt())
+        return groups
+    }
+
+    override suspend fun customChannels(groupId: Long?): List<CustomChannelSummary> {
+        val channels = mutableListOf<CustomChannelSummary>()
+        var page: List<CustomChannelSummary>
+        do {
+            page = core.customChannels().list(groupId, channels.size.toUInt(), CUSTOM_PAGE_LIMIT)
+            channels += page
+        } while (page.size == CUSTOM_PAGE_LIMIT.toInt())
+        return channels
+    }
+
+    override suspend fun createCustomGroup(name: String): Long = core.customChannels().createGroup(name)
+
+    override suspend fun renameCustomGroup(
+        id: Long,
+        name: String,
+    ) = core.customChannels().renameGroup(id, name)
+
+    override suspend fun deleteCustomGroup(id: Long) = core.customChannels().deleteGroup(id)
+
+    override suspend fun moveCustomGroupBefore(
+        id: Long,
+        anchorId: Long,
+    ) = core.customChannels().moveGroupBefore(id, anchorId)
+
+    override suspend fun moveCustomGroupAfter(
+        id: Long,
+        anchorId: Long,
+    ) = core.customChannels().moveGroupAfter(id, anchorId)
+
+    override suspend fun createCustomChannel(input: CustomChannelInput): Long =
+        withCustomDraft(input) { draft -> core.customChannels().create(draft) }
+
+    override suspend fun updateCustomChannel(
+        id: Long,
+        input: CustomChannelInput,
+    ) = withCustomDraft(input) { draft -> core.customChannels().update(id, draft) }
+
+    override suspend fun deleteCustomChannel(id: Long) = core.customChannels().delete(id)
+
+    override suspend fun moveCustomChannelBefore(
+        id: Long,
+        anchorId: Long,
+    ) = core.customChannels().moveBefore(id, anchorId)
+
+    override suspend fun moveCustomChannelAfter(
+        id: Long,
+        anchorId: Long,
+    ) = core.customChannels().moveAfter(id, anchorId)
+
+    override suspend fun exportCustomChannels(): String {
+        val export = core.customChannels().exportPortable()
+        return try {
+            export.contents()
+        } finally {
+            export.destroy()
+        }
+    }
+
+    override suspend fun importCustomChannels(
+        contents: String,
+        mode: CustomImportMode,
+    ): ULong = core.customChannels().importPortable(contents, mode)
+
+    private suspend fun <T> withCustomDraft(
+        input: CustomChannelInput,
+        action: suspend (CustomChannelDraft) -> T,
+    ): T {
+        val headers = input.headers.map { ResolvedHeader.fromParts(it.name, it.value) }
+        val draft =
+            CustomChannelDraft(
+                input.groupId,
+                input.name,
+                input.logo,
+                input.locator,
+                input.userAgent,
+                headers,
+            )
+        return try {
+            action(draft)
+        } finally {
+            draft.destroy()
+            headers.forEach(ResolvedHeader::destroy)
+        }
+    }
 
     // ---- Recents ----
 
@@ -383,12 +589,30 @@ class SpidolaCore private constructor(
 
     override suspend fun resolvePlayback(channel: PlayableChannel): ResolvedPlaybackStream {
         val resolved = core.sources().resolvePlayback(channel.sourceId, channel.identity, channel.locator)
-        return ResolvedPlaybackStream(
-            locator = resolved.locator(),
-            userAgent = resolved.userAgent(),
-            headers = resolved.headers().map { ResolvedPlaybackHeader(it.name(), it.value()) },
-        )
+        return resolved.copyForEngineAndDestroy()
     }
+
+    override suspend fun resolveCustomPlayback(id: Long): ResolvedPlaybackStream {
+        val resolved = core.customChannels().resolve(id)
+        return resolved.copyForEngineAndDestroy()
+    }
+
+    /** Copies plaintext into the shell's redacting request model, then closes every FFI handle. */
+    private fun ResolvedStream.copyForEngineAndDestroy(): ResolvedPlaybackStream =
+        try {
+            val resolvedHeaders = headers()
+            try {
+                ResolvedPlaybackStream(
+                    locator = locator(),
+                    userAgent = userAgent(),
+                    headers = resolvedHeaders.map { ResolvedPlaybackHeader(it.name(), it.value()) },
+                )
+            } finally {
+                resolvedHeaders.forEach(ResolvedHeader::destroy)
+            }
+        } finally {
+            destroy()
+        }
 
     // ---- Settings ----
 
@@ -423,6 +647,8 @@ class SpidolaCore private constructor(
     override suspend fun exportLogs(): List<String> = withContext(Dispatchers.IO) { core.exportLogs() }
 
     companion object {
+        private const val CUSTOM_PAGE_LIMIT = 200u
+
         /** Opens the core against [dbPath], installing the host secrets store and log sink. */
         fun open(
             dbPath: String,

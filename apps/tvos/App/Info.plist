@@ -20,6 +20,17 @@
     <string>$(MARKETING_VERSION)</string>
     <key>CFBundleVersion</key>
     <string>$(CURRENT_PROJECT_VERSION)</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>dev.spidola.tv</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>spidola</string>
+            </array>
+        </dict>
+    </array>
     <key>UIRequiredDeviceCapabilities</key>
     <array><string>arm64</string></array>
 </dict>

@@ -28,10 +28,14 @@ import androidx.tv.material3.Text
 import dev.spidola.tv.core.corekit.PlayableChannel
 import dev.spidola.tv.core.corekit.ZapWindow
 import dev.spidola.tv.core.designsystem.LogoImage
+import dev.spidola.tv.core.designsystem.ScheduleTape
 import dev.spidola.tv.core.designsystem.SmpteRibbon
 import dev.spidola.tv.core.designsystem.SpidolaPalette
 import dev.spidola.tv.core.designsystem.SpidolaSpacing
 import uniffi.core_api.MediaKind
+import uniffi.core_api.NowNext
+import java.text.DateFormat
+import java.util.Date
 
 /**
  * The signature (PRD §8.5): a broadcast lower-third that slides up over live video, showing the
@@ -50,13 +54,16 @@ fun ChannelStrip(
     window: ZapWindow?,
     channel: PlayableChannel,
     isLive: Boolean,
+    schedule: NowNext?,
+    scheduleLoaded: Boolean,
+    showSchedule: Boolean,
     modifier: Modifier = Modifier,
 ) {
     // All resolved out here: `semantics {}` is not a composable scope. The band shows the position
     // and the announcement says it, and they are deliberately not the same string — see
     // [spokenPosition].
     val position = position(window)
-    val description = accessibilityLabel(channel, isLive, spokenPosition(window))
+    val description = accessibilityLabel(channel, isLive, spokenPosition(window), schedule)
     Column(
         // A lower-third sits on the lower third. The video above it stays uncovered, which is the
         // difference between a strip and a scrim.
@@ -67,63 +74,94 @@ fun ChannelStrip(
                 .semantics(mergeDescendants = true) { contentDescription = description },
     ) {
         Peek(window?.previous, edge = PeekEdge.TOP)
-        Band(channel = channel, isLive = isLive, position = position)
+        Band(
+            channel = channel,
+            isLive = isLive,
+            position = position,
+            schedule = schedule,
+            scheduleLoaded = scheduleLoaded,
+            showSchedule = showSchedule,
+        )
         SmpteRibbon()
         Peek(window?.next, edge = PeekEdge.BOTTOM)
     }
 }
 
-/**
- * The band: logo, name, and the live marker. Now/next EPG joins it in Phase 8 — the row is laid out
- * to take it without moving anything that is already here.
- */
+/** The band: logo, name, live marker, ring position, and a fixed-height now/next schedule. */
 @Composable
 private fun Band(
     channel: PlayableChannel,
     isLive: Boolean,
     position: String?,
+    schedule: NowNext?,
+    scheduleLoaded: Boolean,
+    showSchedule: Boolean,
 ) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = SpidolaSpacing.xl, vertical = SpidolaSpacing.m),
-        horizontalArrangement = Arrangement.spacedBy(SpidolaSpacing.m),
-        verticalAlignment = Alignment.CenterVertically,
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(SpidolaSpacing.s),
     ) {
-        LogoImage(
-            url = channel.logo,
-            modifier = Modifier.width(LOGO_WIDTH).aspectRatio(LOGO_ASPECT),
-        )
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(SpidolaSpacing.xs),
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = SpidolaSpacing.xl, vertical = SpidolaSpacing.m),
+            horizontalArrangement = Arrangement.spacedBy(SpidolaSpacing.m),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = channel.name,
-                style = MaterialTheme.typography.titleLarge,
-                color = SpidolaPalette.BroadcastWhite,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            LogoImage(
+                url = channel.logo,
+                modifier = Modifier.width(LOGO_WIDTH).aspectRatio(LOGO_ASPECT),
             )
-            channel.group?.let { group ->
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(SpidolaSpacing.xs),
+            ) {
                 Text(
-                    text = group,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = SpidolaPalette.Static,
+                    text = channel.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = SpidolaPalette.BroadcastWhite,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                channel.group?.let { group ->
+                    Text(
+                        text = group,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = SpidolaPalette.Static,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            if (isLive) {
+                LiveMarker()
+            }
+            if (position != null) {
+                Text(
+                    text = position,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = SpidolaPalette.Static,
+                )
             }
         }
-        if (isLive) {
-            LiveMarker()
-        }
-        if (position != null) {
-            Text(
-                text = position,
-                style = MaterialTheme.typography.labelMedium,
-                color = SpidolaPalette.Static,
+        if (showSchedule) {
+            ScheduleTape(
+                currentLabel = stringResource(R.string.playback_schedule_now),
+                nextLabel = stringResource(R.string.playback_schedule_next),
+                currentTime = schedule?.current?.startUnix?.asTime(),
+                currentTitle = schedule?.current?.title,
+                nextTime = schedule?.next?.startUnix?.asTime(),
+                nextTitle = schedule?.next?.title,
+                unavailable =
+                    stringResource(
+                        if (scheduleLoaded) {
+                            R.string.playback_schedule_unavailable
+                        } else {
+                            R.string.playback_schedule_loading
+                        },
+                    ),
+                modifier = Modifier.padding(horizontal = SpidolaSpacing.xl),
             )
         }
     }
@@ -216,12 +254,15 @@ private fun accessibilityLabel(
     channel: PlayableChannel,
     isLive: Boolean,
     position: String?,
+    schedule: NowNext?,
 ): String {
     val live = stringResource(R.string.playback_live_announcement)
     return buildList {
         add(channel.name)
         channel.group?.let(::add)
         if (isLive) add(live)
+        schedule?.current?.title?.let(::add)
+        schedule?.next?.title?.let(::add)
         position?.let(::add)
     }.joinToString(", ")
 }
@@ -230,6 +271,10 @@ private fun accessibilityLabel(
  * kind at all, so nothing is claimed without evidence. */
 internal val PlayableChannel.isLive: Boolean
     get() = kind == MediaKind.LIVE
+
+private fun Long.asTime(): String {
+    return DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(this * UNIX_MILLIS_PER_SECOND))
+}
 
 private val LOGO_WIDTH = 120.dp
 
@@ -241,3 +286,4 @@ private val LIVE_TRACKING = 1.5.sp
 /** The band is translucent so the video reads through it — a lower-third, not a panel. */
 private const val BAND_ALPHA = 0.92f
 private const val PEEK_ALPHA = 0.75f
+private const val UNIX_MILLIS_PER_SECOND = 1_000L

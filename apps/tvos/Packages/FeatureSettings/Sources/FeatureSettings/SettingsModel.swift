@@ -16,6 +16,8 @@ public enum SettingsRow: Hashable, Sendable {
   case clearRecents
   /// Opens the diagnostics screen.
   case diagnostics
+  /// Opens version, licensing, and third-party notices.
+  case about
 }
 
 /// A titled group of rows on the settings root.
@@ -76,7 +78,7 @@ public final class SettingsModel {
     SettingsSection(
       id: "diagnostics",
       title: String(localized: "Diagnostics", bundle: .module),
-      rows: [.diagnostics]),
+      rows: [.diagnostics, .about]),
   ]
 
   public func load() async {

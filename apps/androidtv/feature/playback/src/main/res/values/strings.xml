@@ -32,6 +32,10 @@
       the separator as "of" and the ear cannot, so the glyph stays above and the word lives here.
     -->
     <string name="playback_position_spoken">%1$d of %2$d</string>
+    <string name="playback_schedule_now">Now</string>
+    <string name="playback_schedule_next">Next</string>
+    <string name="playback_schedule_loading">Loading guide…</string>
+    <string name="playback_schedule_unavailable">No guide information</string>
 
     <!-- Options: audio, subtitles, picture (PRD §8.4) -->
     <string name="playback_options_audio">Audio</string>

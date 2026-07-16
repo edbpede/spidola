@@ -42,6 +42,7 @@ public final class MPVEngine: PlaybackEngine {
 
   private var facts = MPVPlaybackFacts()
   private var currentState: PlaybackState = .idle
+  private var hasDecodedVideo = false
   /// The last failure mpv's log implied. mpv reports *why* a load failed in its log stream and
   /// *that* it failed in a later `MPV_EVENT_END_FILE`, so the classification has to be carried
   /// across the gap; see `MPVErrorMapping.logHint`.
@@ -51,6 +52,10 @@ public final class MPVEngine: PlaybackEngine {
   /// resumes only what it actually paused.
   private var wasPlayingBeforeInterruption = false
   private var mediaTitle: String?
+
+  /// The upstream timeout is advisory; this deadline owns the contract state when a source sends
+  /// headers but never enough media for mpv to leave loading.
+  private static let loadDeadline: Duration = .seconds(20)
 
   public init() {
     let (stream, continuation) = AsyncStream<PlaybackState>.makeStream(bufferingPolicy: .unbounded)
@@ -83,6 +88,7 @@ public final class MPVEngine: PlaybackEngine {
       try startEventLoop(on: core)
       startSystemIntegration()
       try core.command(["loadfile", request.locator, "replace"])
+      startLoadDeadline()
     } catch let error as MPVCallError {
       Logger.mpv.error(
         "load failed during \(error.operation, privacy: .public): \(error.code, privacy: .public)")
@@ -90,6 +96,16 @@ public final class MPVEngine: PlaybackEngine {
     } catch {
       emit(.failed(.unknown(detail: "unexpected engine error")))
     }
+  }
+
+  private func startLoadDeadline() {
+    tasks.append(
+      Task { [weak self] in
+        try? await Task.sleep(for: Self.loadDeadline)
+        guard let self, !Task.isCancelled, self.currentState == .loading else { return }
+        Logger.mpv.error("load deadline expired")
+        self.emit(.failed(.timeout))
+      })
   }
 
   /// Builds and initialises the core.
@@ -135,6 +151,9 @@ public final class MPVEngine: PlaybackEngine {
     try core.setOption("input-default-bindings", "no")
     try core.setOption("input-vo-keyboard", "no")
     try core.setOption("osd-level", "0")
+    // Match the contract's explicit Timeout state instead of allowing a header-only response to
+    // sit in loading until FFmpeg eventually treats an empty close as an unsupported container.
+    try core.setOption("network-timeout", "20")
     // Rotation metadata is the source's business, not ours to re-apply on a TV.
     try core.setOption("video-rotate", "no")
 
@@ -177,6 +196,7 @@ public final class MPVEngine: PlaybackEngine {
     MPVObservedProperty(name: "seekable", format: MPV_FORMAT_FLAG),
     MPVObservedProperty(name: "duration", format: MPV_FORMAT_DOUBLE),
     MPVObservedProperty(name: "time-pos", format: MPV_FORMAT_DOUBLE),
+    MPVObservedProperty(name: "video-params/pixelformat", format: MPV_FORMAT_STRING),
     MPVObservedProperty(name: "media-title", format: MPV_FORMAT_STRING),
     MPVObservedProperty(name: "track-list", format: MPV_FORMAT_NONE),
   ]
@@ -357,6 +377,10 @@ public final class MPVEngine: PlaybackEngine {
       reduce()
 
     case .endFile(let reason, let mpvError):
+      if reason == MPV_END_FILE_REASON_EOF, facts.fileLoaded, !hasDecodedVideo {
+        emit(.failed(.decoderFailed))
+        return
+      }
       // `nil` means an end-of-file we caused (our own stop, a redirect); saying nothing is correct.
       guard
         let outcome = MPVErrorMapping.endFileOutcome(
@@ -372,7 +396,7 @@ public final class MPVEngine: PlaybackEngine {
       // Xtream URL carries the account in its path (TECH_SPEC §12). Only the derived class, which
       // is one of six fixed cases, survives this line.
       if let hint = MPVErrorMapping.logHint(from: text) {
-        lastLogHint = hint
+        lastLogHint = MPVErrorMapping.preferredHint(current: lastLogHint, next: hint)
       }
     }
   }
@@ -399,6 +423,9 @@ public final class MPVEngine: PlaybackEngine {
     case ("media-title", .string(let title)):
       mediaTitle = title
       updateNowPlaying()
+      return
+    case ("video-params/pixelformat", .string(let format)):
+      hasDecodedVideo = !format.isEmpty
       return
     case ("track-list", _):
       refreshTracks()

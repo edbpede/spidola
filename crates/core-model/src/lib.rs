@@ -12,6 +12,7 @@
 
 pub mod category;
 pub mod channel;
+pub mod custom;
 pub mod epg;
 pub mod error;
 pub mod favorite;
@@ -23,11 +24,15 @@ pub mod source;
 
 pub use category::Category;
 pub use channel::{Channel, ChannelOverrides, MediaKind, channel_identity};
+pub use custom::{CustomChannel, CustomGroup};
 pub use epg::EpgEntry;
 pub use error::ModelError;
 pub use favorite::Favorite;
 pub use history::PlaybackHistoryEntry;
-pub use ids::{CategoryId, ChannelId, ChannelIdentity, EpgEntryId, HistoryId, SecretRef, SourceId};
+pub use ids::{
+    CategoryId, ChannelId, ChannelIdentity, CustomChannelId, CustomGroupId, EpgEntryId, HistoryId,
+    SecretRef, SourceId,
+};
 pub use locator::StreamLocator;
 pub use secret::Secret;
 pub use source::{Source, SourceCommon, SourceKind};

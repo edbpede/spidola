@@ -7,6 +7,7 @@ import PackageDescription
 // callbacks, the Keychain-backed secrets callback, and the OSLog sink (TECH_SPEC §6, §4.8).
 let package = Package(
   name: "CoreKit",
+  defaultLocalization: "en",
   platforms: [.tvOS(.v18)],
   products: [
     .library(name: "CoreKit", targets: ["CoreKit"])
@@ -20,7 +21,11 @@ let package = Package(
       exclude: ["core_apiFFI.h", "core_apiFFI.modulemap"],
       sources: ["core_api.swift"]
     ),
-    .target(name: "CoreKit", dependencies: ["core_api"]),
+    .target(
+      name: "CoreKit", dependencies: ["core_api"],
+      resources: [.process("Resources")]
+    ),
+    .testTarget(name: "CoreKitTests", dependencies: ["CoreKit"]),
   ],
   swiftLanguageModes: [.v6]
 )

@@ -14,6 +14,24 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Spidola contributors"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
 
+[[annotations]]
+path = ["tools/licenses/swiftpm-policy.json"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Spidola contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+[[annotations]]
+path = ["apps/tvos/App/Resources/ThirdPartyNotices.txt"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "MPVKit contributors and bundled dependency authors"
+SPDX-License-Identifier = "LGPL-3.0-only"
+
+[[annotations]]
+path = ["fixtures/xmltv/basic.xml", "fixtures/xmltv/messy.xml"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Spidola contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
 # All Markdown prose (docs/, CONTRIBUTING.md, APPSTORE_EXCEPTION.md, .augment/rules/,
 # fixtures provenance READMEs) is project documentation under the project license.
 [[annotations]]

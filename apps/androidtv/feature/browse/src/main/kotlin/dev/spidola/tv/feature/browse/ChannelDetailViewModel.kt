@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.spidola.tv.core.corekit.ActionableError
 import dev.spidola.tv.core.corekit.BrowseAccess
+import dev.spidola.tv.core.corekit.EpgAccess
 import dev.spidola.tv.core.corekit.PlayableChannel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,12 +19,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import uniffi.core_api.ApiException
+import uniffi.core_api.NowNext
 
 /** The channel detail screen's observable state: the favorite/hidden flags and a transient notice. */
 data class ChannelDetailUiState(
     val isFavorite: Boolean = false,
     val isHidden: Boolean = false,
-    val notice: String? = null,
+    val notice: ActionableError? = null,
+    val schedule: NowNext? = null,
 )
 
 /**
@@ -35,6 +38,8 @@ data class ChannelDetailUiState(
 class ChannelDetailViewModel(
     val channel: PlayableChannel,
     private val access: BrowseAccess,
+    private val epgAccess: EpgAccess,
+    private val nowUnix: () -> Long = { System.currentTimeMillis() / UNIX_MILLIS_PER_SECOND },
 ) : ViewModel() {
     private val _state = MutableStateFlow(ChannelDetailUiState())
     val state: StateFlow<ChannelDetailUiState> = _state.asStateFlow()
@@ -50,6 +55,7 @@ class ChannelDetailViewModel(
                     _state.value.copy(
                         isFavorite = access.isFavorite(channel.sourceId, channel.identity),
                         isHidden = access.isHidden(channel.sourceId, channel.identity),
+                        schedule = epgAccess.nowNext(channel.sourceId, channel.identity, nowUnix()),
                     )
             } catch (e: CancellationException) {
                 throw e
@@ -89,16 +95,19 @@ class ChannelDetailViewModel(
 
     private fun present(error: ApiException) {
         Log.w(LOG_TAG, "detail action failed", error)
-        _state.value = _state.value.copy(notice = ActionableError.from(error).message)
+        _state.value = _state.value.copy(notice = ActionableError.from(error))
     }
 
     companion object {
+        private const val UNIX_MILLIS_PER_SECOND = 1_000L
+
         fun factory(
             channel: PlayableChannel,
             access: BrowseAccess,
+            epgAccess: EpgAccess,
         ): ViewModelProvider.Factory =
             viewModelFactory {
-                initializer { ChannelDetailViewModel(channel, access) }
+                initializer { ChannelDetailViewModel(channel, access, epgAccess) }
             }
 
         private const val LOG_TAG = "spidola::browse"

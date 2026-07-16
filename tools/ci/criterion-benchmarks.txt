@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Spidola contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# package bench source-path criterion-metric-path
+core-parse m3u crates/core-parse/benches/m3u.rs m3u_parse/50k_channels
+core-search search crates/core-search/benches/search.rs prefix_search_50k
+core-parse xmltv crates/core-parse/benches/xmltv.rs xmltv_parse/50k_programmes

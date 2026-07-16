@@ -16,7 +16,7 @@ final class SourcesModelTests: XCTestCase {
     model.mode = .url
     model.url = "https://example.invalid/list.m3u"
     model.submit()
-    XCTAssertNotNil(model.validationMessage)
+    XCTAssertEqual(model.validation, .name)
     guard case .editing = model.state else { return XCTFail("expected editing") }
   }
 
@@ -78,16 +78,15 @@ final class SourcesModelTests: XCTestCase {
     model.mode = .xtream
     model.name = "Provider"
     model.submit()
-    XCTAssertNotNil(model.validationMessage)
-    XCTAssertEqual(model.validationMessage, "Enter the server address.")
+    XCTAssertEqual(model.validation, .server)
 
     model.server = "http://example.invalid"
     model.submit()
-    XCTAssertEqual(model.validationMessage, "Enter the username.")
+    XCTAssertEqual(model.validation, .username)
 
     model.username = "user"
     model.submit()
-    XCTAssertEqual(model.validationMessage, "Enter the password.")
+    XCTAssertEqual(model.validation, .password)
     guard case .editing = model.state else { return XCTFail("expected editing") }
   }
 
@@ -132,7 +131,7 @@ final class SourcesModelTests: XCTestCase {
     model.returnToForm()
 
     guard case .editing = model.state else { return XCTFail("expected editing") }
-    XCTAssertNil(model.validationMessage)
+    XCTAssertNil(model.validation)
     // The details survive, so only the wrong one has to be retyped — on a remote.
     XCTAssertEqual(model.server, "http://example.invalid")
     XCTAssertEqual(model.username, "user")
