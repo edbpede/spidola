@@ -20,6 +20,7 @@ final class AppContainer {
   let registry: EngineRegistry
 
   private let logger = Logger(subsystem: "dev.spidola.tv", category: "spidola::boot")
+  private let persistsFixtureOwnership: Bool
 
   /// The engines this build can construct (TECH_SPEC §8): MPVKit the default for its codec breadth,
   /// AVPlayer the alternate for HLS-native content. Engines are peers wired here, never children of
@@ -44,8 +45,10 @@ final class AppContainer {
         isFixtureUITest
         ? URL.temporaryDirectory.appending(path: "spidola-ui-\(UUID().uuidString).sqlite").path()
         : URL.documentsDirectory.appending(path: "spidola.sqlite").path()
+      self.persistsFixtureOwnership = !isFixtureUITest
     #else
       let dbPath = URL.documentsDirectory.appending(path: "spidola.sqlite").path()
+      self.persistsFixtureOwnership = true
     #endif
     do {
       #if DEBUG
@@ -93,20 +96,20 @@ final class AppContainer {
       // the Phase 4 add-source flow) must never be treated as ours and torn down. The name is
       // re-verified only as a secondary guard, so a reused SQLite rowid (rowids are not
       // `AUTOINCREMENT`) can never authorize deleting a source we did not create.
-      if let ownedId = Self.storedFixtureId,
+      if let ownedId = fixtureId,
         let fixture = sources.first(where: { $0.id == ownedId }),
         fixture.name == Self.fixtureSourceName
       {  // swiftlint:disable:this opening_brace
         let page = try await core.page(sourceId: fixture.id, offset: 0, limit: 1)
         if page.total > 0 { return }
         try await core.deleteSource(id: fixture.id)
-        Self.storedFixtureId = nil
+        fixtureId = nil
       } else if sources.isEmpty == false {
         return
       }
       let url = serveFixtureOnce(Self.fixturePlaylist())
       let source = try await core.addM3uUrl(name: Self.fixtureSourceName, url: url)
-      Self.storedFixtureId = source.id
+      fixtureId = source.id
       for await event in core.importSource(id: source.id) {
         switch event {
         case .progress:
@@ -116,11 +119,18 @@ final class AppContainer {
         case .failed(let error):
           logger.error("fixture import failed: \(String(describing: error), privacy: .public)")
           try? await core.deleteSource(id: source.id)
-          Self.storedFixtureId = nil
+          fixtureId = nil
         }
       }
     } catch {
       logger.error("fixture seed failed: \(String(describing: error), privacy: .public)")
+    }
+  }
+
+  private var fixtureId: Int64? {
+    get { persistsFixtureOwnership ? Self.storedFixtureId : nil }
+    set {
+      if persistsFixtureOwnership { Self.storedFixtureId = newValue }
     }
   }
 

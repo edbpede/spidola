@@ -51,6 +51,7 @@ struct RootView: View {
   let registry: EngineRegistry
 
   @State private var path: [Route] = []
+  @Binding private var pendingDeepLink: URL?
 
   /// What a phone sent, waiting to pre-fill the add-source form.
   ///
@@ -61,14 +62,23 @@ struct RootView: View {
   /// that consumes it goes away (TECH_SPEC §12).
   @State private var pairedSubmission: PairingSubmission?
 
+  init(core: SpidolaCore, registry: EngineRegistry, pendingDeepLink: Binding<URL?>) {
+    self.core = core
+    self.registry = registry
+    _pendingDeepLink = pendingDeepLink
+  }
+
   var body: some View {
     NavigationStack(path: $path) {
       HomeView(access: core, navigator: navigator)
         .navigationDestination(for: Route.self, destination: destination)
     }
     .spidolaTheme()
-    .onOpenURL(perform: openDeepLink)
-    .onContinueUserActivity("dev.spidola.browse", perform: continueBrowseActivity)
+    .task(id: pendingDeepLink) {
+      guard let url = pendingDeepLink else { return }
+      pendingDeepLink = nil
+      openDeepLink(url)
+    }
     .userActivity("dev.spidola.browse") { activity in
       activity.title = "Browse Spidola"
       activity.userInfo = ["deepLink": "spidola://home"]
@@ -244,11 +254,4 @@ struct RootView: View {
     }
   }
 
-  private func continueBrowseActivity(_ activity: NSUserActivity) {
-    guard
-      let deepLink = activity.userInfo?["deepLink"] as? String,
-      let url = URL(string: deepLink)
-    else { return }
-    openDeepLink(url)
-  }
 }

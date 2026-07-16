@@ -11,6 +11,7 @@ struct SpidolaApp: App {
   @Environment(\.scenePhase) private var scenePhase
   @State private var container = AppContainer()
   @State private var isReady = false
+  @State private var pendingDeepLink: URL?
 
   var body: some Scene {
     WindowGroup {
@@ -37,10 +38,21 @@ struct SpidolaApp: App {
   private var normalRoot: some View {
     Group {
       if isReady {
-        RootView(core: container.core, registry: container.registry)
+        RootView(
+          core: container.core,
+          registry: container.registry,
+          pendingDeepLink: $pendingDeepLink)
       } else {
         ProgressView("Preparing fixture catalog…")
       }
+    }
+    .onOpenURL { pendingDeepLink = $0 }
+    .onContinueUserActivity("dev.spidola.browse") { activity in
+      guard
+        let deepLink = activity.userInfo?["deepLink"] as? String,
+        let url = URL(string: deepLink)
+      else { return }
+      pendingDeepLink = url
     }
     .task {
       await container.seedFixtureIfNeeded()

@@ -94,7 +94,7 @@ apk_count="$(printf '%s\n' "$apk_list" | awk 'NF { count++ } END { print count +
 apk="$apk_list"
 
 for abi in "${abis[@]}"; do
-  for library in libcore_api.so libmpv.so libspidola_mpv.so; do
+  for library in libcore_api.so libmpv.so libspidola_mpv.so libc++_shared.so; do
     entry="lib/$abi/$library"
     count="$(zipinfo -1 "$apk" | awk -v wanted="$entry" '$0 == wanted { count++ } END { print count + 0 }')"
     [ "$count" -eq 1 ] || { echo "error: $apk contains $count copies of $entry" >&2; exit 1; }

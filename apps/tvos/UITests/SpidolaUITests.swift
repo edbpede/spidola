@@ -15,6 +15,7 @@ final class SpidolaUITests: XCTestCase {
     let app = XCUIApplication()
     app.launchEnvironment["SPIDOLA_FIXTURE_UI_TEST"] = "1"
     app.launch()
+    defer { app.terminate() }
 
     // Home: the fixture source is the first focusable element.
     let source = app.buttons["source-Fixture Catalog"]
@@ -41,6 +42,16 @@ final class SpidolaUITests: XCTestCase {
     focusedState.name = "Channel 2 focused with Test-Card Amber treatment"
     focusedState.lifetime = .keepAlways
     add(focusedState)
+  }
+
+  func testColdLaunchQueuesDeepLinkUntilFixtureIsReady() throws {
+    let app = XCUIApplication()
+    app.launchEnvironment["SPIDOLA_FIXTURE_UI_TEST"] = "1"
+    let url = try XCTUnwrap(URL(string: "spidola://search"))
+    app.open(url)
+    defer { app.terminate() }
+
+    XCTAssertTrue(app.descendants(matching: .any)["search-field"].waitForExistence(timeout: 30))
   }
 
   private func assertFocused(
