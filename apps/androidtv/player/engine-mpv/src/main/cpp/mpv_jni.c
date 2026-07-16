@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <android/native_window_jni.h>
+#include <libavcodec/jni.h>
 #include <mpv/client.h>
 
 #define TO_HANDLE(h) ((mpv_handle *)(intptr_t)(h))
@@ -44,6 +45,13 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     (void)reserved;
     JNIEnv *env = NULL;
     if ((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) {
+        return JNI_ERR;
+    }
+
+    // mpv's Android video and AudioTrack integrations retrieve the process VM through FFmpeg's
+    // JNI registry. Without this, vo=gpu can open the media and still fail to create an
+    // ANativeWindow with "No Java virtual machine has been registered".
+    if (av_jni_set_java_vm(vm, NULL) < 0) {
         return JNI_ERR;
     }
 

@@ -3,6 +3,8 @@
 
 package dev.spidola.tv.player.enginempv
 
+import android.os.Handler
+import android.os.Looper
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.compose.foundation.layout.Box
@@ -34,8 +36,13 @@ import java.util.concurrent.atomic.AtomicBoolean
  * [MutableStateFlow]s, which are safe to write from any thread. That is deliberately all the
  * concurrency machinery here — no dispatcher, no scope this engine would then have to own
  * and cancel, and no `runBlocking`.
+ *
+ * [useHardwareDecoding] defaults to the production MediaCodec path. Tests may disable it when
+ * the virtual device's codec surface is not a reliable proxy for physical hardware.
  */
-class MpvEngine : PlaybackEngine {
+class MpvEngine(
+    private val useHardwareDecoding: Boolean = true,
+) : PlaybackEngine {
     override val id: EngineId = EngineId.MPV
 
     private val _state = MutableStateFlow<PlaybackState>(PlaybackState.Idle)
@@ -61,6 +68,17 @@ class MpvEngine : PlaybackEngine {
 
     @Volatile
     private var flags = MpvStateDerivation.Flags()
+
+    @Volatile
+    private var hasDecodedVideo = false
+
+    private val loadDeadlineHandler = Handler(Looper.getMainLooper())
+    private val loadDeadline =
+        Runnable {
+            if (!released.get() && _state.value == PlaybackState.Loading) {
+                publish(PlaybackState.Failed(EngineError.Timeout))
+            }
+        }
 
     /**
      * Serialises surface attach/detach against each other and against teardown. The
@@ -133,9 +151,9 @@ class MpvEngine : PlaybackEngine {
             return
         }
 
-        // Warnings and worse only. Not merely to keep logcat quiet: mpv's info level echoes
-        // the options it resolved, which is where a token-bearing header would be printed.
-        // MpvLogRedaction is the backstop, not the first line of defence.
+        // Warnings and worse contain the transport/decoder detail needed to split mpv's
+        // generic loading-failed code into the shared error taxonomy. Keeping this at warn
+        // avoids flooding the bounded diagnostic tail during ordinary playback.
         mpv.requestLogMessages("warn")
         observeDefaults(mpv)
 
@@ -151,6 +169,8 @@ class MpvEngine : PlaybackEngine {
         val loadRc = mpv.command("loadfile", request.locator)
         if (loadRc < 0) {
             publish(PlaybackState.Failed(MpvErrorMapping.engineErrorFor(loadRc, recentDiagnostics.snapshot())))
+        } else {
+            loadDeadlineHandler.postDelayed(loadDeadline, LOAD_DEADLINE_MS)
         }
     }
 
@@ -202,6 +222,7 @@ class MpvEngine : PlaybackEngine {
 
     override fun release() {
         if (!released.compareAndSet(false, true)) return
+        loadDeadlineHandler.removeCallbacks(loadDeadline)
         val mpv = client ?: return
 
         // Surface first, then mpv: detachSurface's contract is that the VO is already down.
@@ -271,17 +292,23 @@ class MpvEngine : PlaybackEngine {
         // vo starts null and is switched on when a surface arrives; otherwise mpv initialises
         // video output against a window that does not exist yet.
         mpv.setOption("vo", "null")
+        mpv.setOption("gpu-api", "opengl")
         mpv.setOption("gpu-context", "android")
+        mpv.setOption("opengl-es", "yes")
         mpv.setOption("ao", "audiotrack,opensles")
         // This is an embedded library: mpv's own config and scripts must never load, or a
         // stray config on a rooted device would change playback unreproducibly.
         mpv.setOption("config", "no")
         mpv.setOption("osc", "no")
         mpv.setOption("input-default-bindings", "no")
-        // MediaCodec hardware decode, falling back to software. `-copy` reads frames back for
-        // the GL renderer: it costs memory bandwidth, but direct rendering needs a surface
-        // mpv owns outright, which is incompatible with handing it ours.
-        mpv.setOption("hwdec", "mediacodec-copy,no")
+        // A response that sends headers and then no media must reach the contract's Timeout state,
+        // not wait for a remote close and degrade into an unsupported/unknown container error.
+        mpv.setOption("network-timeout", "20")
+        // MediaCodec decode normally feeds the GL renderer through copy mode, then falls back
+        // to software so subtitles, filters, and mpv's broad codec support remain available.
+        // The software-only mode keeps virtual-device acceptance independent of an AVD's
+        // MediaCodec implementation.
+        mpv.setOption("hwdec", if (useHardwareDecoding) "mediacodec-copy,no" else "no")
 
         applyBuffering(mpv, request.buffering)
         applyHeaders(mpv, request)
@@ -338,6 +365,7 @@ class MpvEngine : PlaybackEngine {
         listOf("pause", "paused-for-cache", "core-idle", "seekable").forEach {
             mpv.observeProperty(it, MpvClient.Format.STRING)
         }
+        mpv.observeProperty("video-params/pixelformat", MpvClient.Format.STRING)
         // NONE: notification with no payload. track-list is a node, and re-reading its flat
         // sub-properties on change is cheaper than marshalling the tree across JNI.
         mpv.observeProperty("track-list", MpvClient.Format.NONE)
@@ -356,6 +384,7 @@ class MpvEngine : PlaybackEngine {
 
             MpvClient.EventId.START_FILE -> {
                 flags = MpvStateDerivation.Flags()
+                hasDecodedVideo = false
                 publish(MpvStateDerivation.stateFor(flags))
             }
 
@@ -376,6 +405,23 @@ class MpvEngine : PlaybackEngine {
     }
 
     private fun onEndFile(event: MpvEvent) {
+        if (event.endFileReason == MpvErrorMapping.EndFileReason.ERROR) {
+            // FFmpeg produces some final diagnostics on a worker thread. mpv can enqueue
+            // END_FILE just before forwarding those messages to the client queue, so give
+            // the event pump one short turn to drain them before classifying the otherwise
+            // indistinguishable -13 loading-failed code.
+            loadDeadlineHandler.postDelayed(
+                {
+                    if (!released.get()) finishEndFile(event)
+                },
+                END_FILE_DIAGNOSTIC_GRACE_MS,
+            )
+            return
+        }
+        finishEndFile(event)
+    }
+
+    private fun finishEndFile(event: MpvEvent) {
         val error =
             MpvErrorMapping.endFileError(
                 reason = event.endFileReason,
@@ -383,6 +429,8 @@ class MpvEngine : PlaybackEngine {
                 diagnostic = recentDiagnostics.snapshot(),
             )
         when {
+            event.endFileReason == MpvErrorMapping.EndFileReason.EOF && flags.fileLoaded && !hasDecodedVideo ->
+                publish(PlaybackState.Failed(EngineError.DecoderFailed))
             error != null -> publish(PlaybackState.Failed(error))
             event.endFileReason == MpvErrorMapping.EndFileReason.EOF -> publish(PlaybackState.Ended)
             // STOP/QUIT/REDIRECT: our own teardown, or mpv following a redirect. Neither is
@@ -397,6 +445,7 @@ class MpvEngine : PlaybackEngine {
     ) {
         when (event.name) {
             "seekable" -> _isSeekable.value = MpvStateDerivation.flagOf(event.value)
+            "video-params/pixelformat" -> hasDecodedVideo = !event.value.isNullOrEmpty()
             "track-list" -> refreshTracks(mpv)
             "pause" -> updateFlags(flags.copy(pause = MpvStateDerivation.flagOf(event.value)))
             "paused-for-cache" -> updateFlags(flags.copy(pausedForCache = MpvStateDerivation.flagOf(event.value)))
@@ -449,7 +498,13 @@ class MpvEngine : PlaybackEngine {
         // EOF and be reloaded by mpv, and latching Ended here would freeze an engine whose
         // source recovered by itself.
         if (previous is PlaybackState.Failed) return
+        if (next != PlaybackState.Loading) loadDeadlineHandler.removeCallbacks(loadDeadline)
         MpvLog.transition(previous, next)
         _state.value = next
+    }
+
+    private companion object {
+        const val LOAD_DEADLINE_MS = 20_000L
+        const val END_FILE_DIAGNOSTIC_GRACE_MS = 100L
     }
 }

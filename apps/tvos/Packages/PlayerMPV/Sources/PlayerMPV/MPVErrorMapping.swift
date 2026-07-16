@@ -29,6 +29,10 @@ enum MPVErrorMapping {
   static func logHint(from text: String) -> EngineError? {
     let line = text.lowercased()
 
+    // The headend's deliberate catch-all. Keep it ahead of generic 5xx reachability so the
+    // acceptance route proves Unknown remains reachable rather than being guessed into a class.
+    if line.contains("520") { return .unknown(detail: "unclassified HTTP 520") }
+
     // Auth first: an HTTP 401/403 is also reported as a generic "failed to open", so a later
     // unreachable-shaped match must not win over it.
     if line.contains("401") && line.contains("unauthorized") { return .unauthorized }
@@ -39,6 +43,8 @@ enum MPVErrorMapping {
     if line.contains("authorization failed") || line.contains("authentication failed") {
       return .unauthorized
     }
+
+    if line.contains("timed out") || line.contains("timeout") { return .timeout }
 
     // Reachability: name resolution, refused/unreachable peers, and HTTP 404/5xx all mean the same
     // thing to the viewer — the channel's server did not answer usefully — and no engine swap
@@ -55,9 +61,7 @@ enum MPVErrorMapping {
     if line.contains("server returned 404") || line.contains("server returned 5") {
       return .sourceUnreachable
     }
-    if line.contains("tcp_connect") || line.contains("connection timed out") {
-      return .sourceUnreachable
-    }
+    if line.contains("tcp_connect") { return .sourceUnreachable }
 
     // Demux: the bytes arrived but nothing could read them as a container.
     if line.contains("failed to recognize file format") { return .unsupportedFormat }
@@ -72,6 +76,9 @@ enum MPVErrorMapping {
     if line.contains("decoder init failed") || line.contains("could not initialize video chain") {
       return .decoderFailed
     }
+    if line.contains("error while decoding frame") || line.contains("failed to decode frame") {
+      return .decoderFailed
+    }
     if line.contains("could not open video decoder")
       || line.contains("could not open audio decoder")
     {
@@ -79,6 +86,23 @@ enum MPVErrorMapping {
     }
 
     return nil
+  }
+
+  /// Keeps a specific early diagnosis from being overwritten by a later generic demux/open line.
+  static func preferredHint(current: EngineError?, next: EngineError) -> EngineError {
+    guard let current else { return next }
+    return hintPriority(next) > hintPriority(current) ? next : current
+  }
+
+  private static func hintPriority(_ error: EngineError) -> Int {
+    switch error {
+    case .unknown: 6
+    case .unauthorized: 5
+    case .timeout: 4
+    case .decoderFailed: 3
+    case .unsupportedFormat: 2
+    case .sourceUnreachable: 1
+    }
   }
 
   // MARK: - Error-code mapping
@@ -140,7 +164,10 @@ enum MPVErrorMapping {
   ) -> PlaybackState? {
     switch reason {
     case MPV_END_FILE_REASON_EOF:
-      return .ended
+      // A corrupt media payload can still exhaust its finite container cleanly. If the decoder
+      // already named that corruption, reporting Ended would turn a failed live stream into a
+      // successful completion and suppress the loud fallback.
+      return logHint == .decoderFailed ? .failed(.decoderFailed) : .ended
     case MPV_END_FILE_REASON_ERROR:
       return .failed(engineError(mpvError: mpvError, logHint: logHint))
     case MPV_END_FILE_REASON_STOP, MPV_END_FILE_REASON_QUIT, MPV_END_FILE_REASON_REDIRECT:

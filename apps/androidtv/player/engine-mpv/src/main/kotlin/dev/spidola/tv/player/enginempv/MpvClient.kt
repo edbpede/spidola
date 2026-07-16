@@ -299,6 +299,7 @@ internal class MpvClient private constructor() {
             if (loaded.get()) return true
             if (loadFailure.get()) return false
             return try {
+                System.loadLibrary(CXX_RUNTIME_LIBRARY)
                 System.loadLibrary(NATIVE_LIBRARY)
                 loaded.set(true)
                 true
@@ -311,6 +312,7 @@ internal class MpvClient private constructor() {
 
         /** The JNI shim; it links libmpv.so, so loading it loads both. */
         private const val NATIVE_LIBRARY = "spidola_mpv"
+        private const val CXX_RUNTIME_LIBRARY = "c++_shared"
 
         /**
          * Creates an uninitialised mpv instance, or `null` when the native library is missing

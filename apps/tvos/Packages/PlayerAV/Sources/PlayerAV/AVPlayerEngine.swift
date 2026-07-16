@@ -31,6 +31,7 @@ public final class AVPlayerEngine: PlaybackEngine {
   private var wantsPlayback = true
   private var isStopped = false
   private var hasTerminated = false
+  private var hasReachedPlaying = false
 
   /// Whether the item's seekable window is worth a scrubber.
   ///
@@ -91,6 +92,12 @@ public final class AVPlayerEngine: PlaybackEngine {
       // trap, because a crash on the playback path is the worse of the two.
       AVEngineLog.logger.error("engine=avplayer load rejected reason=unparseable-locator")
       emit(.failed(.unknown(detail: "locator is not a URL")))
+      return
+    }
+
+    if AVContainerSupport.isKnownUnsupported(url) {
+      AVEngineLog.logger.error("engine=avplayer load rejected reason=unsupported-container")
+      emit(.failed(.unsupportedFormat))
       return
     }
 
@@ -248,7 +255,7 @@ public final class AVPlayerEngine: PlaybackEngine {
           .map { _ in () }
         for await _ in ended {
           guard let self else { return }
-          self.emit(.ended)
+          self.emit(self.hasReachedPlaying ? .ended : .failed(.decoderFailed))
         }
       })
   }
@@ -334,6 +341,7 @@ public final class AVPlayerEngine: PlaybackEngine {
     // KVO re-fires the same value freely, and four observers re-derive from one change; without
     // this the shell would see a dozen identical `.buffering` transitions per second.
     guard state != current else { return }
+    if state == .playing { hasReachedPlaying = true }
     current = state
     log(state)
     continuation.yield(state)
@@ -355,5 +363,14 @@ public final class AVPlayerEngine: PlaybackEngine {
       engine=avplayer state=failed class=\(error.logLabel, privacy: .public) \
       detail=\(error.diagnosticDetail ?? "-", privacy: .private)
       """)
+  }
+}
+
+/// Containers AVFoundation does not support and can therefore reject without network I/O.
+enum AVContainerSupport {
+  private static let unsupportedExtensions: Set<String> = ["mkv", "webm"]
+
+  static func isKnownUnsupported(_ url: URL) -> Bool {
+    unsupportedExtensions.contains(url.pathExtension.lowercased())
   }
 }

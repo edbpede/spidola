@@ -5,8 +5,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # build-libmpv-android
 
-Builds **LGPL libmpv** for Android from pinned, checksummed sources — one `libmpv.so` per ABI
-(`arm64-v8a`, `armeabi-v7a`, `x86_64`), consumed by `apps/androidtv/player/engine-mpv`
+Builds **LGPL libmpv** for Android from pinned, checksummed sources — one `libmpv.so` plus the
+matching NDK `libc++_shared.so` runtime per ABI (`arm64-v8a`, `armeabi-v7a`, `x86_64`), consumed by `apps/androidtv/player/engine-mpv`
 (TECH_SPEC §7, §12; PRD §10).
 
 Everything here is vendored and pinned by us rather than fetched blind at build time. The
@@ -139,11 +139,13 @@ libplacebo ───────────────────────
 
 One script per component under `components/`, run in that order by `build.sh`.
 
-### One .so, not nine
+### One media-stack .so, plus the NDK C++ runtime
 
-Every dependency is built as a **static** library and linked into a single **shared**
-`libmpv.so`. The result needs only Android system libraries (`libm`, `libz`, `libandroid`,
-`libmediandk`, `libOpenSLES`, `libEGL`, `libdl`, `libc`) — verifiable with `readelf -d`.
+Every media dependency is built as a **static** library and linked into a single **shared**
+`libmpv.so`. Several of those projects contain C++, so the resulting object also needs the pinned
+NDK's `libc++_shared.so`. `build.sh` stages that exact runtime beside `libmpv.so`, includes it in
+the checksum manifest, and the Kotlin loader loads it before the JNI shim. The remaining dynamic
+dependencies are Android system libraries, verifiable with `readelf -d`.
 
 This is LGPL-clean, and the reasoning matters: `libmpv.so` as a whole is an LGPL work (mpv
 LGPL, FFmpeg LGPL, libass ISC, FreeType FTL, HarfBuzz MIT, FriBidi LGPL, libplacebo LGPL,
@@ -187,7 +189,8 @@ code is AGPL and therefore source-available anyway.
 
 ```
 dist/
-├── <abi>/libmpv.so        # stripped, per ABI
+├── <abi>/libmpv.so        # stripped media stack, per ABI
+├── <abi>/libc++_shared.so # matching pinned-NDK runtime, per ABI
 ├── include/mpv/*.h        # client API headers (ABI-independent)
 └── checksums.sha256       # manifest of the built artifacts
 ```
@@ -195,7 +198,7 @@ dist/
 `sources.lock` pins the **inputs**; `checksums.sha256` records the **outputs**, so a rebuilt
 `.so` can be told from a substituted one.
 
-**The built `.so` files are not committed** — deliberately. Per ABI they are 23–32 MB of
+**The built `.so` files are not committed** — deliberately. Per ABI they are tens of megabytes of
 third-party LGPL binary; committing them would bloat every clone, put binaries under REUSE
 annotations that inline SPDX headers cannot reach, and decouple the shipped binary from the
 pins that are supposed to describe it. The repository-root `.gitignore` already ignores

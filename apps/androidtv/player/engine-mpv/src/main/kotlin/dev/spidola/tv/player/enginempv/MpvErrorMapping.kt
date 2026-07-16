@@ -71,7 +71,8 @@ internal object MpvErrorMapping {
     private val DECODE_FAILED =
         Regex(
             """\b(error while decoding|decoder error|failed to decode|hardware decoding failed|""" +
-                """could not initialize (video|audio) (chain|decoder)|error initializing decoder)\b""",
+                """could not initialize (video|audio) (chain|decoder)|error initializing decoder|""" +
+                """decode_slice_header error)\b""",
             RegexOption.IGNORE_CASE,
         )
 
@@ -90,7 +91,10 @@ internal object MpvErrorMapping {
     ): EngineError? =
         when (reason) {
             EndFileReason.ERROR -> engineErrorFor(errorCode, diagnostic)
-            EndFileReason.EOF, EndFileReason.STOP, EndFileReason.QUIT, EndFileReason.REDIRECT -> null
+            EndFileReason.EOF ->
+                classifyDiagnostic(diagnostic)
+                    ?.takeIf { it == EngineError.DecoderFailed }
+            EndFileReason.STOP, EndFileReason.QUIT, EndFileReason.REDIRECT -> null
             // A reason mpv grew after this was written. Treating it as a failure would invent
             // an error the viewer cannot act on; ignoring it keeps the state machine honest.
             else -> null
