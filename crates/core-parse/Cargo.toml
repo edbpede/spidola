@@ -24,5 +24,9 @@ criterion = { workspace = true }
 name = "m3u"
 harness = false
 
+[[bench]]
+name = "xmltv"
+harness = false
+
 [lints]
 workspace = true
