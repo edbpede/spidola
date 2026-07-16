@@ -8,6 +8,7 @@ package dev.spidola.tv.feature.browse
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import dev.spidola.tv.core.corekit.ActionableError
 import dev.spidola.tv.core.corekit.ErrorAction
 import dev.spidola.tv.core.corekit.PlayableChannel
@@ -52,10 +53,11 @@ fun ActionableErrorContent(
     onFixInput: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
 
     fun button(action: ErrorAction): SpidolaErrorButton =
         SpidolaErrorButton(
-            title = context.getString(action.label),
+            title = resources.getString(action.label),
             onClick =
                 when (action) {
                     ErrorAction.RETRY -> onRetry
