@@ -20,6 +20,11 @@ use crate::runtime::CoreRuntime;
 use crate::storage_crypto::CatalogCipher;
 
 const PORTABLE_VERSION: u32 = 1;
+const MAX_PORTABLE_BYTES: usize = 2 * 1024 * 1024;
+const MAX_PORTABLE_GROUPS: usize = 1_024;
+const MAX_PORTABLE_CHANNELS: usize = 10_000;
+const MAX_CHANNEL_HEADERS: usize = 64;
+const MAX_FIELD_BYTES: usize = 64 * 1024;
 
 #[derive(uniffi::Object)]
 pub struct CustomChannelService {
@@ -301,12 +306,26 @@ impl CustomChannelService {
         contents: String,
         mode: CustomImportMode,
     ) -> Result<u64, ApiError> {
+        if contents.len() > MAX_PORTABLE_BYTES {
+            return Err(ApiError::InvalidInput {
+                field: InputField::File,
+                issue: InputIssue::Unsupported,
+            });
+        }
         let catalog: PortableCatalog =
             serde_json::from_str(&contents).map_err(|_| ApiError::InvalidInput {
                 field: InputField::File,
                 issue: InputIssue::Invalid,
             })?;
         if catalog.version != PORTABLE_VERSION {
+            return Err(ApiError::InvalidInput {
+                field: InputField::File,
+                issue: InputIssue::Unsupported,
+            });
+        }
+        if catalog.groups.len() > MAX_PORTABLE_GROUPS
+            || catalog.channels.len() > MAX_PORTABLE_CHANNELS
+        {
             return Err(ApiError::InvalidInput {
                 field: InputField::File,
                 issue: InputIssue::Unsupported,
@@ -389,7 +408,31 @@ fn normalized_name(value: &str) -> Result<String, ApiError> {
             issue: InputIssue::Empty,
         });
     }
+    if value.len() > MAX_FIELD_BYTES {
+        return Err(ApiError::InvalidInput {
+            field: InputField::Name,
+            issue: InputIssue::Unsupported,
+        });
+    }
     Ok(value.to_owned())
+}
+
+fn validate_overrides(
+    user_agent: Option<&str>,
+    headers: &[(String, String)],
+) -> Result<(), ApiError> {
+    if headers.len() > MAX_CHANNEL_HEADERS
+        || user_agent.is_some_and(|value| value.len() > MAX_FIELD_BYTES)
+        || headers
+            .iter()
+            .any(|(name, value)| name.len() > MAX_FIELD_BYTES || value.len() > MAX_FIELD_BYTES)
+    {
+        return Err(ApiError::InvalidInput {
+            field: InputField::Header,
+            issue: InputIssue::Unsupported,
+        });
+    }
+    core_fetch::validate_headers(user_agent, headers).map_err(ApiError::from)
 }
 
 fn sealed_channel(
@@ -400,6 +443,15 @@ fn sealed_channel(
     let name = normalized_name(&draft.name)?;
     let locator = StreamLocator::parse(&draft.locator).map_err(ApiError::from)?;
     let locator = cipher.seal_locator(&locator)?;
+    let plain_headers = draft
+        .headers
+        .iter()
+        .map(|header| {
+            let (name, value) = header.pair();
+            (name.to_owned(), value.to_owned())
+        })
+        .collect::<Vec<_>>();
+    validate_overrides(draft.user_agent.as_deref(), &plain_headers)?;
     let user_agent = draft
         .user_agent
         .as_deref()
@@ -411,13 +463,9 @@ fn sealed_channel(
         .iter()
         .map(|header| {
             let (name, value) = header.pair();
-            if name.trim().is_empty() {
-                return Err(ApiError::InvalidInput {
-                    field: InputField::Header,
-                    issue: InputIssue::Empty,
-                });
-            }
-            Ok((name.to_owned(), cipher.seal_value(value)?))
+            cipher
+                .seal_value(value)
+                .map(|value| (name.to_owned(), value))
         })
         .collect::<Result<Vec<_>, _>>()?;
     Ok(CustomChannel {
@@ -500,7 +548,8 @@ fn import_catalog(
     }
     let mut imported = 0_u64;
     for portable in catalog.channels {
-        let group_id = if let Some(name) = portable.group.as_deref() {
+        let normalized_group = portable.group.as_deref().map(normalized_name).transpose()?;
+        let group_id = if let Some(name) = normalized_group.as_deref() {
             if let Some(id) = group_ids.get(name).copied() {
                 Some(id)
             } else {
@@ -514,6 +563,7 @@ fn import_catalog(
         } else {
             None
         };
+        validate_overrides(portable.user_agent.as_deref(), &portable.headers)?;
         let locator = StreamLocator::parse(&portable.locator).map_err(ApiError::from)?;
         let channel = CustomChannel {
             id: CustomChannelId::new(0),

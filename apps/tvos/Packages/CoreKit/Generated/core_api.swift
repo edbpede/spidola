@@ -619,6 +619,14 @@ public protocol CatalogServiceProtocol: AnyObject, Sendable {
     func channel(id: Int64) async throws  -> Channel?
     
     /**
+     * Fetches one channel by the stable source/identity pair used by platform deep links.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    func channelByIdentity(sourceId: Int64, identity: Int64) async throws  -> Channel?
+    
+    /**
      * Counts the channels in a source's current catalog.
      *
      * # Errors
@@ -750,6 +758,28 @@ open func channel(id: Int64)async throws  -> Channel?  {
             rustFutureFunc: {
                 uniffi_core_api_fn_method_catalogservice_channel(
                         self.uniffiCloneHandle(),FfiConverterInt64.lower(id)
+                )
+            },
+            pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
+            completeFunc: ffi_core_api_rust_future_complete_rust_buffer,
+            freeFunc: ffi_core_api_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterOptionTypeChannel.lift,
+            errorHandler: FfiConverterTypeApiError_lift
+        )
+}
+    
+    /**
+     * Fetches one channel by the stable source/identity pair used by platform deep links.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+open func channelByIdentity(sourceId: Int64, identity: Int64)async throws  -> Channel?  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_core_api_fn_method_catalogservice_channel_by_identity(
+                        self.uniffiCloneHandle(),FfiConverterInt64.lower(sourceId),FfiConverterInt64.lower(identity)
                 )
             },
             pollFunc: ffi_core_api_rust_future_poll_rust_buffer,
@@ -10069,6 +10099,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_catalogservice_channel() != 27235) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_core_api_checksum_method_catalogservice_channel_by_identity() != 52182) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_core_api_checksum_method_catalogservice_channel_count() != 10779) {

@@ -866,6 +866,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_core_api_checksum_method_catalogservice_channel(
     ): Int
+    external fun uniffi_core_api_checksum_method_catalogservice_channel_by_identity(
+    ): Int
     external fun uniffi_core_api_checksum_method_catalogservice_channel_count(
     ): Int
     external fun uniffi_core_api_checksum_method_catalogservice_channels(
@@ -1132,6 +1134,8 @@ internal object UniffiLib {
     external fun uniffi_core_api_fn_free_catalogservice(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     external fun uniffi_core_api_fn_method_catalogservice_channel(`ptr`: Long,`id`: Long,
+    ): Long
+    external fun uniffi_core_api_fn_method_catalogservice_channel_by_identity(`ptr`: Long,`sourceId`: Long,`identity`: Long,
     ): Long
     external fun uniffi_core_api_fn_method_catalogservice_channel_count(`ptr`: Long,`sourceId`: Long,
     ): Long
@@ -1494,6 +1498,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_catalogservice_channel() != 27235) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_core_api_checksum_method_catalogservice_channel_by_identity() != 52182) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_core_api_checksum_method_catalogservice_channel_count() != 10779) {
@@ -2238,6 +2245,14 @@ public interface CatalogServiceInterface {
     suspend fun `channel`(`id`: kotlin.Long): Channel?
     
     /**
+     * Fetches one channel by the stable source/identity pair used by platform deep links.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    suspend fun `channelByIdentity`(`sourceId`: kotlin.Long, `identity`: kotlin.Long): Channel?
+    
+    /**
      * Counts the channels in a source's current catalog.
      *
      * # Errors
@@ -2423,6 +2438,35 @@ open class CatalogService: Disposable, AutoCloseable, CatalogServiceInterface
                 uniffiHandle,
                 
         FfiConverterLong.lower(`id`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_core_api_rust_future_complete_rust_buffer(future, continuation) },
+        { future -> UniffiLib.ffi_core_api_rust_future_free_rust_buffer(future) },
+        // lift function
+        { FfiConverterOptionalTypeChannel.lift(it) },
+        // Error FFI converter
+        ApiException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Fetches one channel by the stable source/identity pair used by platform deep links.
+     *
+     * # Errors
+     * Returns [`ApiError::StorageCorrupt`] on a query failure.
+     */
+    @Throws(ApiException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `channelByIdentity`(`sourceId`: kotlin.Long, `identity`: kotlin.Long) : Channel? {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_core_api_fn_method_catalogservice_channel_by_identity(
+                uniffiHandle,
+                
+        FfiConverterLong.lower(`sourceId`),
+        FfiConverterLong.lower(`identity`),
             )
         },
         { future, callback, continuation -> UniffiLib.ffi_core_api_rust_future_poll_rust_buffer(future, callback, continuation) },

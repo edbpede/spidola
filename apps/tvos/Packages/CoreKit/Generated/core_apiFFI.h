@@ -556,6 +556,11 @@ void uniffi_core_api_fn_free_catalogservice(uint64_t handle, RustCallStatus *_No
 uint64_t uniffi_core_api_fn_method_catalogservice_channel(uint64_t ptr, int64_t id
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CATALOGSERVICE_CHANNEL_BY_IDENTITY
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CATALOGSERVICE_CHANNEL_BY_IDENTITY
+uint64_t uniffi_core_api_fn_method_catalogservice_channel_by_identity(uint64_t ptr, int64_t source_id, int64_t identity
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CATALOGSERVICE_CHANNEL_COUNT
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_FN_METHOD_CATALOGSERVICE_CHANNEL_COUNT
 uint64_t uniffi_core_api_fn_method_catalogservice_channel_count(uint64_t ptr, int64_t source_id
@@ -1393,6 +1398,12 @@ uint16_t uniffi_core_api_checksum_method_resolvedstream_user_agent(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CATALOGSERVICE_CHANNEL
 #define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CATALOGSERVICE_CHANNEL
 uint16_t uniffi_core_api_checksum_method_catalogservice_channel(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CATALOGSERVICE_CHANNEL_BY_IDENTITY
+#define UNIFFI_FFIDEF_UNIFFI_CORE_API_CHECKSUM_METHOD_CATALOGSERVICE_CHANNEL_BY_IDENTITY
+uint16_t uniffi_core_api_checksum_method_catalogservice_channel_by_identity(void
     
 );
 #endif

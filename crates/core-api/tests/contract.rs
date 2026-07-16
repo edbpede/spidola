@@ -24,7 +24,7 @@ use std::thread;
 use std::time::Duration;
 
 use core_api::{
-    ApiError, AppSettings, BufferingProfile, Core, CoreConfig, CustomChannelDraft,
+    ApiError, AppSettings, BufferingProfile, Channel, Core, CoreConfig, CustomChannelDraft,
     CustomImportMode, EpgRefreshListener, EpgRefreshOutcome, EpgRefreshProgress, ImportListener,
     ImportOutcome, ImportProgress, InputField, InputIssue, LogLevel, LogRecord, LogSink,
     PairingListener, PairingSubmission, ResolvedHeader, ResolvedStream, SecretStore, Source,
@@ -243,6 +243,33 @@ fn serve(socket: &mut std::net::TcpStream, body: &[u8], chunk: usize, delay: Dur
     }
 }
 
+/// Serves one complete response, then a syntactically useful body whose advertised length is
+/// deliberately larger so the HTTP client reports a midstream failure after parsing channels.
+fn spawn_full_then_truncated(full: Vec<u8>, partial: Vec<u8>) -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}/playlist.m3u", listener.local_addr().unwrap());
+    thread::spawn(move || {
+        let Ok((mut first, _)) = listener.accept() else {
+            return;
+        };
+        serve(&mut first, &full, 64 * 1024, Duration::ZERO);
+
+        let Ok((mut second, _)) = listener.accept() else {
+            return;
+        };
+        let mut scratch = [0_u8; 1024];
+        let _ = second.read(&mut scratch);
+        let header = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/x-mpegurl\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            partial.len() + 1024
+        );
+        let _ = second.write_all(header.as_bytes());
+        let _ = second.write_all(&partial);
+        let _ = second.flush();
+    });
+    url
+}
+
 /// Serves a minimal but believable Xtream `player_api.php` from `127.0.0.1`, for `connections`
 /// requests. Answers the handshake with an active account and every listing with an empty array,
 /// which is all `add_xtream` needs: it authenticates and stores, and never lists.
@@ -299,6 +326,22 @@ fn playlist(count: usize) -> Vec<u8> {
         );
     }
     out.into_bytes()
+}
+
+fn assert_platform_channel_lookup(rt: &Runtime, core: &Core, source_id: i64, channel: &Channel) {
+    let linked = rt
+        .block_on(
+            core.catalog()
+                .channel_by_identity(source_id, channel.identity),
+        )
+        .expect("stable platform lookup remains readable")
+        .expect("the imported channel resolves by identity");
+    assert_eq!(linked.id, channel.id);
+    assert!(
+        rt.block_on(core.catalog().channel_by_identity(source_id, i64::MAX))
+            .expect("missing platform lookup remains readable")
+            .is_none()
+    );
 }
 
 // -- Core construction -------------------------------------------------------------------
@@ -503,6 +546,51 @@ fn cancel_mid_import_leaves_the_prior_catalog_intact() {
     assert_eq!(
         count, catalog_size as u64,
         "cancel corrupted the prior catalog"
+    );
+}
+
+#[test]
+fn midstream_network_failure_leaves_the_prior_catalog_intact() {
+    let _serial = serial();
+    let rt = Runtime::new().unwrap();
+    let harness = build_core(&rt);
+    let sources = harness.core.sources();
+    let url = spawn_full_then_truncated(playlist(1), playlist(2));
+    let source = rt
+        .block_on(sources.add_m3u_url("Fixture".to_owned(), url, None, false))
+        .expect("add source");
+    let Source::M3uUrl { id: source_id, .. } = source else {
+        panic!("expected M3U source");
+    };
+
+    let refresh = |terminal| {
+        sources.refresh(
+            source_id,
+            Box::new(CollectingListener {
+                progress: Arc::new(Mutex::new(Vec::new())),
+                first_progress: Arc::new(Mutex::new(None)),
+                terminal,
+            }),
+        )
+    };
+    let (first_tx, first_rx) = channel();
+    let _first = refresh(first_tx);
+    assert!(matches!(
+        first_rx.recv_timeout(Duration::from_secs(30)).unwrap(),
+        Terminal::Complete(ImportOutcome { inserted: 1, .. })
+    ));
+
+    let (second_tx, second_rx) = channel();
+    let _second = refresh(second_tx);
+    assert!(matches!(
+        second_rx.recv_timeout(Duration::from_secs(30)).unwrap(),
+        Terminal::Failed(ApiError::NetworkUnreachable)
+    ));
+    assert_eq!(
+        rt.block_on(harness.core.catalog().channel_count(source_id))
+            .unwrap(),
+        1,
+        "a transport failure must not commit the parsed prefix"
     );
 }
 
@@ -865,6 +953,7 @@ fn credential_bearing_m3u_urls_never_reach_sqlite_or_the_log_stream() {
         .into_iter()
         .next()
         .expect("one channel imported");
+    assert_platform_channel_lookup(&rt, &core, source_id, &channel);
     assert!(
         !channel.locator.contains(M3U_CREDENTIAL),
         "the FFI/navigation locator must remain an opaque envelope"
@@ -1790,6 +1879,30 @@ fn custom_lineup_crud_reorder_and_portable_round_trip_keep_storage_sealed() {
             .unwrap()
             .len(),
         2
+    );
+
+    let invalid_group = r#"{"version":1,"groups":[],"channels":[{"group":"   ","name":"Bad","logo":null,"locator":"http://example.test/live","user_agent":null,"headers":[]}]}"#;
+    assert!(matches!(
+        rt.block_on(custom.import_portable(invalid_group.to_owned(), CustomImportMode::Replace)),
+        Err(ApiError::InvalidInput {
+            field: InputField::Name,
+            issue: InputIssue::Empty,
+        })
+    ));
+    let invalid_header = r#"{"version":1,"groups":[],"channels":[{"group":null,"name":"Bad","logo":null,"locator":"http://example.test/live","user_agent":null,"headers":[["Bad\nName","value"]]}]}"#;
+    assert!(matches!(
+        rt.block_on(custom.import_portable(invalid_header.to_owned(), CustomImportMode::Replace)),
+        Err(ApiError::InvalidInput {
+            field: InputField::Header,
+            issue: InputIssue::Invalid,
+        })
+    ));
+    assert_eq!(
+        rt.block_on(custom.list(Some(news_group.id), 0, 10))
+            .unwrap()
+            .len(),
+        2,
+        "a rejected replace import must leave the previous lineup intact"
     );
 }
 

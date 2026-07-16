@@ -62,8 +62,8 @@ uniffi::setup_scaffolding!();
 /// [`Handshake`] lets an older shell refuse a newer core legibly rather than crash (TECH_SPEC
 /// §5, §13).
 ///
-/// `6` — Phase 7 adds bounded batch now/next after the initial boundary-5 feature cut.
-pub const BOUNDARY_VERSION: u32 = 6;
+/// `7` — Phase 7 adds stable channel lookup for cold-start platform deep links.
+pub const BOUNDARY_VERSION: u32 = 7;
 
 /// The core's build-time git revision, for the diagnostics screen (PRD §6.9). Resolved by
 /// `build.rs`; `"unknown"` in a source tree without git metadata (a release tarball build),
