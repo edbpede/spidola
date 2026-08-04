@@ -4,7 +4,7 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["^biome\\.json$"],
+      "managerFilePatterns": ["/^biome\\.json$/"],
       "matchStrings": [
         "\"\\$schema\":\\s*\"https://biomejs\\.dev/schemas/(?<currentValue>[\\d.]+)/schema\\.json\""
       ],
@@ -18,8 +18,18 @@
   ],
   "packageRules": [
     {
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["major"],
+      "automerge": true
+    },
+    {
       "matchPackageNames": ["@biomejs/biome"],
-      "groupName": "biome"
+      "groupName": "biome",
+      "automerge": false
     }
   ],
   "rebaseWhen": "conflicted",
