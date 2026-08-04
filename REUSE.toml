@@ -65,6 +65,15 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Spidola contributors"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
 
+# Renovate config is JSON (no comment syntax) and is kept byte-identical to the
+# canonical config shared across edbpede repositories, so it cannot carry an
+# inline header either.
+[[annotations]]
+path = ["renovate.json"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Spidola contributors"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
 # The Gradle wrapper is third-party tooling (Apache-2.0). The gradlew/gradlew.bat scripts
 # already carry inline SPDX headers; the binary jar and the generated properties file cannot.
 [[annotations]]
