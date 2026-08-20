@@ -8,7 +8,7 @@
 |---|---|
 | **Document status** | Draft v1.2 — July 2026 (2026-07-16: Phases 7–9 restructured — physical-hardware acceptance deferred to Phase 8; remaining software work consolidated into Phase 7) |
 | **Companion documents** | `PRD.md` (scope, priorities) · `TECH_SPEC.md` (architecture, standards) |
-| **Coding standards** | `.augment/rules/rust-dev-pro.md` · `.augment/rules/swift-dev-pro.md` · `.augment/rules/kotlin-dev-pro.md` — normative for every task below |
+| **Coding standards** | `.agents/rules/rust-dev-pro.md` · `.agents/rules/swift-dev-pro.md` · `.agents/rules/kotlin-dev-pro.md` — normative for every task below |
 | **Conventions** | Phases are sequential; tasks within a phase may run in parallel unless a dependency is noted. Every phase ends with explicit **exit criteria**. Checkboxes track completion. |
 
 Two standing rules apply to **every** task in this plan and are not repeated per item:
@@ -22,7 +22,7 @@ Two standing rules apply to **every** task in this plan and are not repeated per
 - [x] **Repository skeleton**
   - [x] Create the monorepo with the exact tree from TECH_SPEC §3.2 (empty crates/modules with placeholder manifests)
   - [x] Add root `.gitignore` (Rust · Swift/Xcode/SPM · Kotlin/Android/Gradle · macOS); `Cargo.lock` and SwiftPM `Package.resolved` are committed for reproducibility (§9)
-  - [x] Add `.augment/rules/` containing the three coding-standard documents
+  - [x] Add `.agents/rules/` containing the three coding-standard documents
   - [x] Add `LICENSES/` (AGPL-3.0-or-later plus dependency license texts) and REUSE configuration
   - [x] Add SPDX headers to all seed files; wire the REUSE lint
   - [x] Commit `docs/` with PRD, TECH_SPEC, and this plan

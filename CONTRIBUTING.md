@@ -41,7 +41,7 @@ Complexity/length lints run at *warn* and never fail CI alone — they are promp
 
 ## Coding standards
 
-The documents in `.augment/rules/` (`rust-dev-pro.md`, `swift-dev-pro.md`, `kotlin-dev-pro.md`) are **normative, not advisory**, for their respective layers — including their anti-pattern tables.
+The documents in `.agents/rules/` (`rust-dev-pro.md`, `swift-dev-pro.md`, `kotlin-dev-pro.md`) are **normative, not advisory**, for their respective layers — including their anti-pattern tables.
 
 ## Workflow
 

@@ -32,7 +32,7 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Spidola contributors"
 SPDX-License-Identifier = "AGPL-3.0-or-later"
 
-# All Markdown prose (docs/, CONTRIBUTING.md, APPSTORE_EXCEPTION.md, .augment/rules/,
+# All Markdown prose (docs/, CONTRIBUTING.md, APPSTORE_EXCEPTION.md, .agents/rules/,
 # fixtures provenance READMEs) is project documentation under the project license.
 [[annotations]]
 path = ["*.md", "**/*.md"]

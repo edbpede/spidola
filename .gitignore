@@ -5,7 +5,7 @@
 #
 # Deliberately committed (do NOT ignore): Cargo.lock and SwiftPM Package.resolved
 # (this is an application workspace — pinned dependency graphs are required for the
-# reproducibility checks in TECH_SPEC §9), plus the Gradle wrapper and .augment/rules/.
+# reproducibility checks in TECH_SPEC §9), plus the Gradle wrapper and .agents/rules/.
 
 # ── Rust / Cargo ────────────────────────────────────────────────────────────
 # Workspace build output (virtual manifest at the repo root → single target/).

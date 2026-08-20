@@ -41,7 +41,7 @@ simply become undistributable, and we would find out from review, not from CI.
 The LGPL `_MPVKit` target links, via `_FFmpeg`, both **OpenSSL** (`Libssl`, `Libcrypto`) and
 **GnuTLS** (with `gmp`, `nettle`, `hogweed`).
 
-This does not contradict the "no OpenSSL" rule in `.augment/rules/rust-dev-pro.md`. That rule is
+This does not contradict the "no OpenSSL" rule in `.agents/rules/rust-dev-pro.md`. That rule is
 scoped to the **Rust core**, where TLS is rustls with platform roots (TECH_SPEC §12) and pulling in
 OpenSSL would mean a C dependency, a build-time toolchain, and a CVE feed we would own. None of
 that applies to mpv's vendored TLS: it is inside a prebuilt binary we do not compile, on the media
